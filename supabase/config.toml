@@ -14,3 +14,10 @@ verify_jwt = false
 
 [functions.line-webhook]
 verify_jwt = false
+
+[remotes.production]
+project_id = "eycrpzxzwwclseoosapf"
+
+[remotes.production.auth]
+site_url = "https://nobit-labo.gymspiral.workers.dev"
+additional_redirect_urls = ["https://nobit-labo.gymspiral.workers.dev/**"]
