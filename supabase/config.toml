@@ -1,0 +1,16 @@
+# supabase link 後に `supabase db push` と `supabase functions deploy` で使う設定
+project_id = "nobit"
+
+[db]
+major_version = 17
+
+[auth]
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/admin"]
+
+# LINE ログインと Webhook は Supabase の JWT を持たずに呼ばれるため、関数の中で確かめる
+[functions.auth-line]
+verify_jwt = false
+
+[functions.line-webhook]
+verify_jwt = false

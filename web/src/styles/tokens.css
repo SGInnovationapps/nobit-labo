@@ -1,0 +1,92 @@
+/* NOBIT! のデザイントークン（基本仕様書 2章） */
+:root {
+  --mint: #38cda1;        /* 記録・達成・完了 */
+  --mint-ink: #0b7a5a;
+  --mint-soft: #e4f7f0;
+  --coral: #ff7d86;       /* 報酬の瞬間・ミッション・リマインド */
+  --coral-ink: #b4313d;
+  --coral-soft: #ffeced;
+  --yellow: #ffd45e;      /* コインの数値だけ */
+  --yellow-ink: #7f5a00;
+  --purple: #9b8afb;      /* 称号・レア・休息日 */
+  --purple-ink: #5a45c9;
+  --purple-soft: #efecff;
+  --ink: #1f2b45;         /* 文字・主要ボタン */
+  --ink-2: #48536b;
+  --ink-3: #657088;
+  --line: #e2e6eb;
+  --empty: #e8ecf0;
+  --paper: #ffffff;
+  --paper-admin: #f3f5f6;
+
+  /* 教科は文字を教科色で示す（白地で 4.5:1 以上） */
+  --sub-english: #2456c4;
+  --sub-math: #c2410c;
+  --sub-japanese: #8a3fa0;
+  --sub-science: #0b7468;
+  --sub-social: #7f5a00;
+
+  --font-ja: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", system-ui, sans-serif;
+  --font-num: "Baloo 2", "M PLUS Rounded 1c", system-ui, sans-serif;
+  --tap: 44px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--font-ja);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "palt" 1;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--mint-ink); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-feature-settings: "tnum" 1; letter-spacing: 0; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* 教科 */
+.subject { font-weight: 800; font-size: 13px; white-space: nowrap; }
+.subject.english { color: var(--sub-english); }
+.subject.math { color: var(--sub-math); }
+.subject.japanese { color: var(--sub-japanese); }
+.subject.science { color: var(--sub-science); }
+.subject.social { color: var(--sub-social); }
+.subject.hidden { color: var(--ink-3); font-weight: 500; }
+
+/* 記録の帯：高さ4段階（記録なし・1つ・2つ・3つ以上）、休息日は紫の短い棒、今日は枠 */
+.strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--gap, 3px);
+  height: var(--h, 56px);
+  align-items: end;
+}
+.strip-day { position: relative; height: 100%; display: flex; align-items: flex-end; }
+.strip-day::after {               /* 記録なしの日は空白。位置だけ細い線で示す */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--empty); border-radius: 1px;
+}
+.strip-bar {
+  position: relative; z-index: 1; width: 100%; height: 0; border-radius: 3px 3px 1px 1px;
+  background: var(--mint);
+  transition: height 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.strip-bar.lv1 { height: 34%; }
+.strip-bar.lv2 { height: 67%; }
+.strip-bar.lv3 { height: 100%; }
+.strip-bar.rest { height: 22%; background: var(--purple); }
+.strip-day.is-today { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 3px; }
+.strip-axis {
+  display: flex; justify-content: space-between; margin-top: 6px;
+  font-size: 11px; color: var(--ink-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .strip-bar { transition: none; }
+}
