@@ -11,7 +11,7 @@
 | 02 | タスク完了の瞬間 | 1 | 作成済み（コインは Phase 2 から表示） | `web/src/student/CompleteSheet.tsx` |
 | — | やった勉強を記録する（自由登録） | 1 | 作成済み | `web/src/student/FreeEntrySheet.tsx` |
 | — | LINE への連絡の設定 | 1 | 作成済み | `web/src/student/SettingsSheet.tsx` |
-| 03 | 15分集中モード | 2 | テーブルのみ（focus_sessions） | — |
+| 03 | 勉強タイマー（15分集中モードを広げたもの） | 1 | 作成済み（コインは Phase 2 から表示） | `web/src/student/StudyTimer.tsx`、`StudyResultSheet.tsx`、`web/src/components/SlideToConfirm.tsx` |
 | 04 | コレクション | 2 | テーブルのみ | — |
 | 05 | 無料ガチャ（結果） | 2 | テーブルのみ（gacha_draws）、画像は用意済み | `web/public/nobit/gacha.png` |
 | 06 | ふりかえり | 2 | 未作成 | — |
@@ -37,6 +37,8 @@
 | 生徒アプリに他の生徒の名前や順位を出さない | 生徒の RPC は自分の行だけを返す |
 | アラートを出し、運営が手作業で送り、連絡済みを記録 | `alerts`・`alert_rules`、`nobit_alert_not_started`（毎時）、`nobit_daily_close`（記録が空いた）、完了時（連続記録の節目） |
 | 将来の push への備え | `users.line_friend_status`（Webhook とログイン時に記録）、`users.line_contact_opt_in`、`alert_rules.delivery`（初期値 manual）、`alerts.retry_key`、保護者同意の文面 |
+| 学習時間（15分集中モードで計測した時間を保存） | 勉強タイマー。開始はサーバーの時刻。止まり方は、スライド・アプリを閉じる・画面が消えたまま10分・2時間（消し忘れ防止）の4つ。`focus_sessions` に記録し、`daily_activity.study_seconds` に積む（`20261003000001_study_timer.sql`） |
+| 勉強時間の報酬 | その日の合計時間の15分ごとに5コイン、1日8ブロックまで（［仮］）。台帳のIDを日付とブロックで決め、二重に付かない |
 | 生徒は LINE ログイン、管理画面はメールリンク | `supabase/functions/auth-line`、`web/src/admin/Login.tsx` |
 | 所属クラブは招待リンクで自動設定 | 招待QRの `?club=<招待コード>` を登録時に使う。生徒は入力しない |
 
@@ -59,3 +61,7 @@
     3. 未着手
     4. 一部完了
     5. それ以外
+11. **勉強タイマーと 03 の関係**：仕様書の 03「15分集中モード」は、残り時間を数える形でした。これを、時間を積み上げるタイマーに変えています。15分は報酬の単位（1ブロック）と、15目盛りの表示として残しました。一時停止はありません。止めてもう一度始めれば、同じ日の合計に積まれます。
+12. **勉強タイマーの公開フェーズ**：Phase 1 から使えるようにしました。仕様書では 03 は Phase 2 です。
+13. **勉強時間を見られる人**：本人と運営だけです。クラブ管理者は保護者同意の範囲外なので見られません。あわせて、クラブ管理者が `daily_activity` の起動回数と勉強時間の列を読めないようにし、生徒の詳細ではコインの残高を運営にだけ返すようにしました。
+14. **連続記録**：タイマーの時間は連続記録に数えません（タスク1件以上の完了のまま）。

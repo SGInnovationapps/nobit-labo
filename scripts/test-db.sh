@@ -12,5 +12,8 @@ for f in supabase/migrations/*.sql; do
   echo "apply $(basename "$f")"
   "${PSQL[@]}" -d "$DB" -f "$f"
 done
-"${PSQL[@]}" -d "$DB" -o /dev/null -f supabase/tests/phase1_test.sql 2>&1 | sed -e "s/^psql:[^ ]* NOTICE:  //"
+for t in supabase/tests/*_test.sql; do
+  echo "test $(basename "$t")"
+  "${PSQL[@]}" -d "$DB" -o /dev/null -f "$t" 2>&1 | sed -e "s/^psql:[^ ]* NOTICE:  //"
+done
 echo "DB tests passed"

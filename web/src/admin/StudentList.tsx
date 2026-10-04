@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { rpc } from "../lib/api";
-import { ALERT_LABEL, FRIEND_LABEL, STATE_LABEL, dateLabel, jstDateTime, shortDate } from "../lib/format";
+import { ALERT_LABEL, FRIEND_LABEL, STATE_LABEL, dateLabel, durationLabel, jstDateTime, shortDate } from "../lib/format";
 import type { AlertItem, Overview, OverviewStudent } from "../lib/types";
 import { RecordStrip } from "../components/RecordStrip";
 import { ClubPicker, useAdmin } from "./AdminApp";
@@ -15,6 +15,7 @@ export function StudentList() {
   const op = me.role === "operator";
   const [data, setData] = useState<Overview | null>(null);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [study, setStudy] = useState<Record<string, { seconds: number; active: boolean }>>({});
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +24,11 @@ export function StudentList() {
     if (!clubId) return;
     try {
       setData(await rpc<Overview>("admin_overview", { p_club: clubId }));
-      if (op) setAlerts(await rpc<AlertItem[]>("admin_alerts", { p_club: clubId }));
+      if (op) {
+        setAlerts(await rpc<AlertItem[]>("admin_alerts", { p_club: clubId }));
+        // 勉強タイマーの時間は運営だけ（クラブ管理者の閲覧範囲に入らない）
+        setStudy(await rpc<Record<string, { seconds: number; active: boolean }>>("admin_study_today", { p_club: clubId }));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -87,7 +92,7 @@ export function StudentList() {
                 <span>直近14日</span><span>最長</span><span>最終学習</span><span />
               </div>
               {rows.length === 0 && <p className="muted">該当する生徒はいません。</p>}
-              {rows.map((s) => <Row key={s.id} s={s} today={data.today} />)}
+              {rows.map((s) => <Row key={s.id} s={s} today={data.today} study={op ? study[s.id] : undefined} />)}
             </section>
           </div>
 
@@ -98,7 +103,7 @@ export function StudentList() {
   );
 }
 
-function Row({ s, today }: { s: OverviewStudent; today: string }) {
+function Row({ s, today, study }: { s: OverviewStudent; today: string; study?: { seconds: number; active: boolean } }) {
   const times = s.tasks.filter((t) => t.completed_time).map((t) => t.completed_time);
   return (
     <div className="l-row">
@@ -109,6 +114,9 @@ function Row({ s, today }: { s: OverviewStudent; today: string }) {
       <div className="l-times l-c-today">
         <span className="l-done num">{s.done}/{s.total}</span>
         {times.map((t, i) => <span key={i} className="num">{t}</span>)}
+        {study && (study.active || study.seconds > 0) && (
+          <span className="l-study">{study.active ? "勉強中" : `勉強 ${durationLabel(study.seconds)}`}</span>
+        )}
       </div>
       <span className={`state ${s.state} l-c-state`}>{STATE_LABEL[s.state]}</span>
       <span className="l-streak l-c-streak"><span className="num">{s.streak}</span><span className="l-unit">日連続</span></span>

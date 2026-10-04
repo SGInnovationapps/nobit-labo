@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { rpc } from "../lib/api";
 import { atLeast } from "../lib/config";
-import { ALERT_LABEL, FRIEND_LABEL, dateLabel, jstDateTime, shortDate } from "../lib/format";
+import { ALERT_LABEL, END_REASON_LABEL, FRIEND_LABEL, dateLabel, durationLabel, jstDateTime, shortDate } from "../lib/format";
 import type { StripDay, StudentDetail as Detail } from "../lib/types";
 import { SubjectText } from "../components/SubjectText";
 import { useAdmin } from "./AdminApp";
@@ -100,8 +100,8 @@ export function StudentDetail() {
         <div className="d-num"><span className="num">{d.streak.current}<small>日</small></span><span>連続記録</span></div>
         <div className="d-num"><span className="num">{d.streak.best}<small>日</small></span><span>最長記録</span></div>
         <div className="d-num"><span className="num">{d.month_days}<small>日</small></span><span>今月の学習日</span></div>
-        {atLeast(2) ? (
-          <div className="d-num"><span className="num">{d.focus_minutes_month}<small>分</small></span><span>今月の集中時間</span></div>
+        {d.focus_minutes_month !== null ? (
+          <div className="d-num"><span className="num">{durationLabel(d.focus_minutes_month * 60)}</span><span>今月の勉強時間（タイマー）</span></div>
         ) : (
           <div className="d-num"><span className="num">{d.history.length > 0 ? shortDate(d.history[0].date) : "—"}</span><span>最終学習</span></div>
         )}
@@ -192,6 +192,19 @@ export function StudentDetail() {
             </section>
           )}
 
+          {d.study_sessions && (
+            <section className="panel">
+              <h2>勉強タイマー <small>直近10回・運営だけに表示</small></h2>
+              {d.study_sessions.length === 0 && <p className="muted">まだ記録がありません。</p>}
+              {d.study_sessions.map((x, i) => (
+                <div key={i} className="toggle-row" style={{ fontSize: 13 }}>
+                  <span>{dateLabel(x.date)}　<span className="num">{x.started_time}〜{x.ended_time}</span></span>
+                  <span><b className="num">{x.minutes}</b>分　<span className="muted">{END_REASON_LABEL[x.end_reason] ?? ""}</span></span>
+                </div>
+              ))}
+            </section>
+          )}
+
           {atLeast(2) && (
             <section className="panel">
               <h2>休息チケット</h2>
@@ -208,7 +221,7 @@ export function StudentDetail() {
       </div>
       {!op && (
         <p className="note" style={{ marginTop: 16 }}>
-          クラブの管理者には、完了したタスクと記録の帯だけを表示しています（保護者の同意の範囲）。
+          クラブの管理者には、完了したタスクと記録の帯だけを表示しています（保護者の同意の範囲）。勉強タイマーの時間は表示しません。
         </p>
       )}
     </>

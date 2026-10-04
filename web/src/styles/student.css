@@ -76,7 +76,7 @@ body.student { background: var(--paper); }
 .c-time-label { font-size: 13px; font-weight: 700; color: var(--ink-2); margin-top: 6px; }
 .c-task { margin: 16px 0 0; font-size: 17px; font-weight: 800; }
 .c-facts { display: flex; gap: 22px; margin: 16px 0 4px; font-size: 13px; color: var(--ink-2); }
-.c-facts .num { font-size: 26px; font-weight: 700; color: var(--ink); margin-right: 2px; }
+.c-facts .num { font-size: 26px; font-weight: 700; color: var(--ink); margin: 0 3px; }
 .c-coins .num { background: var(--yellow); border-radius: 6px; padding: 0 6px; }
 .c-strip { margin: 18px 0 22px; }
 
@@ -111,3 +111,64 @@ body.student { background: var(--paper); }
 .r-wait .num { font-size: 15px; }
 
 .center-note { padding: 30vh 24px 0; text-align: center; color: var(--ink-2); }
+
+/* スライドして操作するボタン（勉強タイマー） */
+.slide {
+  position: relative; height: 60px; border-radius: 30px; background: var(--mint-soft);
+  overflow: hidden; user-select: none; -webkit-user-select: none;
+}
+.slide.end { background: #eef0f4; }
+.slide.disabled { opacity: 0.5; }
+.slide-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 30px; background: var(--mint); opacity: 0.35; }
+.slide.end .slide-fill { background: var(--ink); opacity: 0.12; }
+.slide-label {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding-left: 40px; font-weight: 800; font-size: 15px; color: var(--ink); pointer-events: none;
+}
+.slide-knob {
+  position: absolute; left: 4px; top: 4px; width: 52px; height: 52px; border-radius: 26px; border: 0;
+  background: var(--mint); touch-action: none; cursor: grab; display: grid; place-items: center;
+}
+.slide.end .slide-knob { background: var(--ink); }
+.slide:not(.dragging) .slide-knob, .slide:not(.dragging) .slide-fill { transition: transform 0.25s ease, width 0.25s ease; }
+.slide-chevron { width: 12px; height: 12px; border-top: 3px solid var(--ink); border-right: 3px solid var(--ink); transform: translateX(-2px) rotate(45deg); }
+.slide.end .slide-chevron { border-color: #fff; }
+@media (prefers-reduced-motion: reduce) { .slide-knob, .slide-fill { transition: none !important; } }
+
+.s-study { padding: 14px 0 4px; }
+.s-study-note { margin: 8px 0 0; font-size: 12px; color: var(--ink-3); }
+.s-study-total { font-size: 13px; color: var(--ink-2); }
+.s-study-total .num { font-size: 20px; font-weight: 700; color: var(--ink); }
+
+/* 03 勉強タイマー（机に置いて使う全画面） */
+.timer {
+  position: fixed; inset: 0; z-index: 20; background: var(--paper); overflow: auto;
+  display: flex; flex-direction: column; max-width: 430px; margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
+}
+.timer-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; color: var(--ink-2); }
+.timer-top b { color: var(--mint-ink); font-size: 15px; }
+.timer-top .num { font-size: 18px; font-weight: 700; color: var(--ink); }
+.timer-clock {
+  font-weight: 800; font-size: clamp(76px, 25vw, 112px); line-height: 1; margin: 12vh 0 28px;
+  color: var(--ink); letter-spacing: -0.01em;
+}
+.timer-ticks { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; height: 28px; }
+.timer-ticks span { border-radius: 3px; background: var(--empty); }
+.timer-ticks span.on { background: var(--mint); }
+.timer-block { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+.timer-block .num { font-size: 18px; font-weight: 700; color: var(--ink); margin: 0 2px; }
+.timer-coin { background: var(--yellow); border-radius: 6px; padding: 0 6px; margin-left: 6px; }
+.timer-facts { margin: 22px 0 0; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.timer-facts div { display: flex; justify-content: space-between; align-items: baseline; }
+.timer-facts dt { font-size: 13px; font-weight: 700; }
+.timer-facts dd { margin: 0; font-size: 22px; font-weight: 700; }
+.timer-note { font-size: 12px; color: var(--ink-3); margin: 14px 0 0; }
+.timer-end { margin-top: auto; padding-top: 24px; }
+
+.sr-time { font-size: 64px; font-weight: 800; line-height: 1; color: var(--mint-ink); }
+.sr-range { margin: 8px 0 0; color: var(--ink-2); }
+.sr-range .num { font-size: 18px; font-weight: 700; color: var(--ink); }
+.sr-reason { margin: 12px 0 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--line); font-size: 13px; color: var(--ink-2); }
+.sr-tasks { margin-top: 18px; border-top: 1px solid var(--line); }
+.sr-tasks-head { margin: 12px 0 0; font-size: 13px; font-weight: 700; }

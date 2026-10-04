@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { newRequestId, rpc } from "../lib/api";
 import { atLeast } from "../lib/config";
-import { dateLabel } from "../lib/format";
-import type { Completion, DayTask, Home } from "../lib/types";
+import { dateLabel, durationLabel } from "../lib/format";
+import type { Completion, DayTask, Home, StudyResult, StudyStatus } from "../lib/types";
 import { RecordStrip } from "../components/RecordStrip";
 import { SubjectText } from "../components/SubjectText";
 import { CompleteSheet } from "./CompleteSheet";
 import { FreeEntrySheet } from "./FreeEntrySheet";
 import { SettingsSheet } from "./SettingsSheet";
+import { SlideToConfirm } from "../components/SlideToConfirm";
+import { StudyTimer } from "./StudyTimer";
+import { StudyResultSheet } from "./StudyResultSheet";
 
 /** ノビットの一文（ホームは画像を出さず、名前を添えた一文だけ） */
 function nobitLine(h: Home): string {
@@ -34,14 +37,35 @@ export function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [completion, setCompletion] = useState<Completion | null>(null);
   const [sheet, setSheet] = useState<"free" | "settings" | null>(null);
+  const [study, setStudy] = useState<StudyStatus | null>(null);
+  const [studyResult, setStudyResult] = useState<StudyResult | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setHome(await rpc<Home>("my_home"));
+      const [h, st] = await Promise.all([rpc<Home>("my_home"), rpc<StudyStatus>("study_status")]);
+      setHome(h);
+      setStudy(st);
+      // アプリを閉じている間に止まったタイマーは、開いたときに記録を見せる
+      if (!st.active && st.pending_result) setStudyResult(st.pending_result);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   }, []);
+
+  const startStudy = async () => {
+    setError(null);
+    try {
+      setStudy(await rpc<StudyStatus>("start_study", { p_request_id: newRequestId() }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const closeStudyResult = async () => {
+    const r = studyResult;
+    setStudyResult(null);
+    if (r && r.end_reason !== "manual") await rpc("ack_study", { p_session_id: r.id }).catch(() => undefined);
+    await load();
+  };
   useEffect(() => {
     load();
   }, [load]);
@@ -65,6 +89,21 @@ export function HomeScreen() {
 
   const done = home.tasks.filter((t) => t.completed_at).length;
   const comment = home.comment;
+
+  // タイマーが動いていれば、開いたときからタイマーの画面にする
+  if (study?.active && !studyResult) {
+    return (
+      <StudyTimer
+        key={study.active.id}
+        status={study}
+        onEnded={(r) => {
+          setStudy((s) => (s ? { ...s, active: null } : s));
+          if (r) setStudyResult(r);
+          else load();
+        }}
+      />
+    );
+  }
 
   return (
     <main className="s-app">
@@ -96,6 +135,21 @@ export function HomeScreen() {
           <b>{comment.author}さんから</b>
           {comment.body}
         </p>
+      )}
+
+      {study && (
+        <section className="s-section" aria-labelledby="study-h">
+          <div className="s-section-head">
+            <h2 id="study-h">勉強タイマー</h2>
+            <span className="s-study-total">今日 <span className="num">{durationLabel(study.today.seconds)}</span></span>
+          </div>
+          <div className="s-study">
+            <SlideToConfirm label="スライドして勉強を始める" onConfirm={startStudy} />
+            <p className="s-study-note">
+              机に置いたまま使えます。{study.config.block_minutes}分たまるごとに1ブロック{atLeast(2) && `、${study.config.block_reward}コイン`}。
+            </p>
+          </div>
+        </section>
       )}
 
       <section className="s-section" aria-labelledby="today-h">
@@ -164,6 +218,21 @@ export function HomeScreen() {
             setCompletion(c);
             await load();
           }}
+        />
+      )}
+      {studyResult && study && (
+        <StudyResultSheet
+          result={studyResult}
+          config={study.config}
+          openTasks={home.tasks.filter((t) => !t.completed_at)}
+          busy={busy}
+          onComplete={async (t) => {
+            const r = studyResult;
+            setStudyResult(null);
+            if (r.end_reason !== "manual") await rpc("ack_study", { p_session_id: r.id }).catch(() => undefined);
+            await complete(t);
+          }}
+          onClose={closeStudyResult}
         />
       )}
       {sheet === "settings" && (

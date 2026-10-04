@@ -92,7 +92,9 @@ export type StudentDetail = {
   };
   streak: { current: number; best: number };
   month_days: number;
-  focus_minutes_month: number;
+  /** 勉強タイマーの今月の合計（運営だけ。クラブ管理者には null） */
+  focus_minutes_month: number | null;
+  study_sessions: { date: string; started_time: string; ended_time: string; minutes: number; end_reason: string }[] | null;
   strip: StripDay[];
   subjects: { subject: Subject | null; n: number }[];
   free_count_30: number;
@@ -101,7 +103,7 @@ export type StudentDetail = {
   alerts: { id: string; kind: string; alert_date: string; status: string; message: string;
             contacted_at: string | null; completions_after: number | null }[] | null;
   tickets: { week: string; used_on: string | null }[];
-  coins: number;
+  coins: number | null;
 };
 
 export type TaskGroup = {
@@ -118,4 +120,26 @@ export type ClubSettings = {
   students: number;
   admins: { user_id: string; display_name: string; email: string; signed_in: boolean }[];
   events: { id: string; kind: string; title: string; starts_on: string; ends_on: string }[];
+};
+
+export type StudyDay = { seconds: number; blocks: number };
+export type StudyResult = {
+  id: string;
+  started_at: string;
+  ended_at: string;
+  started_time: string;
+  ended_time: string;
+  seconds: number;
+  end_reason: "manual" | "app_closed" | "idle" | "time_limit";
+  coins: number;
+  study_date: string;
+  day: StudyDay;
+  already?: boolean;
+};
+export type StudyStatus = {
+  server_now: string;
+  config: { max_minutes: number; idle_minutes: number; block_minutes: number; block_reward: number; daily_block_limit: number };
+  today: StudyDay;
+  active: { id: string; started_at: string; started_time: string; study_date: string; day: StudyDay } | null;
+  pending_result: StudyResult | null;
 };

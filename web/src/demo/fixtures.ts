@@ -1,8 +1,9 @@
 // 見本データ（?demo=1 または VITE_DEMO=1）。LINE と Supabase なしで画面を確かめるためのもの。
 // 名前はすべて架空。?role=club_admin でクラブ管理者の見え方、?state=unregistered|pending で登録画面になる。
+// ?timer=1 で勉強タイマーが動いている状態、?stopped=idle|app_closed|time_limit で自動停止の記録から始まる。
 import type {
   AdminMe, AlertItem, ClubSettings, Completion, DayTask, Home, Overview, OverviewStudent,
-  StripDay, StudentDetail, StudentStatus, Subject, TaskGroup,
+  StripDay, StudentDetail, StudentStatus, StudyResult, StudyStatus, Subject, TaskGroup,
 } from "../lib/types";
 import { jstTime, todayJst } from "../lib/format";
 
@@ -77,6 +78,46 @@ function finish(t: DayTask, coins: number): Completion {
   };
 }
 
+// ---- 勉強タイマー ----
+const studyCfg = { max_minutes: 120, idle_minutes: 10, block_minutes: 15, block_reward: 5, daily_block_limit: 8 };
+const studyDay = (sec: number) => ({ seconds: sec, blocks: Math.min(Math.floor(sec / 900), studyCfg.daily_block_limit) });
+let studySec = 50 * 60; // 今日すでに止めた分
+let studyActive: { id: string; started_at: string } | null =
+  params.get("timer") === "1" ? { id: "st-demo", started_at: new Date(Date.now() - (23 * 60 + 45) * 1000).toISOString() } : null;
+let pending: StudyResult | null = (() => {
+  const reason = params.get("stopped") as StudyResult["end_reason"] | null;
+  if (!reason) return null;
+  const start = new Date(Date.now() - 95 * 60e3);
+  const end = new Date(start.getTime() + (reason === "time_limit" ? 120 : 32) * 60e3);
+  return {
+    id: "st-old", started_at: start.toISOString(), ended_at: end.toISOString(),
+    started_time: jstTime(start.toISOString()), ended_time: jstTime(end.toISOString()),
+    seconds: (end.getTime() - start.getTime()) / 1000, end_reason: reason, coins: 10, study_date: today, day: studyDay(studySec),
+  };
+})();
+const hm = (iso: string) => jstTime(iso);
+function studyStatus(): StudyStatus {
+  return {
+    server_now: nowIso(), config: studyCfg, today: studyDay(studySec),
+    active: studyActive ? { ...studyActive, started_time: hm(studyActive.started_at), study_date: today, day: studyDay(studySec) } : null,
+    pending_result: pending,
+  };
+}
+function endStudy(reason: StudyResult["end_reason"]): StudyResult {
+  const a = studyActive!;
+  const end = nowIso();
+  const sec = Math.floor((Date.parse(end) - Date.parse(a.started_at)) / 1000);
+  const before = studyDay(studySec).blocks;
+  studySec += sec;
+  studyActive = null;
+  const coins = (studyDay(studySec).blocks - before) * studyCfg.block_reward;
+  myCoins += coins;
+  return {
+    id: a.id, started_at: a.started_at, ended_at: end, started_time: hm(a.started_at), ended_time: hm(end),
+    seconds: sec, end_reason: reason, coins, study_date: today, day: studyDay(studySec), already: false,
+  };
+}
+
 // ---- 管理画面 ----
 const NAMES: [string, string][] = [
   ["生徒A", "中1"], ["生徒B", "中2"], ["生徒C", "中2"], ["生徒D", "中3"],
@@ -145,7 +186,16 @@ function detail(id: string): StudentDetail {
     viewer_role: role,
     student: { id: s.id, display_name: s.display_name, grade: s.grade, club_id: CLUB.id, club_name: CLUB.name, friend_status: s.friend_status, line_contact_opt_in: true, approved_on: addDays(today, -80) },
     streak: { current: s.streak, best: s.best },
-    month_days: 18, focus_minutes_month: 135, strip: long,
+    month_days: 18, focus_minutes_month: op ? 1310 : null, strip: long,
+    study_sessions: op
+      ? [
+          { date: today, started_time: "16:02", ended_time: "16:49", minutes: 47, end_reason: "manual" },
+          { date: addDays(today, -1), started_time: "20:10", ended_time: "21:05", minutes: 55, end_reason: "manual" },
+          { date: addDays(today, -1), started_time: "17:30", ended_time: "17:42", minutes: 12, end_reason: "idle" },
+          { date: addDays(today, -2), started_time: "19:00", ended_time: "21:00", minutes: 120, end_reason: "time_limit" },
+          { date: addDays(today, -3), started_time: "18:15", ended_time: "18:40", minutes: 25, end_reason: "app_closed" },
+        ]
+      : null,
     subjects, free_count_30: 4,
     history: long.slice(-6).reverse().flatMap((d, i) =>
       d.n > 0
@@ -158,7 +208,7 @@ function detail(id: string): StudentDetail {
     comments: [{ id: "c1", body: "大会前でも毎日続けられていてすごいね。", created_at: nowIso(), read: true, author: "［管理者名］" }],
     alerts: op ? alerts.filter((a) => a.student_id === s.id).map((a) => ({ ...a })) : null,
     tickets: [{ week: addDays(today, -7), used_on: addDays(today, -4) }, { week: addDays(today, -14), used_on: null }],
-    coins: 240,
+    coins: op ? 240 : null,
   };
 }
 
@@ -190,6 +240,21 @@ export function demoRpc(fn: string, a: Record<string, unknown>): unknown {
       freeLeft -= 1;
       return finish(t, 5);
     }
+    case "study_status":
+      return studyStatus();
+    case "start_study":
+      if (!studyActive) studyActive = { id: uid(), started_at: nowIso() };
+      return studyStatus();
+    case "study_heartbeat":
+      return { active: Boolean(studyActive), server_now: nowIso() };
+    case "end_study":
+      if (!studyActive) return { ...(pending as StudyResult), already: true };
+      return endStudy(a.p_reason === "app_closed" ? "app_closed" : "manual");
+    case "ack_study":
+      pending = null;
+      return null;
+    case "admin_study_today":
+      return Object.fromEntries(students.map((x, i) => [x.id, { seconds: [3000, 4200, 900, 0, 2700, 0, 1500, 3600][i], active: i === 2 }]));
     case "admin_claim":
       return { role, display_name: role === "operator" ? "運営" : "［管理者名］", email: "demo@example.com", clubs: role === "operator" ? [CLUB, CLUB_B] : [CLUB] } satisfies AdminMe;
     case "admin_overview": {

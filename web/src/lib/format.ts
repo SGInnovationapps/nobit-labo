@@ -59,6 +59,27 @@ export const FRIEND_LABEL: Record<string, string> = {
   unknown: "不明",
 };
 
+/** 秒を「1時間05分」「47分」にする */
+export function durationLabel(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  if (m < 60) return `${m}分`;
+  return `${Math.floor(m / 60)}時間${String(m % 60).padStart(2, "0")}分`;
+}
+/** タイマーの表示（23:45、1:02:07） */
+export function clockLabel(seconds: number) {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+export const END_REASON_LABEL: Record<string, string> = {
+  manual: "スライドで終了",
+  app_closed: "アプリを閉じた",
+  idle: "画面が消えたまま",
+  time_limit: "上限で自動停止",
+};
+
 const ERRORS: Record<string, string> = {
   invite_not_found: "招待コードが見つかりません。クラブの招待QRから開き直してください。",
   consent_required: "保護者の同意が必要です。",
@@ -82,5 +103,7 @@ const ERRORS: Record<string, string> = {
   email_in_use: "このメールアドレスは別の役割で使われています。",
   body_invalid: "応援コメントは200文字以内で入力してください。",
   login_failed: "ログインできませんでした。時間をおいて開き直してください。",
+  study_not_found: "このタイマーは見つかりませんでした。画面を更新してください。",
+  reason_invalid: "タイマーを止められませんでした。",
 };
 export const errorMessage = (code: string) => ERRORS[code] ?? `エラーが起きました（${code}）`;
