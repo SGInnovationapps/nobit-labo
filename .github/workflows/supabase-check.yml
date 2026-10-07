@@ -17,3 +17,6 @@ jobs:
       - run: supabase db start
 
       - run: supabase db lint --level error
+
+      # supabase/tests/database の pgTAP テスト
+      - run: supabase test db
