@@ -21,3 +21,6 @@ project_id = "eycrpzxzwwclseoosapf"
 [remotes.production.auth]
 site_url = "https://nobit-labo.gymspiral.workers.dev"
 additional_redirect_urls = ["https://nobit-labo.gymspiral.workers.dev/**"]
+
+[functions.line-login]
+verify_jwt = false
