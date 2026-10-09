@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { forgetInvite, readInvite, rememberInvite } from './lib/invite'
 import { signInWithLine } from './lib/lineLogin'
 import { InviteError, joinClub, loadSnapshot, recordConsent, saveProfile } from './lib/onboardingApi'
@@ -7,6 +7,7 @@ import type { Snapshot } from './lib/steps'
 import { ConsentStep } from './screens/ConsentStep'
 import { Notice } from './screens/Notice'
 import { ProfileStep } from './screens/ProfileStep'
+import { Home } from './home/Home'
 import { Shell } from './screens/Shell'
 
 type Phase =
@@ -116,6 +117,14 @@ export default function App() {
   const step = deriveStep(snapshot)
   const clubName = snapshot.membership?.clubName ?? null
 
+  if (step.name === 'approved' && snapshot.membership) {
+    return (
+      <div className="shell">
+        <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} />
+      </div>
+    )
+  }
+
   return (
     <Shell progress={progressOf(step)}>
       {step.name === 'not_student' && (
@@ -186,12 +195,6 @@ export default function App() {
         </Notice>
       )}
 
-      {step.name === 'approved' && (
-        <Notice title="承認されました">
-          <p>{clubName ?? 'クラブ'}で NOBIT! を始められます。ホームの画面は、いま準備しています。</p>
-        </Notice>
-      )}
     </Shell>
   )
 }
-
