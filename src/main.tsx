@@ -1,18 +1,26 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
-import { signInWithLine } from './lib/lineLogin'
+﻿const show = (text: string) => {
+  document.body.style.cssText =
+    'margin:0;padding:16px;background:#fff;color:#000;font:14px/1.6 sans-serif;word-break:break-all'
+  document.body.textContent = text
+}
 
-signInWithLine()
-  .then((r) => alert('結果: ' + r))
-  .catch(async (e) => {
-    let detail = e?.message ?? String(e)
-    try { detail += ' / ' + JSON.stringify(await e.context?.json()) } catch {}
-    alert('ログイン失敗: ' + detail)
-  })
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+show('起動中…')
+window.addEventListener('error', (e) => show('エラー: ' + e.message))
+window.addEventListener('unhandledrejection', (e) =>
+  show('未処理のエラー: ' + String(e.reason?.message ?? e.reason)),
 )
+
+;(async () => {
+  try {
+    const { signInWithLine } = await import('./lib/lineLogin')
+    show('ログイン中…')
+    const r = await signInWithLine()
+    show('結果: ' + r)
+  } catch (e: any) {
+    let detail = e?.message ?? String(e)
+    try {
+      detail += ' / ' + JSON.stringify(await e.context?.json())
+    } catch {}
+    show('ログイン失敗: ' + detail)
+  }
+})()
