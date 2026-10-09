@@ -116,3 +116,49 @@ export function dateLabel(date: string): string {
   const w = '日月火水木金土'[new Date(`${date}T00:00:00Z`).getUTCDay()]
   return `${m}月${d}日（${w}）`
 }
+
+export const SUBJECTS = ['英語', '数学', '国語', '理科', '社会'] as const
+
+/** 今月（JST）に学習を記録した日数。タスク完了・教科タグ・タイマーのどれでも 1 日と数える */
+export function monthStudyDays(activity: ReadonlyArray<{ date: string; count: number }>, today: string): number {
+  const month = today.slice(0, 7)
+  return activity.filter((a) => a.date.startsWith(month) && a.date <= today && a.count > 0).length
+}
+
+/** タイマーの経過時間の表示。1 時間未満は 12:05、以上は 1:02:05 */
+export function elapsedLabel(startedAt: string, now: number): string {
+  const total = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const mm = String(m).padStart(h > 0 ? 2 : 1, '0')
+  const ss = String(s).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
+}
+
+/** 経過した分数（切り捨て）。終了し忘れを直すときの上限 */
+export function elapsedMinutes(startedAt: string, now: number): number {
+  return Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 60_000))
+}
+
+/** 終了し忘れの修正：学習した分数の検証。経過時間より長くはできない */
+export function validateMinutes(raw: string, max: number): { ok: true; value: number } | { ok: false; message: string } {
+  const text = raw.trim()
+  if (!/^\d+$/.test(text)) return { ok: false, message: '分数を数字で入力してください' }
+  const value = Number(text)
+  if (value > max) return { ok: false, message: `経過時間（${max}分）より長くはできません` }
+  return { ok: true, value }
+}
+
+/** 記録したときの一言。コインが付かなかったときは出さない */
+export function coinNote(coins: number): string {
+  return coins > 0 ? `＋${coins}コイン` : ''
+}
+
+/** タイマー開始前の内容の検証（任意。書くなら 60 文字まで） */
+export function validateContent(raw: string): { ok: true; value: string | null } | { ok: false; message: string } {
+  const value = raw.trim()
+  if (value === '') return { ok: true, value: null }
+  if ([...value].length > 60) return { ok: false, message: '内容は60文字までです' }
+  return { ok: true, value }
+}

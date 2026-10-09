@@ -46,11 +46,11 @@ select throws_ok(
 
 -- 同意：自分が申し込んだクラブについてだけ記録できる
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b1"}', true); end $$;
-select throws_ok($$insert into public.parental_consents (club_id, student_id, scope_version) values ('11111111-1111-1111-1111-11111111111b','00000000-0000-0000-0000-0000000000b1',1)$$,
+select throws_ok($$insert into public.parental_consents (club_id, student_id, scope_version) values ('11111111-1111-1111-1111-11111111111b','00000000-0000-0000-0000-0000000000b1',2)$$,
   '42501', null, '所属していないクラブへの同意は記録できない');
-select throws_ok($$insert into public.parental_consents (club_id, student_id, scope_version) values ('11111111-1111-1111-1111-11111111111a','00000000-0000-0000-0000-0000000000b3',1)$$,
+select throws_ok($$insert into public.parental_consents (club_id, student_id, scope_version) values ('11111111-1111-1111-1111-11111111111a','00000000-0000-0000-0000-0000000000b3',2)$$,
   '42501', null, '他の生徒の名前で同意を記録できない');
-select lives_ok($$insert into public.parental_consents (club_id, student_id, scope_version) values ('11111111-1111-1111-1111-11111111111a','00000000-0000-0000-0000-0000000000b1',1)$$,
+select lives_ok($$insert into public.parental_consents (club_id, student_id, scope_version) values ('11111111-1111-1111-1111-11111111111a','00000000-0000-0000-0000-0000000000b1',2)$$,
   '自分の所属クラブへの同意を記録できる');
 select throws_ok($$update public.parental_consents set scope_version = 1$$, '42501', null, '同意の記録は更新できない');
 select throws_ok($$delete from public.parental_consents$$, '42501', null, '同意の記録は削除できない');
@@ -76,11 +76,11 @@ select throws_ok(
 
 -- 閲覧範囲の版が上がったら、同意を取り直すまで承認できない
 reset role;
-insert into public.consent_scope_versions (version, summary) values (2, '範囲を変更した版（テスト）');
+insert into public.consent_scope_versions (version, summary) values (3, '範囲を変更した版（テスト）');
 insert into public.club_members (club_id, user_id, member_role, status) values
   ('11111111-1111-1111-1111-11111111111a', '00000000-0000-0000-0000-0000000000b4', 'student', 'pending');
 insert into public.parental_consents (club_id, student_id, scope_version) values
-  ('11111111-1111-1111-1111-11111111111a', '00000000-0000-0000-0000-0000000000b4', 1);
+  ('11111111-1111-1111-1111-11111111111a', '00000000-0000-0000-0000-0000000000b4', 2);
 set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a2"}', true); end $$;
 select throws_ok(
@@ -93,7 +93,7 @@ reset role;
 insert into public.club_members (club_id, user_id, member_role, status) values
   ('11111111-1111-1111-1111-11111111111a', '00000000-0000-0000-0000-0000000000b2', 'student', 'pending');
 insert into public.parental_consents (club_id, student_id, scope_version) values
-  ('11111111-1111-1111-1111-11111111111a', '00000000-0000-0000-0000-0000000000b2', 2);
+  ('11111111-1111-1111-1111-11111111111a', '00000000-0000-0000-0000-0000000000b2', 3);
 set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a2"}', true); end $$;
 select throws_ok(

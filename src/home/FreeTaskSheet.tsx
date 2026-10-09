@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const SUBJECTS = ['英語', '数学', '国語', '理科', '社会'] as const
+import { SUBJECTS } from './homeModel'
 
 type Props = {
   busy: boolean
@@ -27,7 +27,7 @@ export function FreeTaskSheet({ busy, error, onSubmit, onClose }: Props) {
           if (ok && !busy) onSubmit(title.trim(), subject!)
         }}
       >
-        <h2 id="free-title" className="sheet-title">やった勉強を記録する</h2>
+        <h2 id="free-title" className="sheet-title">自分のタスクを追加する</h2>
         <div className="field">
           <label htmlFor="free-name">内容</label>
           <input id="free-name" type="text" maxLength={60} value={title} placeholder="例：英単語 20個" onChange={(e) => setTitle(e.target.value)} />
@@ -41,6 +41,7 @@ export function FreeTaskSheet({ busy, error, onSubmit, onClose }: Props) {
             </label>
           ))}
         </fieldset>
+        <p className="muted">完了すると、3コインがもらえます（1日3件まで）。</p>
         {error && <p className="error" role="alert">{error}</p>}
         <div className="actions">
           <button type="submit" className="btn btn-primary" disabled={!ok || busy}>{busy ? '保存中…' : '追加する'}</button>

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  addDays, bandSummary, buildBand, cheerOf, dateLabel, dayState, jstDate, levelOf, sortTasks, timeLabel,
+  addDays, bandSummary, buildBand, cheerOf, coinNote, dateLabel, dayState, elapsedLabel, elapsedMinutes, jstDate, levelOf,
+  monthStudyDays, sortTasks, timeLabel, validateContent, validateMinutes,
 } from '../src/home/homeModel.ts'
 import type { HomeTask } from '../src/home/homeModel.ts'
 
@@ -56,4 +57,44 @@ test('今日の状態と一文', () => {
 
 test('日付の表示', () => {
   assert.equal(dateLabel('2026-10-09'), '10月9日（金）')
+})
+
+test('今月の学習日数：月をまたがず、記録のある日だけ数える', () => {
+  const a = [
+    { date: '2026-09-30', count: 3 }, { date: '2026-10-01', count: 1 }, { date: '2026-10-03', count: 2 },
+    { date: '2026-10-05', count: 0 }, { date: '2026-10-09', count: 1 },
+  ]
+  assert.equal(monthStudyDays(a, '2026-10-09'), 3)
+  assert.equal(monthStudyDays([], '2026-10-09'), 0)
+})
+
+test('タイマーの経過時間の表示', () => {
+  const start = '2026-10-09T00:00:00Z'
+  const at = (sec: number) => new Date(start).getTime() + sec * 1000
+  assert.equal(elapsedLabel(start, at(0)), '0:00')
+  assert.equal(elapsedLabel(start, at(754)), '12:34')
+  assert.equal(elapsedLabel(start, at(3725)), '1:02:05')
+  assert.equal(elapsedLabel(start, at(-5)), '0:00')
+  assert.equal(elapsedMinutes(start, at(179)), 2)
+})
+
+test('終了し忘れの分数：経過時間より長くはできない', () => {
+  assert.deepEqual(validateMinutes('45', 180), { ok: true, value: 45 })
+  assert.deepEqual(validateMinutes('180', 180), { ok: true, value: 180 })
+  assert.equal(validateMinutes('181', 180).ok, false)
+  assert.equal(validateMinutes('', 180).ok, false)
+  assert.equal(validateMinutes('4.5', 180).ok, false)
+  assert.equal(validateMinutes('-3', 180).ok, false)
+})
+
+test('内容は任意。書くなら 60 文字まで', () => {
+  assert.deepEqual(validateContent('   '), { ok: true, value: null })
+  assert.deepEqual(validateContent(' 英単語 '), { ok: true, value: '英単語' })
+  assert.equal(validateContent('あ'.repeat(61)).ok, false)
+  assert.equal(validateContent('あ'.repeat(60)).ok, true)
+})
+
+test('コインの一言：付かなかったときは出さない', () => {
+  assert.equal(coinNote(0), '')
+  assert.equal(coinNote(3), '＋3コイン')
 })
