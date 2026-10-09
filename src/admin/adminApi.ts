@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase'
 import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
+import { addDays, jstDate } from '../home/homeModel'
+import type { StudentRow } from './studentModel'
 import type { AdminTask, Draft, Recurrence } from './taskModel'
 
 export type Me = {
@@ -211,4 +213,140 @@ export async function archiveTask(id: string, today: string): Promise<void> {
   if (error) throw error
   const { error: delError } = await supabase.from('user_tasks').delete().eq('task_id', id).gte('task_date', today).is('completed_at', null)
   if (delError) throw delError
+}
+
+// ---- 生徒一覧（09）・生徒の詳細（10）。読み取りは RLS で、運営は全クラブ、クラブ管理者は自クラブだけ ----
+
+export type StudentBoard = {
+  students: StudentRow[]
+  /** クラブ全体の、直近14日の日別の完了数 */
+  clubActivity: { date: string; count: number }[]
+}
+
+type MemberRow = {
+  user_id: string
+  users: { display_name: string | null; grade: number | null } | { display_name: string | null; grade: number | null }[] | null
+}
+
+export async function loadStudentBoard(clubId: string, today: string): Promise<StudentBoard> {
+  const since = addDays(today, -13)
+  const [memberRes, streakRes, activityRes, tasksRes] = await Promise.all([
+    supabase
+      .from('club_members')
+      .select('user_id, users!club_members_user_id_fkey(display_name, grade)')
+      .eq('club_id', clubId)
+      .eq('member_role', 'student')
+      .eq('status', 'approved'),
+    supabase.from('streak_status').select('student_id, current_days, longest_days, last_achieved_date').eq('club_id', clubId),
+    supabase.from('daily_activity').select('student_id, activity_date, completed_count').eq('club_id', clubId).gte('activity_date', since).lte('activity_date', today),
+    // 配信されたタスクだけ。自由登録の中身（と有無）は、クラブ管理者には見せない
+    supabase.from('user_tasks').select('student_id, completed_at').eq('club_id', clubId).eq('is_free', false).eq('task_date', today),
+  ])
+  if (memberRes.error) throw memberRes.error
+  if (streakRes.error) throw streakRes.error
+  if (activityRes.error) throw activityRes.error
+  if (tasksRes.error) throw tasksRes.error
+
+  const streaks = new Map(streakRes.data.map((r) => [r.student_id as string, r]))
+  const activity = new Map<string, { date: string; count: number }[]>()
+  const club = new Map<string, number>()
+  for (const r of activityRes.data) {
+    const sid = r.student_id as string
+    const date = r.activity_date as string
+    const count = r.completed_count as number
+    activity.set(sid, [...(activity.get(sid) ?? []), { date, count }])
+    club.set(date, (club.get(date) ?? 0) + count)
+  }
+  const assigned = new Map<string, { total: number; done: number }>()
+  for (const r of tasksRes.data) {
+    const sid = r.student_id as string
+    const cur = assigned.get(sid) ?? { total: 0, done: 0 }
+    cur.total++
+    if (r.completed_at) cur.done++
+    assigned.set(sid, cur)
+  }
+
+  const students = (memberRes.data as unknown as MemberRow[]).map((m): StudentRow => {
+    const u = Array.isArray(m.users) ? m.users[0] : m.users
+    const s = streaks.get(m.user_id)
+    const a = activity.get(m.user_id) ?? []
+    const t = assigned.get(m.user_id) ?? { total: 0, done: 0 }
+    return {
+      userId: m.user_id,
+      displayName: u?.display_name ?? null,
+      grade: u?.grade ?? null,
+      assignedTotal: t.total,
+      assignedDone: t.done,
+      activityToday: a.find((x) => x.date === today)?.count ?? 0,
+      currentDays: (s?.current_days as number | undefined) ?? 0,
+      longestDays: (s?.longest_days as number | undefined) ?? 0,
+      lastAchievedDate: (s?.last_achieved_date as string | null | undefined) ?? null,
+      activity: a,
+    }
+  })
+  return { students, clubActivity: [...club.entries()].map(([date, count]) => ({ date, count })) }
+}
+
+export type SupportComment = { id: string; body: string; createdAt: string; mine: boolean }
+export type HistoryItem = { id: string; title: string; subject: string; completedAt: string }
+export type StudentDetail = {
+  student: StudentRow
+  /** 直近12週（84日）の、学習した日 */
+  studyDates: string[]
+  history: HistoryItem[]
+  /** 直近30日の、完了したタスクの教科 */
+  subjects: string[]
+  comments: SupportComment[]
+}
+
+type HistoryRow = {
+  id: string
+  completed_at: string
+  tasks: { title: string; subject: string } | { title: string; subject: string }[] | null
+}
+
+export async function loadStudentDetail(clubId: string, studentId: string, today: string, myId: string): Promise<StudentDetail | null> {
+  const board = await loadStudentBoard(clubId, today)
+  const student = board.students.find((s) => s.userId === studentId)
+  if (!student) return null
+
+  const [activityRes, historyRes, commentRes] = await Promise.all([
+    supabase.from('daily_activity').select('activity_date').eq('student_id', studentId).gt('completed_count', 0).gte('activity_date', addDays(today, -83)).lte('activity_date', today),
+    // 完了したタスク。自由登録は含めない（クラブ管理者に中身を見せない）
+    supabase
+      .from('user_tasks')
+      .select('id, completed_at, tasks(title, subject)')
+      .eq('student_id', studentId)
+      .eq('is_free', false)
+      .not('completed_at', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(60),
+    supabase.from('support_comments').select('id, body, created_at, author_id').eq('student_id', studentId).order('created_at', { ascending: false }).limit(50),
+  ])
+  if (activityRes.error) throw activityRes.error
+  if (historyRes.error) throw historyRes.error
+  if (commentRes.error) throw commentRes.error
+
+  const history = (historyRes.data as unknown as HistoryRow[]).flatMap((r): HistoryItem[] => {
+    const t = Array.isArray(r.tasks) ? r.tasks[0] : r.tasks
+    return t ? [{ id: r.id, title: t.title, subject: t.subject, completedAt: r.completed_at }] : []
+  })
+  const from = addDays(today, -29)
+  return {
+    student,
+    studyDates: activityRes.data.map((r) => r.activity_date as string),
+    history,
+    subjects: history.filter((h) => jstDate(h.completedAt) >= from).map((h) => h.subject),
+    comments: commentRes.data.map((c) => ({ id: c.id as string, body: c.body as string, createdAt: c.created_at as string, mine: c.author_id === myId })),
+  }
+}
+
+export async function addSupportComment(clubId: string, studentId: string, authorId: string, body: string): Promise<void> {
+  const { error } = await supabase.from('support_comments').insert({ club_id: clubId, student_id: studentId, author_id: authorId, body: body.trim() })
+  if (error) throw error
+}
+
+export async function deleteSupportComment(id: string): Promise<void> {
+  const { error } = await supabase.from('support_comments').delete().eq('id', id)
+  if (error) throw error
 }

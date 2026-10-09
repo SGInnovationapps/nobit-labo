@@ -99,3 +99,57 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .adm-all { max-width: 360px; }
 .adm-form .error { margin: 6px 0 0; }
 @media (max-width: 720px) { .adm-form-grid { grid-template-columns: 1fr; } .adm-choices-5 { grid-template-columns: repeat(3, 1fr); } .adm-choices-rec { grid-template-columns: repeat(2, 1fr); } }
+
+/* 生徒一覧（09）・生徒の詳細（10） */
+.adm-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 32px; align-items: end; }
+.adm-stat-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.adm-stat { display: flex; align-items: baseline; gap: 6px; min-height: 56px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.adm-stat[aria-pressed='true'] { border: 3px solid var(--ink); background: var(--mint-tint); padding: 6px 14px; }
+.adm-stat:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.adm-stat-label { font-size: 14px; font-weight: 700; }
+.adm-stat-num { font-size: 28px; font-weight: 700; line-height: 1; }
+.adm-stat-unit { font-size: 14px; color: var(--ink-soft); }
+.adm-strong { font-size: 18px; color: var(--ink); }
+.adm-toolbar { display: flex; align-items: flex-end; gap: 12px 24px; flex-wrap: wrap; }
+.adm-search { flex: 0 1 320px; }
+.adm-search input { width: 100%; min-height: 48px; padding: 8px 14px; border: 2px solid var(--ink); border-radius: 12px; background: var(--surface); }
+.adm-toolbar-note { margin: 0 0 12px; display: flex; gap: 6px 16px; flex-wrap: wrap; }
+.adm-student-row { grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr) auto; }
+.adm-student-band .band-bars { height: 32px; }
+.adm-grade { margin-left: 10px; font-size: 14px; font-weight: 400; color: var(--ink-soft); }
+.adm-state { display: inline-block; padding: 0 10px; border-radius: 999px; font-size: 14px; font-weight: 700; background: var(--disabled-bg); color: var(--ink); }
+.adm-state-all, .adm-state-partial { background: var(--mint-tint); color: var(--mint-ink); }
+.adm-today-count { font-size: 14px; }
+.adm-back { width: auto; justify-content: flex-start; padding-left: 0; }
+.adm-bigstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.adm-bigstats dt { font-size: 14px; color: var(--ink-soft); }
+.adm-bigstats dd { margin: 0; line-height: 1.2; }
+.adm-bigstats .num { font-size: 40px; font-weight: 700; }
+.adm-unit { margin-left: 4px; font-size: 14px; font-weight: 700; }
+.adm-text-stat { font-size: 22px; font-weight: 700; }
+.adm-weeks { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; align-items: end; }
+.adm-week { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.adm-week-slot { width: 100%; height: 56px; display: flex; align-items: flex-end; }
+.adm-week-n { font-size: 14px; color: var(--ink-soft); }
+.adm-week-d { font-size: 12px; color: var(--ink-soft); height: 18px; line-height: 18px; white-space: nowrap; }
+.bar-none { height: 0; }
+.adm-subjects { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-width: 560px; }
+.adm-subjects li { display: grid; grid-template-columns: 56px minmax(0, 1fr) 40px; gap: 12px; align-items: center; }
+.adm-subject-name { font-weight: 700; }
+.adm-subject-bar { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+.adm-subject-bar i { display: block; height: 100%; background: var(--mint); }
+.adm-subject-n { font-size: 20px; font-weight: 700; text-align: right; }
+.adm-history-row { grid-template-columns: 150px minmax(0, 1fr) 60px; }
+.adm-history-title { font-size: 15px; }
+.adm-comment-form textarea { width: 100%; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 12px; background: var(--surface); line-height: 1.7; resize: vertical; }
+.adm-comment-body { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.adm-comment { grid-template-columns: minmax(0, 1fr) auto; }
+@media (max-width: 720px) {
+  .adm-summary { grid-template-columns: 1fr; }
+  .adm-student-row { grid-template-columns: 1fr; }
+  .adm-row-actions { justify-content: flex-start; }
+  .adm-bigstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adm-history-row { grid-template-columns: 1fr; }
+  .adm-week-d { font-size: 11px; }
+}
+@media (max-width: 720px) { .adm-nav { overflow-x: auto; } .adm-tab { white-space: nowrap; } }

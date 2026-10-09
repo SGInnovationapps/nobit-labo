@@ -173,3 +173,8 @@ p { margin: 0; }
 .sheet-form .sheet-title { text-align: left; }
 .choices-5 { grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .choices-5 .choice-face { min-height: 48px; font-size: 15px; }
+
+/* クラブからの応援（ホーム） */
+.support h2 { margin: 0 0 4px; font-size: 14px; color: var(--ink-soft); font-weight: 700; }
+.support-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+.support-date { margin: 4px 0 0; font-size: 13px; color: var(--ink-soft); }
