@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
+import type { AdminTask, Draft, Recurrence } from './taskModel'
 
 export type Me = {
   userId: string
@@ -132,4 +133,82 @@ export async function regenerateInviteCode(id: string): Promise<Club> {
     if (error.code !== '23505') throw error
   }
   throw new Error('invite_code_conflict')
+}
+
+// ---- タスク管理（運営のみ。書き込みは RLS で運営だけに許可されている） ----
+
+type TaskRow = {
+  id: string
+  club_id: string
+  title: string
+  subject: string
+  starts_on: string
+  due_on: string | null
+  recurrence: Recurrence
+  estimated_minutes: number | null
+  archived_at: string | null
+}
+
+export type TaskBoard = {
+  tasks: AdminTask[]
+  /** タスク ID ごとの、今日の完了人数 */
+  doneToday: Record<string, number>
+  /** 承認済みの生徒数 */
+  students: number
+}
+
+export async function loadTaskBoard(clubId: string, today: string): Promise<TaskBoard> {
+  const [taskRes, doneRes, studentRes] = await Promise.all([
+    supabase
+      .from('tasks')
+      .select('id, club_id, title, subject, starts_on, due_on, recurrence, estimated_minutes, archived_at')
+      .eq('club_id', clubId)
+      .eq('kind', 'assigned')
+      .order('created_at', { ascending: false }),
+    supabase.from('user_tasks').select('task_id').eq('club_id', clubId).eq('is_free', false).eq('task_date', today).not('completed_at', 'is', null),
+    supabase.from('club_members').select('id', { count: 'exact', head: true }).eq('club_id', clubId).eq('member_role', 'student').eq('status', 'approved'),
+  ])
+  if (taskRes.error) throw taskRes.error
+  if (doneRes.error) throw doneRes.error
+  if (studentRes.error) throw studentRes.error
+
+  const doneToday: Record<string, number> = {}
+  for (const r of doneRes.data) doneToday[r.task_id as string] = (doneToday[r.task_id as string] ?? 0) + 1
+  const tasks = (taskRes.data as TaskRow[]).map((r): AdminTask => ({
+    id: r.id,
+    clubId: r.club_id,
+    title: r.title,
+    subject: r.subject,
+    startsOn: r.starts_on,
+    dueOn: r.due_on,
+    recurrence: r.recurrence,
+    estimatedMinutes: r.estimated_minutes,
+    archivedAt: r.archived_at,
+  }))
+  return { tasks, doneToday, students: studentRes.count ?? 0 }
+}
+
+/** 配信するタスクを作る。報酬コインは Phase 2 から（それまでは 0 のまま） */
+export async function createTasks(clubIds: string[], draft: Draft, userId: string): Promise<void> {
+  const rows = clubIds.map((club_id) => ({
+    club_id,
+    kind: 'assigned',
+    title: draft.title.trim(),
+    subject: draft.subject,
+    starts_on: draft.startsOn,
+    due_on: draft.dueOn || null,
+    recurrence: draft.recurrence,
+    estimated_minutes: draft.minutes.trim() === '' ? null : Number(draft.minutes),
+    created_by: userId,
+  }))
+  const { error } = await supabase.from('tasks').insert(rows)
+  if (error) throw error
+}
+
+/** 取り下げる。今日以降の、まだ完了していない割り当ても取り除く（完了済みの記録は残す） */
+export async function archiveTask(id: string, today: string): Promise<void> {
+  const { error } = await supabase.from('tasks').update({ archived_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+  const { error: delError } = await supabase.from('user_tasks').delete().eq('task_id', id).gte('task_date', today).is('completed_at', null)
+  if (delError) throw delError
 }

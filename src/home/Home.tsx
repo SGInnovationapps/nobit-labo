@@ -34,7 +34,13 @@ export function Home({ clubId, clubName, displayName }: Props) {
     }
   }, [clubId])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+    // 別の画面から戻ったとき、運営が配信したタスクを受け取り直す
+    const onVisible = () => document.visibilityState === 'visible' && void load()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [load])
 
   async function onComplete(id: string, title: string) {
     setPending(id)
