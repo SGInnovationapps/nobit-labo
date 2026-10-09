@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useRef, useState } from 'react'
 import { forgetInvite, readInvite, rememberInvite } from './lib/invite'
 import { signInWithLine } from './lib/lineLogin'
 import { InviteError, joinClub, loadSnapshot, recordConsent, saveProfile } from './lib/onboardingApi'
@@ -169,14 +169,14 @@ export default function App() {
       {step.name === 'waiting' && (
         <Notice
           status="承認待ち"
-          title="クラブの管理者の確認を待っています"
+          title="クラブ管理者の確認を待っています"
           action={{
             label: '状態を更新する',
             busy,
             onClick: () => void run(async () => undefined),
           }}
         >
-          <p>{clubName ?? 'クラブ'}の管理者が確認すると、NOBIT! が使えるようになります。</p>
+          <p>{clubName ?? 'クラブ'}の管理者が確認すると、NOBIT!を使えるようになります。</p>
           <dl className="facts" style={{ marginTop: 20 }}>
             <dt>表示名</dt>
             <dd>{snapshot.displayName}</dd>
@@ -194,3 +194,4 @@ export default function App() {
     </Shell>
   )
 }
+
