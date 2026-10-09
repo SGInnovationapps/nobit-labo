@@ -5,7 +5,7 @@ import { RecordBand } from './RecordBand'
 import { TabBar } from './TabBar'
 import { completeTask, FreeTaskError, loadHome, registerFreeTask } from './homeApi'
 import type { CompleteResult, HomeData } from './homeApi'
-import { buildBand, cheerOf, dateLabel, dayState, sortTasks, STATE_LABEL, timeLabel } from './homeModel'
+import { buildBand, cheerOf, dateLabel, dayState, jstDate, sortTasks, STATE_LABEL, timeLabel } from './homeModel'
 
 type Props = { clubId: string; clubName: string | null; displayName: string | null }
 
@@ -148,6 +148,14 @@ export function HomeView(p: HomeViewProps) {
       <p className="cheer"><span className="cheer-name">ノビット</span>{cheerOf(tasks)}</p>
 
       {error && <p className="error" role="alert">{error}</p>}
+
+      {data.support && (
+        <section className="section support" aria-labelledby="support-h">
+          <h2 id="support-h">クラブからの応援</h2>
+          <p className="support-body">{data.support.body}</p>
+          <p className="support-date num">{dateLabel(jstDate(data.support.createdAt))}</p>
+        </section>
+      )}
 
       <section className="section" aria-labelledby="today-h">
         <div className="today-head">

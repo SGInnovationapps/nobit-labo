@@ -8,6 +8,8 @@ export type HomeData = {
   streak: { current: number; longest: number }
   activity: { date: string; count: number }[]
   allowFreeTasks: boolean
+  /** クラブの管理者からの、最新の応援コメント */
+  support: { body: string; createdAt: string } | null
 }
 
 export type CompleteResult = {
@@ -34,7 +36,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const sync = await supabase.rpc('sync_today_tasks')
   if (sync.error) throw sync.error
 
-  const [tasksRes, streakRes, activityRes, clubRes] = await Promise.all([
+  const [tasksRes, streakRes, activityRes, clubRes, supportRes] = await Promise.all([
     supabase
       .from('user_tasks')
       .select('id, completed_at, tasks(title, subject, estimated_minutes, kind)')
@@ -47,6 +49,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
       .gte('activity_date', addDays(today, -29))
       .lte('activity_date', today),
     supabase.from('clubs').select('allow_free_tasks').eq('id', clubId).maybeSingle(),
+    supabase.from('support_comments').select('body, created_at').order('created_at', { ascending: false }).limit(1),
   ])
   if (tasksRes.error) throw tasksRes.error
   if (streakRes.error) throw streakRes.error
@@ -71,6 +74,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     streak: { current: streakRes.data?.current_days ?? 0, longest: streakRes.data?.longest_days ?? 0 },
     activity: (activityRes.data ?? []).map((a) => ({ date: a.activity_date as string, count: a.completed_count as number })),
     allowFreeTasks: clubRes.data?.allow_free_tasks ?? false,
+    support: supportRes.data?.[0] ? { body: supportRes.data[0].body as string, createdAt: supportRes.data[0].created_at as string } : null,
   }
 }
 

@@ -6,10 +6,12 @@ import type { Club, Me } from './adminApi'
 import Approvals from './Approvals'
 import ClubSettings from './ClubSettings'
 import { LoginForm } from './LoginForm'
+import StudentDetailPage from './StudentDetail'
+import Students from './Students'
 import Tasks from './Tasks'
 import './admin.css'
 
-type Tab = 'approvals' | 'tasks' | 'clubs'
+type Tab = 'students' | 'approvals' | 'tasks' | 'clubs'
 type Ready = { me: Me; clubs: Club[] }
 
 function useSession(): Session | null | undefined {
@@ -31,7 +33,8 @@ export default function AdminApp() {
 
 function Signed({ userId }: { userId: string }) {
   const [state, setState] = useState<{ kind: 'loading' } | { kind: 'error'; message: string } | ({ kind: 'ready' } & Ready)>({ kind: 'loading' })
-  const [tab, setTab] = useState<Tab>('approvals')
+  const [tab, setTab] = useState<Tab>('students')
+  const [studentId, setStudentId] = useState<string | null>(null)
   const [clubId, setClubId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -76,7 +79,7 @@ function Signed({ userId }: { userId: string }) {
 
   const isOperator = me.role === 'operator'
   const club = clubs.find((c) => c.id === clubId) ?? null
-  const activeTab: Tab = isOperator ? tab : 'approvals'
+  const activeTab: Tab = isOperator || tab === 'students' || tab === 'approvals' ? tab : 'students'
 
   return (
     <div className="adm-shell">
@@ -90,6 +93,9 @@ function Signed({ userId }: { userId: string }) {
 
       <div className="adm-body">
         <nav className="adm-nav" aria-label="メニュー">
+          <button type="button" className="adm-tab" aria-current={activeTab === 'students' ? 'page' : undefined} onClick={() => { setStudentId(null); setTab('students') }}>
+            生徒一覧
+          </button>
           <button type="button" className="adm-tab" aria-current={activeTab === 'approvals' ? 'page' : undefined} onClick={() => setTab('approvals')}>
             所属の承認
           </button>
@@ -109,13 +115,24 @@ function Signed({ userId }: { userId: string }) {
           {clubs.length > 0 && (
             <div className="field adm-club-picker">
               <label htmlFor="club-picker">クラブ</label>
-              <select id="club-picker" value={clubId ?? ''} onChange={(e) => setClubId(e.target.value)}>
+              <select id="club-picker" value={clubId ?? ''} onChange={(e) => { setClubId(e.target.value); setStudentId(null) }}>
                 {clubs.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
           )}
+
+          {activeTab === 'students' &&
+            (club ? (
+              studentId ? (
+                <StudentDetailPage clubId={club.id} studentId={studentId} myId={me.userId} canComment={me.role === 'club_admin'} onBack={() => setStudentId(null)} />
+              ) : (
+                <Students clubId={club.id} onOpen={(st) => setStudentId(st.userId)} />
+              )
+            ) : (
+              <p className="lead">{isOperator ? 'クラブがまだありません。「クラブ設定」から追加してください。' : '担当しているクラブがありません。運営に連絡してください。'}</p>
+            ))}
 
           {activeTab === 'approvals' &&
             (club ? (
