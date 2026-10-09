@@ -1,0 +1,83 @@
+/* 管理画面（運営は PC、クラブ管理者はスマホでも見られる） */
+.adm-shell { min-height: 100dvh; display: flex; flex-direction: column; }
+.adm-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 14px 20px; border-bottom: 1px solid var(--line);
+}
+.adm-user { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
+.adm-body { flex: 1; display: grid; grid-template-columns: 200px minmax(0, 1fr); }
+.adm-nav { padding: 20px 12px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.adm-tab {
+  min-height: 48px; padding: 8px 14px; text-align: left; background: none; border: 0; border-radius: 10px;
+  font-weight: 700; cursor: pointer; color: var(--ink);
+}
+.adm-tab[aria-current='page'] { background: var(--mint-tint); box-shadow: inset 4px 0 0 var(--mint); }
+.adm-tab:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.adm-main { padding: 24px 28px 56px; max-width: 960px; width: 100%; }
+.adm-main > * + * { margin-top: 20px; }
+
+.adm-center { max-width: 480px; margin: 0 auto; padding: 48px 20px; }
+.adm-login { max-width: 420px; margin: 0 auto; padding: 48px 20px; }
+.adm-login > * + * { margin-top: 20px; }
+.adm-stack > * + * { margin-top: 16px; }
+.adm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.btn-quiet { background: none; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+.btn-quiet:disabled { background: none; }
+.adm-logout, .adm-user .btn { width: auto; min-height: 44px; padding: 8px 12px; }
+.adm-inline { width: auto; }
+
+.adm-club-picker { max-width: 360px; }
+.adm-club-picker select {
+  width: 100%; min-height: 48px; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 12px; background: var(--surface);
+}
+
+.adm-section { padding-top: 20px; border-top: 1px solid var(--line); }
+.adm-section > * + * { margin-top: 14px; }
+.adm-section h2 { margin: 0; font-size: 18px; line-height: 1.6; }
+.adm-count { font-size: 22px; margin-left: 6px; }
+
+.adm-list { list-style: none; margin: 0; padding: 0; }
+.adm-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 24px; align-items: center;
+  padding: 16px 0; border-top: 1px solid var(--line);
+}
+.adm-row:first-child { border-top: 0; }
+.adm-name { margin: 0; font-weight: 700; font-size: 17px; line-height: 1.6; }
+.adm-sub { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.adm-meta { display: flex; flex-wrap: wrap; gap: 4px 24px; margin: 4px 0 0; }
+.adm-meta div { display: flex; gap: 8px; }
+.adm-meta dt { color: var(--ink-soft); font-size: 14px; }
+.adm-meta dd { margin: 0; font-size: 14px; font-weight: 700; }
+.adm-blocker { margin: 6px 0 0; color: var(--error-ink); font-size: 14px; font-weight: 700; }
+.adm-row-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.adm-row-actions .btn { width: auto; min-width: 120px; }
+.adm-row-actions .btn-quiet { min-width: 0; }
+.adm-confirm { margin: 0; font-weight: 700; font-size: 14px; }
+.adm-row-compact { grid-template-columns: minmax(0, 1.4fr) 80px 1fr; padding: 10px 0; }
+.adm-actions-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.adm-actions-row .btn { width: auto; min-width: 140px; }
+
+.adm-notice { margin-block-end: 0; padding: 8px 12px; background: var(--mint-tint); color: var(--mint-ink); font-weight: 700; border-radius: 10px; }
+
+.adm-inline-form { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.adm-inline-form .field { flex: 1 1 280px; }
+.adm-inline-form .btn { width: auto; min-width: 160px; }
+.adm-choices { grid-template-columns: repeat(2, 140px); }
+.adm-qr { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.adm-qr-image { width: 240px; height: 240px; border: 1px solid var(--line); }
+.adm-qr-image svg { display: block; width: 100%; height: 100%; }
+.adm-qr .btn { width: auto; }
+.adm-regen { padding-top: 6px; }
+.adm-regen .btn-quiet { width: auto; justify-content: flex-start; padding-left: 0; }
+select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* スマホ幅：メニューを上に、行を縦に積む */
+@media (max-width: 720px) {
+  .adm-body { grid-template-columns: minmax(0, 1fr); }
+  .adm-nav { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 12px; overflow-x: auto; }
+  .adm-main { padding: 20px 16px 48px; }
+  .adm-row { grid-template-columns: minmax(0, 1fr); }
+  .adm-row-actions { justify-content: flex-start; }
+  .adm-row-compact { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
