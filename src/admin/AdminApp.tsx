@@ -6,9 +6,10 @@ import type { Club, Me } from './adminApi'
 import Approvals from './Approvals'
 import ClubSettings from './ClubSettings'
 import { LoginForm } from './LoginForm'
+import Tasks from './Tasks'
 import './admin.css'
 
-type Tab = 'approvals' | 'clubs'
+type Tab = 'approvals' | 'tasks' | 'clubs'
 type Ready = { me: Me; clubs: Club[] }
 
 function useSession(): Session | null | undefined {
@@ -93,6 +94,11 @@ function Signed({ userId }: { userId: string }) {
             所属の承認
           </button>
           {isOperator && (
+            <button type="button" className="adm-tab" aria-current={activeTab === 'tasks' ? 'page' : undefined} onClick={() => setTab('tasks')}>
+              タスク管理
+            </button>
+          )}
+          {isOperator && (
             <button type="button" className="adm-tab" aria-current={activeTab === 'clubs' ? 'page' : undefined} onClick={() => setTab('clubs')}>
               クラブ設定
             </button>
@@ -117,6 +123,8 @@ function Signed({ userId }: { userId: string }) {
             ) : (
               <p className="lead">{isOperator ? 'クラブがまだありません。「クラブ設定」から追加してください。' : '担当しているクラブがありません。運営に連絡してください。'}</p>
             ))}
+
+          {activeTab === 'tasks' && (club ? <Tasks club={club} clubs={clubs} userId={me.userId} /> : <p className="lead">クラブがまだありません。「クラブ設定」から追加してください。</p>)}
 
           {activeTab === 'clubs' && (
             <ClubSettings
