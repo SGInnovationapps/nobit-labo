@@ -215,3 +215,5 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .msn-students li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
 .msn-metric { grid-template-columns: repeat(2, minmax(160px, 1fr)); max-width: 420px; }
 .msn-card > .btn { width: auto; display: inline-flex; justify-content: flex-start; padding-left: 0; }
+.alert-run { margin: 4px 0 12px; font-size: 14px; }
+.alert-run-warn { color: #b4313d; font-weight: 700; }

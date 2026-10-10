@@ -119,3 +119,15 @@ export function historyOutcome(i: AlertItem): string {
   const head = i.resumedAfterContact ? '学習を再開' : i.status === 'resolved' ? '解消' : '再開待ち'
   return `${head}・連絡後の完了 ${c} 件`
 }
+
+export type LastRun = { ranAt: string; ok: boolean } | null
+
+/** 自動生成が動いているかを一文で。3時間以上空く、または失敗したときは注意として返す */
+export function lastRunNote(last: LastRun, nowMs: number): { text: string; warn: boolean } {
+  if (!last) return { text: '自動生成の記録がありません。この画面を開いたときに生成します。', warn: true }
+  const t = new Date(last.ranAt).getTime()
+  const hhmm = new Date(t + 9 * 3600_000).toISOString().slice(11, 16)
+  if (!last.ok) return { text: `自動生成が失敗しました（最後の実行 ${hhmm}）。この画面を開いたときは生成します。`, warn: true }
+  if (nowMs - t > 3 * 3600_000) return { text: `自動生成が止まっているようです（最後の実行 ${hhmm}）。この画面を開いたときは生成します。`, warn: true }
+  return { text: `自動生成：1時間おき（最後の実行 ${hhmm}）`, warn: false }
+}

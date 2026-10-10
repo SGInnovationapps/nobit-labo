@@ -108,6 +108,8 @@ const screens: Record<string, React.ReactNode> = {
     { id: '3', studentId: 's3', displayName: 'スネ夫', grade: 10, kind: 'streak_broken', detail: { streak_days: 12 }, occurredOn: '2026-10-09', status: 'contacted', contactedAt: '2026-10-10T08:05:00Z', resolvedAt: null, resumedAfterContact: null, template: '今日から、また始めよう。短いタスクからで大丈夫。', completedAfterContact: 0 },
     { id: '4', studentId: 's4', displayName: 'ジャイ子', grade: 7, kind: 'gap', detail: { missing_days: 5 }, occurredOn: '2026-10-05', status: 'resolved', contactedAt: '2026-10-07T08:05:00Z', resolvedAt: '2026-10-08T03:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 3 },
   ]} /></Frame>,
+  alertlist_run_ok: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onCopy={noop} onContacted={noop} onDismiss={noop} items={[]} lastRun={{ ranAt: '2026-10-10T14:05:00Z', ok: true }} now={Date.parse('2026-10-10T14:20:00Z')} /></Frame>,
+  alertlist_run_stale: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onCopy={noop} onContacted={noop} onDismiss={noop} items={[]} lastRun={{ ranAt: '2026-10-10T05:05:00Z', ok: true }} now={Date.parse('2026-10-10T14:20:00Z')} /></Frame>,
   alertlist_empty: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onCopy={noop} onContacted={noop} onDismiss={noop} items={[]} /></Frame>,
   alerts_empty: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice={null} history={[]} now={0} onSave={noop} rules={[]} /></Frame>,
   login: <LoginForm />,

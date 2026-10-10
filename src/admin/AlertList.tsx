@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { dateLabel, jstDate, timeLabel } from '../home/homeModel'
 import { gradeLabel } from '../lib/steps'
-import { alertErrorMessage, copyText, groupAlerts, outcomeText, reasonText } from './alertListModel'
-import type { AlertItem } from './alertListModel'
-import { dismissAlert, loadAlerts, markAlertContacted } from './adminApi'
+import { alertErrorMessage, copyText, groupAlerts, lastRunNote, outcomeText, reasonText } from './alertListModel'
+import type { AlertItem, LastRun } from './alertListModel'
+import { dismissAlert, loadAlertLastRun, loadAlerts, markAlertContacted } from './adminApi'
 import { defOf } from './alertsModel'
 
 type ItemProps = {
@@ -12,6 +12,8 @@ type ItemProps = {
   onCopy: (text: string) => void
   onContacted: (id: string) => void
   onDismiss: (id: string) => void
+  lastRun?: LastRun
+  now?: number
 }
 
 function AlertRow({ item, busy, onCopy, onContacted, onDismiss }: ItemProps) {
@@ -64,15 +66,19 @@ type ViewProps = {
   onCopy: (text: string) => void
   onContacted: (id: string) => void
   onDismiss: (id: string) => void
+  lastRun?: LastRun
+  now?: number
 }
 
-export function AlertListView({ items, busy, error, notice, onCopy, onContacted, onDismiss }: ViewProps) {
+export function AlertListView({ items, busy, error, notice, onCopy, onContacted, onDismiss, lastRun, now }: ViewProps) {
+  const run = lastRun === undefined ? null : lastRunNote(lastRun, now ?? Date.now())
   const g = groupAlerts(items)
   const rowProps = { busy, onCopy, onContacted, onDismiss }
   return (
     <section className="adm-section alert-list" aria-labelledby="alerts-h">
       <h2 id="alerts-h">対応アラート<span className="adm-grade">対応待ち {g.open.length}件</span></h2>
       <p className="muted">文面をコピーして、公式LINE のチャットから1人ずつ送り、送ったら「連絡済みにする」を押します。</p>
+      {run && <p className={run.warn ? 'alert-run alert-run-warn' : 'alert-run muted'}>{run.text}</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {notice && <p className="adm-notice" role="status">{notice}</p>}
 
@@ -113,10 +119,12 @@ export default function AlertList({ clubId }: { clubId: string }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [lastRun, setLastRun] = useState<LastRun | undefined>(undefined)
 
   const load = useCallback(async () => {
     try {
       setItems(await loadAlerts(clubId))
+      setLastRun(await loadAlertLastRun())
     } catch (e) {
       console.error(e)
       setError('アラートを読み込めませんでした。')
@@ -159,6 +167,7 @@ export default function AlertList({ clubId }: { clubId: string }) {
       onCopy={(t) => void act(async () => { await navigator.clipboard.writeText(t) }, '文面をコピーしました。')}
       onContacted={(id) => void act(() => markAlertContacted(id), '連絡済みに記録しました。')}
       onDismiss={(id) => void act(() => dismissAlert(id), '見送りました。')}
+      lastRun={lastRun}
     />
   )
 }

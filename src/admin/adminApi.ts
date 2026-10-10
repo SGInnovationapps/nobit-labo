@@ -423,6 +423,14 @@ type AlertRow = {
   resumed_after_contact: boolean | null; template: string | null; completed_after_contact: number | null
 }
 
+/** 定時生成の最後の実行（運営のみ）。読めなくても画面は止めない */
+export async function loadAlertLastRun(): Promise<{ ranAt: string; ok: boolean } | null> {
+  const { data, error } = await supabase.rpc('alert_last_run')
+  if (error) return null
+  const row = ((data ?? []) as { ran_at: string; ok: boolean }[])[0]
+  return row ? { ranAt: row.ran_at, ok: row.ok } : null
+}
+
 /** 生成と解消を行ってから、対応待ち・連絡済み・直近7日に解消したものを読む */
 export async function loadAlerts(clubId: string, now = Date.now()): Promise<AlertItem[]> {
   const { error: refreshError } = await supabase.rpc('refresh_alerts')

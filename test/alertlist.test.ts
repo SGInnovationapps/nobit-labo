@@ -75,3 +75,14 @@ test('club_mission: 開始と終了前日で文言が変わる', () => {
   assert.equal(copyT('club_mission', null, { phase: 'start' }), '新しいクラブミッションが始まったよ！')
   assert.equal(copyT('club_mission', '独自の文面', { phase: 'end' }), '独自の文面')
 })
+
+import { lastRunNote } from '../src/admin/alertListModel.ts'
+test('lastRunNote: 動いている・止まっている・失敗・記録なし', () => {
+  const now = Date.parse('2026-10-10T14:20:00Z')
+  const ok = lastRunNote({ ranAt: '2026-10-10T14:05:00Z', ok: true }, now)
+  assert.equal(ok.warn, false)
+  assert.match(ok.text, /最後の実行 23:05/)
+  assert.equal(lastRunNote({ ranAt: '2026-10-10T09:00:00Z', ok: true }, now).warn, true)
+  assert.match(lastRunNote({ ranAt: '2026-10-10T14:05:00Z', ok: false }, now).text, /失敗/)
+  assert.equal(lastRunNote(null, now).warn, true)
+})
