@@ -12,7 +12,7 @@ const T = (id: string, subject: string, title: string, completedAt: string | nul
 const base = {
   clubName: '［クラブ名］', displayName: '表示名', error: null, pending: null, done: null, freeOpen: false, freeBusy: false, freeError: null,
   onComplete: () => undefined, onCloseDone: () => undefined, onOpenFree: () => undefined, onCloseFree: () => undefined, onSubmitFree: () => undefined,
-  tagPending: null, notice: null, timerOpen: false, focusOpen: false, onOpenFocus() {}, onPauseFocus() {}, onResumeFocus() {}, timerBusy: false, timerError: null,
+  tagPending: null, notice: null, timerOpen: false, focusOpen: false, focusDone: null, onCloseFocusDone() {}, onOpenFocus() {}, onPauseFocus() {}, onResumeFocus() {}, timerBusy: false, timerError: null,
   onTag: () => undefined, onOpenTimer: () => undefined, onCloseTimer: () => undefined, onStartTimer: () => undefined, onStopTimer: () => undefined, onCancelTimer: () => undefined,
 }
 const partial = mk([T('a','英語','英単語 Unit 3 の確認テスト', null), T('b','数学','方程式の文章題 5問', '2026-10-09T08:05:00Z'), T('c','国語','漢字ドリル p.12', null, true)])
@@ -32,6 +32,7 @@ const screens: Record<string, React.ReactNode> = {
   timerRunning: <HomeView {...base} data={{ ...partial, timer: { id: 't', subject: '英語', content: '英単語 20個', startedAt: new Date(Date.now() - 754000).toISOString(), focusTargetSeconds: null, pausedAt: null, pausedSeconds: 0 } }} />,
   focusSheet: <HomeView {...base} data={partial} timerOpen focusOpen />,
   focusRunning: <HomeView {...base} data={{ ...partial, timer: { id: 'f', subject: '数学', content: '二次関数', startedAt: new Date(Date.now() - 6 * 60000 - 20000).toISOString(), focusTargetSeconds: 900, pausedAt: null, pausedSeconds: 0 } }} />,
+  focusDone: <HomeView {...base} data={partial} focusDone={{ subject: '数学', coins: 6, currentDays: 12 }} />,
   focusPaused: <HomeView {...base} data={{ ...partial, timer: { id: 'f', subject: '数学', content: null, startedAt: new Date(Date.now() - 9 * 60000).toISOString(), focusTargetSeconds: 900, pausedAt: new Date(Date.now() - 60000).toISOString(), pausedSeconds: 60 } }} />,
   free: <HomeView {...base} data={partial} freeOpen freeError="今日の自由登録は、3件までです。" />,
 }

@@ -4,6 +4,7 @@ import { FreeTaskSheet } from './FreeTaskSheet'
 import { RecordBand } from './RecordBand'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
+import { FocusDoneSheet } from './FocusDoneSheet'
 import { FocusPanel } from './FocusPanel'
 import { TimerPanel } from './TimerPanel'
 import { TimerSheet } from './TimerSheet'
@@ -36,6 +37,7 @@ export function Home({ clubId, clubName, displayName, onTab }: Props) {
   const [notice, setNotice] = useState<string | null>(null)
   const [timerOpen, setTimerOpen] = useState(false)
   const [focusOpen, setFocusOpen] = useState(false)
+  const [focusDone, setFocusDone] = useState<{ subject: string; coins: number; currentDays: number } | null>(null)
   const [timerBusy, setTimerBusy] = useState(false)
   const [timerError, setTimerError] = useState<string | null>(null)
 
@@ -127,8 +129,10 @@ export function Home({ clubId, clubName, displayName, onTab }: Props) {
     setTimerError(null)
     setNotice(null)
     try {
+      const subject = data?.timer?.subject ?? ''
       const r = await stopStudyTimer(minutes)
       await load()
+      if (r.focusAchieved) setFocusDone({ subject, coins: r.coinsGranted + r.focusBonus, currentDays: r.currentDays })
       setNotice(data?.timer?.focusTargetSeconds != null ? focusNote(r) : noticeOf(r))
     } catch (e) {
       console.error(e)
@@ -201,6 +205,8 @@ export function Home({ clubId, clubName, displayName, onTab }: Props) {
       tagPending={tagPending}
       notice={notice}
       onTab={onTab}
+      focusDone={focusDone}
+      onCloseFocusDone={() => setFocusDone(null)}
       timerOpen={timerOpen}
       focusOpen={focusOpen}
       timerBusy={timerBusy}
@@ -236,6 +242,8 @@ export type HomeViewProps = {
   tagPending: string | null
   notice: string | null
   onTab?: (tab: Tab) => void
+  focusDone: { subject: string; coins: number; currentDays: number } | null
+  onCloseFocusDone: () => void
   timerOpen: boolean
   focusOpen: boolean
   timerBusy: boolean
@@ -366,6 +374,9 @@ export function HomeView(p: HomeViewProps) {
           completedToday={done.result.completedToday}
           onClose={p.onCloseDone}
         />
+      )}
+      {p.focusDone && (
+        <FocusDoneSheet subject={p.focusDone.subject} coins={p.focusDone.coins} currentDays={p.focusDone.currentDays} onClose={p.onCloseFocusDone} />
       )}
       {p.timerOpen && !data.timer && <TimerSheet focus={p.focusOpen} busy={p.timerBusy} error={p.timerError} onStart={p.onStartTimer} onClose={p.onCloseTimer} />}
       {freeOpen && <FreeTaskSheet busy={freeBusy} error={freeError} onSubmit={p.onSubmitFree} onClose={p.onCloseFree} />}
