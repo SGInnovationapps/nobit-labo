@@ -3,17 +3,21 @@ import { CompletionSheet } from './CompletionSheet'
 import { FreeTaskSheet } from './FreeTaskSheet'
 import { RecordBand } from './RecordBand'
 import { TabBar } from './TabBar'
+import type { Tab } from './TabBar'
+import { FocusDoneSheet } from './FocusDoneSheet'
+import { FocusPanel } from './FocusPanel'
 import { TimerPanel } from './TimerPanel'
 import { TimerSheet } from './TimerSheet'
 import {
-  cancelStudyTimer, completeTask, FreeTaskError, loadHome, recordStudyTag, registerFreeTask, startStudyTimer, stopStudyTimer,
+  cancelStudyTimer, completeTask, FreeTaskError, loadHome, pauseFocusSession, recordStudyTag, registerFreeTask, resumeFocusSession,
+  startFocusSession, startStudyTimer, stopStudyTimer,
 } from './homeApi'
 import type { CompleteResult, HomeData, StudyResult } from './homeApi'
 import {
-  buildBand, cheerOf, coinNote, dateLabel, dayState, jstDate, monthStudyDays, sortTasks, STATE_LABEL, SUBJECTS, timeLabel,
+  buildBand, cheerOf, coinNote, dateLabel, focusNote, dayState, jstDate, monthStudyDays, sortTasks, STATE_LABEL, SUBJECTS, timeLabel,
 } from './homeModel'
 
-type Props = { clubId: string; clubName: string | null; displayName: string | null }
+type Props = { clubId: string; clubName: string | null; displayName: string | null; onTab?: (tab: Tab) => void }
 
 const FREE_ERRORS: Record<string, string> = {
   daily_limit_reached: '今日の自由登録は、3件までです。',
@@ -21,7 +25,7 @@ const FREE_ERRORS: Record<string, string> = {
 }
 
 /** 01 ホーム・今日のクエスト（Phase 1：連続記録・記録の帯・今日のタスク・自由登録） */
-export function Home({ clubId, clubName, displayName }: Props) {
+export function Home({ clubId, clubName, displayName, onTab }: Props) {
   const [data, setData] = useState<HomeData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
@@ -32,6 +36,8 @@ export function Home({ clubId, clubName, displayName }: Props) {
   const [tagPending, setTagPending] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [timerOpen, setTimerOpen] = useState(false)
+  const [focusOpen, setFocusOpen] = useState(false)
+  const [focusDone, setFocusDone] = useState<{ subject: string; coins: number; currentDays: number } | null>(null)
   const [timerBusy, setTimerBusy] = useState(false)
   const [timerError, setTimerError] = useState<string | null>(null)
 
@@ -104,9 +110,11 @@ export function Home({ clubId, clubName, displayName }: Props) {
     setTimerBusy(true)
     setTimerError(null)
     try {
-      await startStudyTimer(subject, content)
+      if (focusOpen) await startFocusSession(subject, content)
+      else await startStudyTimer(subject, content)
       await load()
       setTimerOpen(false)
+      setFocusOpen(false)
     } catch (e) {
       console.error(e)
       const m = e instanceof Error ? e.message : ''
@@ -121,9 +129,26 @@ export function Home({ clubId, clubName, displayName }: Props) {
     setTimerError(null)
     setNotice(null)
     try {
+      const subject = data?.timer?.subject ?? ''
       const r = await stopStudyTimer(minutes)
       await load()
-      setNotice(noticeOf(r))
+      if (r.focusAchieved) setFocusDone({ subject, coins: r.coinsGranted + r.focusBonus, currentDays: r.currentDays })
+      setNotice(data?.timer?.focusTargetSeconds != null ? focusNote(r) : noticeOf(r))
+    } catch (e) {
+      console.error(e)
+      setTimerError(SAVE_FAIL)
+    } finally {
+      setTimerBusy(false)
+    }
+  }
+
+  async function onPauseResume(pause: boolean) {
+    setTimerBusy(true)
+    setTimerError(null)
+    try {
+      if (pause) await pauseFocusSession()
+      else await resumeFocusSession()
+      await load()
     } catch (e) {
       console.error(e)
       setTimerError(SAVE_FAIL)
@@ -179,12 +204,19 @@ export function Home({ clubId, clubName, displayName }: Props) {
       onSubmitFree={(t, sub) => void onFree(t, sub)}
       tagPending={tagPending}
       notice={notice}
+      onTab={onTab}
+      focusDone={focusDone}
+      onCloseFocusDone={() => setFocusDone(null)}
       timerOpen={timerOpen}
+      focusOpen={focusOpen}
       timerBusy={timerBusy}
       timerError={timerError}
       onTag={(sub) => void onTag(sub)}
-      onOpenTimer={() => { setTimerError(null); setTimerOpen(true) }}
-      onCloseTimer={() => setTimerOpen(false)}
+      onOpenTimer={() => { setTimerError(null); setFocusOpen(false); setTimerOpen(true) }}
+      onOpenFocus={() => { setTimerError(null); setFocusOpen(true); setTimerOpen(true) }}
+      onPauseFocus={() => void onPauseResume(true)}
+      onResumeFocus={() => void onPauseResume(false)}
+      onCloseTimer={() => { setTimerOpen(false); setFocusOpen(false) }}
       onStartTimer={(sub, c) => void onStartTimer(sub, c)}
       onStopTimer={(m) => void onStopTimer(m)}
       onCancelTimer={() => void onCancelTimer()}
@@ -209,11 +241,18 @@ export type HomeViewProps = {
   onSubmitFree: (title: string, subject: string) => void
   tagPending: string | null
   notice: string | null
+  onTab?: (tab: Tab) => void
+  focusDone: { subject: string; coins: number; currentDays: number } | null
+  onCloseFocusDone: () => void
   timerOpen: boolean
+  focusOpen: boolean
   timerBusy: boolean
   timerError: string | null
   onTag: (subject: string) => void
   onOpenTimer: () => void
+  onOpenFocus: () => void
+  onPauseFocus: () => void
+  onResumeFocus: () => void
   onCloseTimer: () => void
   onStartTimer: (subject: string, content: string | null) => void
   onStopTimer: (minutes: number | null) => void
@@ -303,15 +342,28 @@ export function HomeView(p: HomeViewProps) {
         {p.notice && <p className="record-notice" role="status">{p.notice}</p>}
       </section>
 
-      {data.timer ? (
+      {data.timer && data.timer.focusTargetSeconds != null ? (
+        <FocusPanel
+          timer={{ ...data.timer, focusTargetSeconds: data.timer.focusTargetSeconds }}
+          busy={p.timerBusy}
+          error={p.timerError}
+          onPause={p.onPauseFocus}
+          onResume={p.onResumeFocus}
+          onStop={() => p.onStopTimer(null)}
+          onCancel={p.onCancelTimer}
+        />
+      ) : data.timer ? (
         <TimerPanel timer={data.timer} busy={p.timerBusy} error={p.timerError} onStop={p.onStopTimer} onCancel={p.onCancelTimer} />
       ) : (
         <section className="section" aria-label="タイマー">
-          <button type="button" className="btn btn-secondary" onClick={p.onOpenTimer}>タイマーで記録する</button>
+          <div className="actions">
+            <button type="button" className="btn btn-primary" onClick={p.onOpenFocus}>15分集中する</button>
+            <button type="button" className="btn btn-secondary" onClick={p.onOpenTimer}>タイマーで記録する</button>
+          </div>
         </section>
       )}
 
-      <TabBar />
+      <TabBar current="ホーム" onSelect={p.onTab} />
 
       {done && (
         <CompletionSheet
@@ -323,7 +375,10 @@ export function HomeView(p: HomeViewProps) {
           onClose={p.onCloseDone}
         />
       )}
-      {p.timerOpen && !data.timer && <TimerSheet busy={p.timerBusy} error={p.timerError} onStart={p.onStartTimer} onClose={p.onCloseTimer} />}
+      {p.focusDone && (
+        <FocusDoneSheet subject={p.focusDone.subject} coins={p.focusDone.coins} currentDays={p.focusDone.currentDays} onClose={p.onCloseFocusDone} />
+      )}
+      {p.timerOpen && !data.timer && <TimerSheet focus={p.focusOpen} busy={p.timerBusy} error={p.timerError} onStart={p.onStartTimer} onClose={p.onCloseTimer} />}
       {freeOpen && <FreeTaskSheet busy={freeBusy} error={freeError} onSubmit={p.onSubmitFree} onClose={p.onCloseFree} />}
     </div>
   )

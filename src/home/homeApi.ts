@@ -11,7 +11,11 @@ export type HomeData = {
   /** コイン残高（台帳の合計） */
   coins: number
   /** 実行中のタイマー（なければ null） */
-  timer: { id: string; subject: string; content: string | null; startedAt: string } | null
+  timer: {
+    id: string; subject: string; content: string | null; startedAt: string
+    /** 集中モードのときの目標秒数。通常のタイマーは null */
+    focusTargetSeconds: number | null; pausedAt: string | null; pausedSeconds: number
+  } | null
   /** クラブの管理者からの、最新の応援コメント */
   support: { body: string; createdAt: string } | null
 }
@@ -58,7 +62,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     supabase.from('clubs').select('allow_free_tasks').eq('id', clubId).maybeSingle(),
     supabase.from('support_comments').select('body, created_at').order('created_at', { ascending: false }).limit(1),
     supabase.from('coin_balances').select('balance').maybeSingle(),
-    supabase.from('study_records').select('id, subject, content, started_at').is('ended_at', null).maybeSingle(),
+    supabase.from('study_records').select('id, subject, content, started_at, focus_target_seconds, paused_at, paused_seconds').is('ended_at', null).maybeSingle(),
   ])
   if (tasksRes.error) throw tasksRes.error
   if (streakRes.error) throw streakRes.error
@@ -91,6 +95,9 @@ export async function loadHome(clubId: string): Promise<HomeData> {
           subject: timerRes.data.subject as string,
           content: (timerRes.data.content as string | null) ?? null,
           startedAt: timerRes.data.started_at as string,
+          focusTargetSeconds: (timerRes.data.focus_target_seconds as number | null) ?? null,
+          pausedAt: (timerRes.data.paused_at as string | null) ?? null,
+          pausedSeconds: (timerRes.data.paused_seconds as number) ?? 0,
         }
       : null,
     allowFreeTasks: clubRes.data?.allow_free_tasks ?? false,
@@ -129,13 +136,18 @@ export async function registerFreeTask(title: string, subject: string, minutes: 
   if (error) throw new FreeTaskError(error.message)
 }
 
-export type StudyResult = { coinsGranted: number; currentDays: number; durationSeconds: number | null }
+export type StudyResult = {
+  coinsGranted: number; currentDays: number; durationSeconds: number | null
+  focusAchieved: boolean; focusBonus: number
+}
 
 function toStudyResult(d: Record<string, unknown>): StudyResult {
   return {
     coinsGranted: (d.coins_granted as number) ?? 0,
     currentDays: (d.current_days as number) ?? 0,
     durationSeconds: (d.duration_seconds as number | undefined) ?? null,
+    focusAchieved: (d.focus_achieved as boolean | undefined) ?? false,
+    focusBonus: (d.focus_bonus as number | undefined) ?? 0,
   }
 }
 
@@ -161,5 +173,21 @@ export async function stopStudyTimer(minutes: number | null): Promise<StudyResul
 
 export async function cancelStudyTimer(): Promise<void> {
   const { error } = await supabase.rpc('cancel_study_timer')
+  if (error) throw error
+}
+
+/** 15分集中モードを始める */
+export async function startFocusSession(subject: string, content: string | null): Promise<void> {
+  const { error } = await supabase.rpc('start_focus_session', { p_subject: subject, p_content: content })
+  if (error) throw error
+}
+
+export async function pauseFocusSession(): Promise<void> {
+  const { error } = await supabase.rpc('pause_focus_session')
+  if (error) throw error
+}
+
+export async function resumeFocusSession(): Promise<void> {
+  const { error } = await supabase.rpc('resume_focus_session')
   if (error) throw error
 }

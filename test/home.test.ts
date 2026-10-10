@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  addDays, bandSummary, buildBand, cheerOf, coinNote, dateLabel, dayState, elapsedLabel, elapsedMinutes, jstDate, levelOf,
+  addDays, bandSummary, buildBand, cheerOf, coinNote, dateLabel, dayState, elapsedLabel, elapsedMinutes, focusNote, focusProgress, jstDate, levelOf,
   monthStudyDays, sortTasks, timeLabel, validateContent, validateMinutes,
 } from '../src/home/homeModel.ts'
 import type { HomeTask } from '../src/home/homeModel.ts'
@@ -97,4 +97,41 @@ test('内容は任意。書くなら 60 文字まで', () => {
 test('コインの一言：付かなかったときは出さない', () => {
   assert.equal(coinNote(0), '')
   assert.equal(coinNote(3), '＋3コイン')
+})
+
+const base = { startedAt: '2026-10-10T10:00:00Z', pausedAt: null, pausedSeconds: 0, targetSeconds: 900 }
+const at = (sec: number) => new Date('2026-10-10T10:00:00Z').getTime() + sec * 1000
+
+test('focusProgress: 開始直後は 15:00 で 0 目盛り', () => {
+  const p = focusProgress(base, at(0))
+  assert.equal(p.label, '15:00')
+  assert.equal(p.ticks, 0)
+  assert.equal(p.reached, false)
+})
+
+test('focusProgress: 6 分 20 秒で残り 8:40・6 目盛り', () => {
+  const p = focusProgress(base, at(380))
+  assert.equal(p.label, '8:40')
+  assert.equal(p.ticks, 6)
+})
+
+test('focusProgress: 15 分で 0:00・15 目盛り・達成。超えても 0:00', () => {
+  assert.equal(focusProgress(base, at(900)).reached, true)
+  const p = focusProgress(base, at(1500))
+  assert.equal(p.label, '0:00')
+  assert.equal(p.ticks, 15)
+})
+
+test('focusProgress: 一時停止中は止めた時点で固定し、停止分は引く', () => {
+  const paused = { ...base, pausedAt: new Date(at(300)).toISOString() }
+  const p = focusProgress(paused, at(900))
+  assert.equal(p.label, '10:00')
+  assert.equal(p.paused, true)
+  const resumed = focusProgress({ ...base, pausedSeconds: 120 }, at(420))
+  assert.equal(resumed.label, '10:00')
+})
+
+test('focusNote: 達成と途中終了で文面を分ける', () => {
+  assert.equal(focusNote({ focusAchieved: true, focusBonus: 5, coinsGranted: 1, durationSeconds: 900 }), '15分集中を達成しました　＋6コイン')
+  assert.equal(focusNote({ focusAchieved: false, focusBonus: 0, coinsGranted: 0, durationSeconds: 420 }), '7分の集中を記録しました')
 })

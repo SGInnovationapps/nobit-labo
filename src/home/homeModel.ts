@@ -162,3 +162,49 @@ export function validateContent(raw: string): { ok: true; value: string | null }
   if ([...value].length > 60) return { ok: false, message: '内容は60文字までです' }
   return { ok: true, value }
 }
+
+/** 集中モードの目標（15 分）。1 分 = 1 目盛りの 15 目盛り */
+export const FOCUS_SECONDS = 15 * 60
+
+export type FocusProgress = {
+  /** 一時停止を除いた、集中した秒数（目標まで） */
+  activeSeconds: number
+  remainingSeconds: number
+  /** 残り時間の表示（例：12:05） */
+  label: string
+  /** 経過した目盛りの数（0〜15） */
+  ticks: number
+  reached: boolean
+  paused: boolean
+}
+
+/** 集中モードの進み具合。停止中は止めた時点で固定する */
+export function focusProgress(
+  f: { startedAt: string; pausedAt: string | null; pausedSeconds: number; targetSeconds: number },
+  now: number,
+): FocusProgress {
+  const end = f.pausedAt ? new Date(f.pausedAt).getTime() : now
+  const raw = Math.floor((end - new Date(f.startedAt).getTime()) / 1000) - f.pausedSeconds
+  const activeSeconds = Math.min(f.targetSeconds, Math.max(0, raw))
+  const remainingSeconds = f.targetSeconds - activeSeconds
+  const m = Math.floor(remainingSeconds / 60)
+  const sec = remainingSeconds % 60
+  return {
+    activeSeconds,
+    remainingSeconds,
+    label: `${m}:${String(sec).padStart(2, '0')}`,
+    ticks: Math.min(15, Math.floor(activeSeconds / 60)),
+    reached: remainingSeconds === 0,
+    paused: f.pausedAt !== null,
+  }
+}
+
+/** 集中モードを終えたときの案内 */
+export function focusNote(r: { focusAchieved: boolean; focusBonus: number; coinsGranted: number; durationSeconds: number | null }): string {
+  if (r.focusAchieved) {
+    const coins = r.focusBonus + r.coinsGranted
+    return `15分集中を達成しました　${coinNote(coins)}`.trim()
+  }
+  const min = Math.floor((r.durationSeconds ?? 0) / 60)
+  return `${min}分の集中を記録しました　${coinNote(r.coinsGranted)}`.trim()
+}

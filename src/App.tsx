@@ -8,6 +8,8 @@ import { ConsentStep } from './screens/ConsentStep'
 import { Notice } from './screens/Notice'
 import { ProfileStep } from './screens/ProfileStep'
 import { Home } from './home/Home'
+import { Reflect } from './home/Reflect'
+import type { Tab } from './home/TabBar'
 import { Shell } from './screens/Shell'
 
 type Phase =
@@ -22,6 +24,7 @@ export default function App() {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [tab, setTab] = useState<Tab>('ホーム')
   const started = useRef(false)
 
   useEffect(() => {
@@ -120,7 +123,11 @@ export default function App() {
   if (step.name === 'approved' && snapshot.membership) {
     return (
       <div className="shell">
-        <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} />
+        {tab === 'ふりかえり' ? (
+          <Reflect onTab={setTab} />
+        ) : (
+          <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} onTab={setTab} />
+        )}
       </div>
     )
   }
