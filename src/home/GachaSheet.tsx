@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { Nobit } from './Nobit'
+import { gachaMood } from './nobitModel'
 import { acquiredLabel, categoryLabel, duplicateNote, RARITY_LABEL, setLabel } from './collectionModel'
 import type { GachaResult } from './collectionApi'
 
@@ -28,7 +30,7 @@ export function GachaSheet({ result, equipped, busy, error, onDraw, onEquip, onC
   return (
     <div className="sheet-backdrop">
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="gacha-title">
-        <img className="sheet-nobit" src="/nobit/front.png" alt="ノビット" width="120" height="120" />
+        <Nobit mood={gachaMood(result)} className="sheet-nobit" />
         {!result ? (
           <>
             <h2 id="gacha-title" className="sheet-title">今日の無料ガチャ</h2>

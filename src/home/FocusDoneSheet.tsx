@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { Nobit } from './Nobit'
 import { coinNote } from './homeModel'
 
 type Props = {
@@ -21,7 +22,7 @@ export function FocusDoneSheet({ subject, coins, currentDays, onClose }: Props) 
   return (
     <div className="sheet-backdrop">
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="focus-done-title">
-        <img className="sheet-nobit" src="/nobit/front.png" alt="ノビット" width="120" height="120" />
+        <Nobit mood="cheer" className="sheet-nobit" />
         <p className="sheet-label">15分集中を達成しました</p>
         <h2 id="focus-done-title" className="sheet-title">{subject}</h2>
         <p className="sheet-time num">15:00</p>

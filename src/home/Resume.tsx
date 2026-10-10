@@ -1,4 +1,5 @@
 import { RecordBand } from './RecordBand'
+import { Nobit } from './Nobit'
 import type { BandCell, HomeTask } from './homeModel'
 
 type Props = {
@@ -14,7 +15,7 @@ type Props = {
 export function ResumeView({ cells, longestDays, badgeCount, tasks, onStart }: Props) {
   return (
     <div className="resume">
-      <img className="resume-nobit" src="/nobit/front.png" alt="ノビット" width="120" height="120" />
+      <Nobit mood="wave" className="resume-nobit" />
       <h1 className="resume-title">おかえり。また今日から。</h1>
       <p className="resume-sub">これまでの記録は、そのまま残っています。</p>
 

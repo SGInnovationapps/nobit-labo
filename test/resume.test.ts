@@ -18,3 +18,15 @@ test('shortFirst: 未完了だけ、見込み時間の短い順、見込みな�
   assert.deepEqual(r.map((x) => x.id), ['f', 'd', 'a'])
   assert.deepEqual(shortFirst([t('x', null), t('y', null)]).map((x) => x.id), ['x', 'y'])
 })
+
+import { gachaMood, MOOD_FILE, nobitSrc } from '../src/home/nobitModel.ts'
+
+test('gachaMood: 引く前・重複・レアリティで表情が変わる', () => {
+  assert.equal(gachaMood(null), 'excited')
+  assert.equal(gachaMood({ rarity: 'normal', duplicate: false }), 'happy')
+  assert.equal(gachaMood({ rarity: 'rare', duplicate: false }), 'joy')
+  assert.equal(gachaMood({ rarity: 'super_rare', duplicate: false }), 'jump')
+  assert.equal(gachaMood({ rarity: 'super_rare', duplicate: true }), 'thanks')
+  assert.equal(nobitSrc('wave'), '/nobit/expr_wave.png')
+  assert.equal(Object.keys(MOOD_FILE).length, 8)
+})

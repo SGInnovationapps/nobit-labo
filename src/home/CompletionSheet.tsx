@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { Nobit } from './Nobit'
 import { RecordBand } from './RecordBand'
 import type { BandCell } from './homeModel'
 import { timeLabel } from './homeModel'
@@ -25,7 +26,7 @@ export function CompletionSheet({ title, completedAt, cells, currentDays, comple
   return (
     <div className="sheet-backdrop">
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-        <img className="sheet-nobit" src="/nobit/front.png" alt="ノビット" width="120" height="120" />
+        <Nobit mood="happy" className="sheet-nobit" />
         <p className="sheet-label">記録しました</p>
         <h2 id="sheet-title" className="sheet-title">{title}</h2>
         <p className="sheet-time num">{timeLabel(completedAt)}</p>
