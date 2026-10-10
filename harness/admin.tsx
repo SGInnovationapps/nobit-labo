@@ -63,7 +63,7 @@ const students: StudentRow[] = [
   stu({ displayName: 'ジャイ子', grade: 7, assignedDone: 1, activityToday: 1, currentDays: 8, longestDays: 12, lastAchievedDate: D(0), activity: act14([1,2,1,1,2,3,1,2,2,1,1,2,3,1]) }),
   stu({ displayName: 'デキ杉', grade: 11, assignedDone: 2, activityToday: 2, currentDays: 21, longestDays: 21, lastAchievedDate: D(0), activity: act14([2,3,2,3,3,2,2,3,3,2,3,3,2,3]) }),
 ]
-const sboard = { students, clubActivity: [3,5,6,8,9,7,4,8,10,9,11,12,10,9].map((c, i) => ({ date: D(13 - i), count: c })) }
+const sboard = { restDates: [] as string[], eventDates: [] as string[], gapRule: { enabled: true, thresholdDays: 3 }, students, clubActivity: [3,5,6,8,9,7,4,8,10,9,11,12,10,9].map((c, i) => ({ date: D(13 - i), count: c })) }
 const detail = {
   student: students[3],
   studyDates: Array.from({ length: 60 }, (_, i) => D(i)).filter((_, i) => i % 7 !== 4 && i % 11 !== 3),

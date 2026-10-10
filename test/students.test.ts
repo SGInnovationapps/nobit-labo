@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  attentionOf, buildScaledBand, commentError, countStates, dayState, filterStudents, gapDays, lastStudyLabel,
+  attentionOf, missingDays, buildScaledBand, commentError, countStates, dayState, filterStudents, gapDays, lastStudyLabel,
   monthDays, sortByAttention, stateOf, subjectBreakdown, weeklyDays,
 } from '../src/admin/studentModel.ts'
 import type { StudentRow } from '../src/admin/studentModel.ts'
@@ -31,8 +31,8 @@ test('空いた日数と最終学習の表示', () => {
 })
 
 test('対応が必要な順', () => {
-  assert.deepEqual(attentionOf(S({ lastAchievedDate: '2026-10-06' }), today), { rank: 0, reason: '記録が3日空いています' })
-  assert.equal(attentionOf(S({ lastAchievedDate: '2026-10-07' }), today).rank, 1) // 2日空き・未着手
+  assert.deepEqual(attentionOf(S({ lastAchievedDate: '2026-10-05' }), today), { rank: 0, reason: '記録が3日空いています（休息日は数えません）' })
+  assert.equal(attentionOf(S({ lastAchievedDate: '2026-10-06' }), today).rank, 1) // 2日空き・未着手
   assert.deepEqual(attentionOf(S({ lastAchievedDate: null }), today), { rank: 0, reason: 'まだ記録がありません' })
   assert.equal(attentionOf(S({ assignedDone: 2, activityToday: 2 }), today).rank, 3)
   assert.equal(attentionOf(S({ assignedDone: 1, activityToday: 1 }), today).rank, 2)
@@ -45,8 +45,8 @@ test('並び：空きが長い順 → 未着手 → 一部完了 → すべて�
     S({ userId: 'done', displayName: 'あ', assignedDone: 2, activityToday: 2 }),
     S({ userId: 'part', displayName: 'い', assignedDone: 1, activityToday: 1 }),
     S({ userId: 'none', displayName: 'う', lastAchievedDate: '2026-10-08' }),
-    S({ userId: 'gap4', displayName: 'え', lastAchievedDate: '2026-10-05' }),
-    S({ userId: 'gap3', displayName: 'お', lastAchievedDate: '2026-10-06' }),
+    S({ userId: 'gap4', displayName: 'え', lastAchievedDate: '2026-10-04' }),
+    S({ userId: 'gap3', displayName: 'お', lastAchievedDate: '2026-10-05' }),
     S({ userId: 'never', displayName: 'か', lastAchievedDate: null }),
   ]
   assert.deepEqual(sortByAttention(list, today).map((s) => s.userId), ['never', 'gap4', 'gap3', 'none', 'part', 'done'])
@@ -96,4 +96,21 @@ test('応援コメントの検査', () => {
   assert.equal(commentError('よく続けているね'), null)
   assert.ok(commentError('あ'.repeat(301)))
   assert.equal(commentError('あ'.repeat(300)), null)
+})
+
+test('空いた日数は休息日を数えない（アラートと同じ）', () => {
+  assert.equal(missingDays('2026-10-05', today), 3) // 6・7・8
+  assert.equal(missingDays('2026-10-05', today, ['2026-10-06', '2026-10-07']), 1)
+  assert.equal(missingDays('2026-10-08', today), 0)
+  assert.equal(missingDays(null, today), null)
+})
+
+test('09の並びは、画面13のしきい値と休息日に従う', () => {
+  const s = S({ lastAchievedDate: '2026-10-05' })
+  assert.equal(attentionOf(s, today, { restDates: ['2026-10-06', '2026-10-07'] }).rank, 1) // 休息日を除くと1日空き
+  assert.equal(attentionOf(s, today, { gapRule: { enabled: true, thresholdDays: 5 } }).rank, 1)
+  assert.equal(attentionOf(s, today, { gapRule: { enabled: true, thresholdDays: 2 } }).rank, 0)
+  assert.equal(attentionOf(s, today, { gapRule: { enabled: false, thresholdDays: 3 } }).rank, 1) // 通知を切ると「空き」扱いにしない
+  const list = [S({ userId: 'a', displayName: 'あ', lastAchievedDate: '2026-10-05' }), S({ userId: 'b', displayName: 'い', lastAchievedDate: '2026-10-06' })]
+  assert.deepEqual(sortByAttention(list, today, { restDates: ['2026-10-06'] }).map((x) => x.userId), ['a', 'b'])
 })

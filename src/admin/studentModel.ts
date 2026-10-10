@@ -50,25 +50,43 @@ export function gapDays(lastAchievedDate: string | null, today: string): number 
   return lastAchievedDate ? diffDays(lastAchievedDate, today) : null
 }
 
-export const GAP_ALERT_DAYS = 3 // ［仮］記録が3日空いたら、対応が必要
+/** 画面13「記録が空いた」の設定。アラートの判定（generate_alerts）と同じ数え方にそろえる */
+export type GapRule = { enabled: boolean; thresholdDays: number }
+export const DEFAULT_GAP_RULE: GapRule = { enabled: true, thresholdDays: 3 }
+
+export type AttentionOpts = {
+  gapRule?: GapRule
+  /** 大会・遠征・合宿の日（空いた日に数えない） */
+  restDates?: ReadonlyArray<string>
+}
+
+/** 最後に達成した日の翌日から昨日までの、休息日でない日の数。記録がなければ null */
+export function missingDays(lastAchievedDate: string | null, today: string, restDates: ReadonlyArray<string> = []): number | null {
+  if (!lastAchievedDate) return null
+  const rests = new Set(restDates)
+  let n = 0
+  for (let d = addDays(lastAchievedDate, 1); d < today; d = addDays(d, 1)) if (!rests.has(d)) n++
+  return n
+}
 
 export type Attention = { rank: 0 | 1 | 2 | 3; reason: string | null }
 
 /** 対応が必要な順。0 = 記録が空いている、1 = 今日は未着手、2 = 一部完了、3 = すべて完了 */
-export function attentionOf(s: StudentRow, today: string): Attention {
-  const gap = gapDays(s.lastAchievedDate, today)
+export function attentionOf(s: StudentRow, today: string, opts: AttentionOpts = {}): Attention {
+  const rule = opts.gapRule ?? DEFAULT_GAP_RULE
+  const missing = missingDays(s.lastAchievedDate, today, opts.restDates)
   const state = stateOf(s)
-  if (gap === null) return state === 'all' ? { rank: 3, reason: null } : { rank: 0, reason: 'まだ記録がありません' }
-  if (gap >= GAP_ALERT_DAYS && state !== 'all') return { rank: 0, reason: `記録が${gap}日空いています` }
+  if (missing === null) return state === 'all' ? { rank: 3, reason: null } : { rank: 0, reason: 'まだ記録がありません' }
+  if (rule.enabled && missing >= rule.thresholdDays && state !== 'all') return { rank: 0, reason: `記録が${missing}日空いています（休息日は数えません）` }
   if (state === 'none') return { rank: 1, reason: '今日はまだ未着手です' }
   if (state === 'partial') return { rank: 2, reason: null }
   return { rank: 3, reason: null }
 }
 
-export function sortByAttention(list: ReadonlyArray<StudentRow>, today: string): StudentRow[] {
+export function sortByAttention(list: ReadonlyArray<StudentRow>, today: string, opts: AttentionOpts = {}): StudentRow[] {
   const key = (s: StudentRow) => {
-    const a = attentionOf(s, today)
-    const gap = gapDays(s.lastAchievedDate, today)
+    const a = attentionOf(s, today, opts)
+    const gap = missingDays(s.lastAchievedDate, today, opts.restDates)
     // 同じ段の中では、空いた日数が長い順（記録なしが最も長い）
     return { rank: a.rank, gap: gap === null ? Number.MAX_SAFE_INTEGER : gap }
   }

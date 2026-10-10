@@ -6,7 +6,8 @@ import type { AlertItem } from './alertListModel'
 import type { AdminMission, ParsedDraft } from './missionAdminModel'
 import type { AlertKind, AlertRule, SendMethod } from './alertsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
-import type { StudentRow } from './studentModel'
+import type { GapRule, StudentRow } from './studentModel'
+import { DEFAULT_GAP_RULE } from './studentModel'
 import type { AdminTask, Draft, Recurrence } from './taskModel'
 
 export type Me = {
@@ -227,6 +228,10 @@ export type StudentBoard = {
   clubActivity: { date: string; count: number }[]
   /** 直近14日のうち、大会・遠征・合宿の日（記録の帯で休息日として出す） */
   restDates: string[]
+  /** 画面13「記録が空いた」の設定（なければ既定） */
+  gapRule: GapRule
+  /** 空いた日数の計算に使う、直近90日の大会・遠征・合宿の日 */
+  eventDates: string[]
 }
 
 type MemberRow = {
@@ -236,7 +241,7 @@ type MemberRow = {
 
 export async function loadStudentBoard(clubId: string, today: string): Promise<StudentBoard> {
   const since = addDays(today, -13)
-  const [memberRes, streakRes, activityRes, tasksRes, eventRes] = await Promise.all([
+  const [memberRes, streakRes, activityRes, tasksRes, eventRes, ruleRes] = await Promise.all([
     supabase
       .from('club_members')
       .select('user_id, users!club_members_user_id_fkey(display_name, grade)')
@@ -247,7 +252,8 @@ export async function loadStudentBoard(clubId: string, today: string): Promise<S
     supabase.from('daily_activity').select('student_id, activity_date, completed_count').eq('club_id', clubId).gte('activity_date', since).lte('activity_date', today),
     // 配信されたタスクだけ。自由登録の中身（と有無）は、クラブ管理者には見せない
     supabase.from('user_tasks').select('student_id, completed_at').eq('club_id', clubId).eq('is_free', false).eq('task_date', today),
-    supabase.from('club_events').select('event_date').eq('club_id', clubId).gte('event_date', since).lte('event_date', today),
+    supabase.from('club_events').select('event_date').eq('club_id', clubId).gte('event_date', addDays(today, -90)).lte('event_date', today),
+    supabase.from('alert_rules').select('enabled, threshold_days').eq('club_id', clubId).eq('kind', 'gap').maybeSingle(),
   ])
   if (eventRes.error) throw eventRes.error
   if (memberRes.error) throw memberRes.error
@@ -295,7 +301,9 @@ export async function loadStudentBoard(clubId: string, today: string): Promise<S
   return {
     students,
     clubActivity: [...club.entries()].map(([date, count]) => ({ date, count })),
-    restDates: eventRes.data.map((e) => e.event_date as string),
+    restDates: eventRes.data.map((e) => e.event_date as string).filter((d) => d >= since),
+    eventDates: eventRes.data.map((e) => e.event_date as string),
+    gapRule: ruleRes.data ? { enabled: ruleRes.data.enabled as boolean, thresholdDays: ruleRes.data.threshold_days as number } : DEFAULT_GAP_RULE,
   }
 }
 

@@ -18,8 +18,9 @@ type ViewProps = {
 export function StudentsView({ board, today, onOpen }: ViewProps) {
   const [filter, setFilter] = useState<Filter>('any')
   const [query, setQuery] = useState('')
+  const attOpts = { gapRule: board.gapRule, restDates: board.eventDates }
   const counts = countStates(board.students)
-  const list = filterStudents(sortByAttention(board.students, today), filter, query)
+  const list = filterStudents(sortByAttention(board.students, today, attOpts), filter, query)
   const total = board.students.length
   const clubCells = buildScaledBand(board.clubActivity, today, 14)
   const clubTotal = board.clubActivity.reduce((n, a) => n + a.count, 0)
@@ -76,7 +77,7 @@ export function StudentsView({ board, today, onOpen }: ViewProps) {
         <ul className="adm-list">
           {list.map((s) => {
             const state = stateOf(s)
-            const attention = attentionOf(s, today)
+            const attention = attentionOf(s, today, attOpts)
             return (
               <li className="adm-row adm-student-row" key={s.userId}>
                 <div className="adm-row-main">
