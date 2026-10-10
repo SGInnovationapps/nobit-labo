@@ -14,11 +14,11 @@ export type Deps = {
   /** ブラウザから呼べるオリジン */
   allowedOrigins: string[];
   /** LINE の ID トークンを検証し、成功すれば sub（LINE のユーザー ID）を返す */
-  verifyIdToken(idToken: string, channelId: string): Promise<{ sub: string } | null>;
+  verifyIdToken(idToken: string, channelId: string): Promise<{ sub: string; name?: string } | null>;
   /** 認証ユーザーを（なければ作って）用意し、ログイン用のハッシュを発行する */
   ensureUser(email: string): Promise<{ userId: string; hashedToken: string }>;
   /** users と line_accounts の行を（なければ）作る。既存の行は書き換えない */
-  ensureProfile(userId: string, lineUserId: string): Promise<void>;
+  ensureProfile(userId: string, lineUserId: string, lineName?: string): Promise<void>;
   /** ハッシュからセッションを作る */
   createSession(hashedToken: string): Promise<SessionOut>;
   log(message: string, detail?: unknown): void;
@@ -72,17 +72,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   try {
     let sub: string | null = null;
+    let lineName: string | undefined;
     for (const channelId of deps.channelIds) {
       const verified = await deps.verifyIdToken(idToken, channelId);
       if (verified) {
         sub = verified.sub;
+        lineName = verified.name;
         break;
       }
     }
     if (!sub || !LINE_SUB.test(sub)) return json({ error: "invalid_id_token" }, 401, cors);
 
     const { userId, hashedToken } = await deps.ensureUser(emailForLineUser(sub));
-    await deps.ensureProfile(userId, sub);
+    await deps.ensureProfile(userId, sub, lineName);
     const session = await deps.createSession(hashedToken);
     return json({ session }, 200, cors);
   } catch (e) {

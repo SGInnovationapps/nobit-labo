@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { gradeLabel } from '../lib/steps'
 import { approvalBlockers, formatJst } from './applicants'
 import type { Applicant } from './applicants'
-import { loadApplicants, reviewErrorMessage, reviewMembership } from './adminApi'
+import { bulkResultMessage, loadApplicants, reviewErrorMessage, reviewMembership, reviewMemberships } from './adminApi'
 
 type ViewProps = {
   applicants: Applicant[]
@@ -12,12 +12,20 @@ type ViewProps = {
   error: string | null
   onApprove: (a: Applicant) => void
   onReject: (a: Applicant) => void
+  /** 選んだ申し込みをまとめて承認する */
+  onBulkApprove: (ids: string[]) => void
+  bulkBusy: boolean
 }
 
-export function ApprovalsView({ applicants, latestVersion, busyId, error, onApprove, onReject }: ViewProps) {
+export function ApprovalsView({ applicants, latestVersion, busyId, error, onApprove, onReject, onBulkApprove, bulkBusy }: ViewProps) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string[]>([])
   const pending = applicants.filter((a) => a.status === 'pending')
   const approved = applicants.filter((a) => a.status === 'approved')
+  const approvable = pending.filter((a) => approvalBlockers(a, latestVersion).length === 0).map((a) => a.membershipId)
+  const chosen = selected.filter((id) => approvable.includes(id))
+  const allChosen = approvable.length > 0 && chosen.length === approvable.length
+  const toggle = (id: string) => setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
 
   return (
     <>
@@ -34,6 +42,26 @@ export function ApprovalsView({ applicants, latestVersion, busyId, error, onAppr
         {pending.length === 0 ? (
           <p className="muted">承認待ちの申し込みはありません。</p>
         ) : (
+          <>
+          {approvable.length > 1 && (
+            <div className="adm-bulk">
+              <label className="adm-check">
+                <input type="checkbox" checked={allChosen} onChange={() => setSelected(allChosen ? [] : approvable)} />
+                <span>承認できる{approvable.length}人をすべて選ぶ</span>
+              </label>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={chosen.length === 0 || bulkBusy}
+                onClick={() => {
+                  onBulkApprove(chosen)
+                  setSelected([])
+                }}
+              >
+                {bulkBusy ? '処理中…' : `選んだ${chosen.length}人をまとめて承認する`}
+              </button>
+            </div>
+          )}
           <ul className="adm-list">
             {pending.map((a) => {
               const blockers = approvalBlockers(a, latestVersion)
@@ -41,8 +69,19 @@ export function ApprovalsView({ applicants, latestVersion, busyId, error, onAppr
               const confirming = confirmingId === a.membershipId
               return (
                 <li className="adm-row" key={a.membershipId}>
-                  <div className="adm-row-main">
-                    <p className="adm-name">{a.displayName ?? '（表示名が未入力）'}</p>
+<div className="adm-row-main">
+                  {approvable.length > 1 && (
+                    <label className="adm-check adm-check-row">
+                      <input
+                        type="checkbox"
+                        disabled={blockers.length > 0}
+                        checked={chosen.includes(a.membershipId)}
+                        onChange={() => toggle(a.membershipId)}
+                        aria-label={`${a.displayName ?? '表示名が未入力'}を選ぶ`}
+                      />
+                    </label>
+                  )}
+                                      <p className="adm-name">{a.displayName ?? '（表示名が未入力）'}</p>
                     <dl className="adm-meta">
                       <div>
                         <dt>学年</dt>
@@ -98,6 +137,7 @@ export function ApprovalsView({ applicants, latestVersion, busyId, error, onAppr
               )
             })}
           </ul>
+          </>
         )}
       </section>
 
@@ -128,6 +168,7 @@ export default function ApprovalsPage({ clubId }: { clubId: string }) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -163,6 +204,21 @@ export default function ApprovalsPage({ clubId }: { clubId: string }) {
     }
   }
 
+  async function bulk(ids: string[]) {
+    setBulkBusy(true)
+    setActionError(null)
+    try {
+      const res = await reviewMemberships(ids, true)
+      if (res.failed.length > 0) setActionError(bulkResultMessage(res))
+    } catch (e) {
+      console.error(e)
+      setActionError(reviewErrorMessage(e))
+    } finally {
+      setBulkBusy(false)
+      await load()
+    }
+  }
+
   if (loadError) {
     return (
       <>
@@ -185,6 +241,8 @@ export default function ApprovalsPage({ clubId }: { clubId: string }) {
       error={actionError}
       onApprove={(a) => void review(a, true)}
       onReject={(a) => void review(a, false)}
+      onBulkApprove={(ids) => void bulk(ids)}
+      bulkBusy={bulkBusy}
     />
   )
 }

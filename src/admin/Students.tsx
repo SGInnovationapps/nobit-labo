@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { RecordBand } from '../home/RecordBand'
 import { buildBand, jstDate } from '../home/homeModel'
 import { gradeLabel } from '../lib/steps'
-import { loadStudentBoard } from './adminApi'
+import { loadStudentBoard, sendSeen } from './adminApi'
 import type { StudentBoard } from './adminApi'
 import {
-  attentionOf, buildScaledBand, countStates, filterStudents, lastStudyLabel, sortByAttention, STATE_TEXT, stateOf,
+  attentionOf, buildScaledBand, countStates, filterStudents, idleStudents, lastStudyLabel, sortByAttention, STATE_TEXT, stateOf, weekSummary,
 } from './studentModel'
 import type { Filter, StudentRow } from './studentModel'
 
@@ -13,23 +13,54 @@ type ViewProps = {
   board: StudentBoard
   today: string
   onOpen: (s: StudentRow) => void
+  /** クラブ管理者だけが「見たよ」を送れる */
+  canSeen?: boolean
+  seenBusyId?: string | null
+  onSeen?: (s: StudentRow) => void
 }
 
-export function StudentsView({ board, today, onOpen }: ViewProps) {
+export function StudentsView({ board, today, onOpen, canSeen = false, seenBusyId = null, onSeen }: ViewProps) {
   const [filter, setFilter] = useState<Filter>('any')
   const [query, setQuery] = useState('')
-  const attOpts = { gapRule: board.gapRule, restDates: board.eventDates }
+  const attOpts = { gapRule: board.gapRule, restDates: board.eventDates, restByStudent: board.studentRest }
   const counts = countStates(board.students)
   const list = filterStudents(sortByAttention(board.students, today, attOpts), filter, query)
   const total = board.students.length
   const clubCells = buildScaledBand(board.clubActivity, today, 14)
   const clubTotal = board.clubActivity.reduce((n, a) => n + a.count, 0)
+  const week = weekSummary(board.students, today, board.eventDates)
+  const idle = idleStudents(board.students, today, attOpts)
 
   return (
     <>
       <div className="adm-title-row">
         <h1 className="adm-h1">生徒一覧</h1>
       </div>
+
+      <section className="adm-weeksum" aria-label="今週のまとめ">
+        <p className="adm-week-main">
+          今週（月曜から）学習した生徒　<span className="num adm-strong">{week.studied}</span> / <span className="num">{week.total}</span> 人
+        </p>
+        {week.restDates.length > 0 && (
+          <p className="adm-sub">今週の休息日（大会・遠征・合宿）　{week.restDates.map((d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`).join('、')}</p>
+        )}
+      </section>
+
+      {idle.length > 0 && (
+        <section className="adm-idle" aria-labelledby="idle-h">
+          <h2 id="idle-h">しばらく記録がない生徒 <span className="num adm-count">{idle.length}</span></h2>
+          <ul className="adm-idle-list">
+            {idle.map((s) => (
+              <li key={s.userId}>
+                <button type="button" className="adm-idle-item" onClick={() => onOpen(s)}>
+                  <span className="adm-name">{s.displayName ?? '（表示名が未入力）'}</span>
+                  <span className="adm-sub">{attentionOf(s, today, attOpts).reason}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="adm-summary" aria-label="今日の状態">
         <div className="adm-stat-row">
@@ -109,9 +140,20 @@ export function StudentsView({ board, today, onOpen }: ViewProps) {
                   </dl>
                 </div>
                 <div className="adm-student-band">
-                  <RecordBand cells={buildBand(s.activity, today, 14, board.restDates)} />
+                  <RecordBand cells={buildBand(s.activity, today, 14, [...board.restDates, ...(board.studentRest[s.userId] ?? []).filter((d) => d <= today)])} />
                 </div>
                 <div className="adm-row-actions">
+                  {canSeen && s.activityToday > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={board.seenToday.includes(s.userId) || seenBusyId === s.userId}
+                      onClick={() => onSeen?.(s)}
+                    >
+                      {board.seenToday.includes(s.userId) ? '見たよ済み' : '見たよ'}
+                      <span className="adm-sr">（{s.displayName ?? '表示名が未入力'}）</span>
+                    </button>
+                  )}
                   <button type="button" className="btn btn-secondary" onClick={() => onOpen(s)}>
                     詳細・応援<span className="adm-sr">（{s.displayName ?? '表示名が未入力'}）</span>
                   </button>
@@ -125,8 +167,10 @@ export function StudentsView({ board, today, onOpen }: ViewProps) {
   )
 }
 
-export default function StudentsPage({ clubId, onOpen }: { clubId: string; onOpen: (s: StudentRow) => void }) {
+export default function StudentsPage({ clubId, onOpen, canSeen = false }: { clubId: string; onOpen: (s: StudentRow) => void; canSeen?: boolean }) {
   const [board, setBoard] = useState<StudentBoard | null>(null)
+  const [seenBusyId, setSeenBusyId] = useState<string | null>(null)
+  const [seenError, setSeenError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -156,5 +200,25 @@ export default function StudentsPage({ clubId, onOpen }: { clubId: string; onOpe
     )
   }
   if (!board) return <p className="muted" role="status">読み込み中…</p>
-  return <StudentsView board={board} today={jstDate(Date.now())} onOpen={onOpen} />
+
+  async function onSeen(s: StudentRow) {
+    setSeenBusyId(s.userId)
+    setSeenError(null)
+    try {
+      await sendSeen(s.userId)
+    } catch (e) {
+      console.error(e)
+      setSeenError('見たよを送れませんでした。通信を確認して、もう一度お試しください。')
+    } finally {
+      setSeenBusyId(null)
+      await load()
+    }
+  }
+
+  return (
+    <>
+      {seenError && <p className="error" role="alert">{seenError}</p>}
+      <StudentsView board={board} today={jstDate(Date.now())} onOpen={onOpen} canSeen={canSeen} seenBusyId={seenBusyId} onSeen={(s) => void onSeen(s)} />
+    </>
+  )
 }

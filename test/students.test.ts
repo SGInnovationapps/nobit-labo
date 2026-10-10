@@ -114,3 +114,48 @@ test('09の並びは、画面13のしきい値と休息日に従う', () => {
   const list = [S({ userId: 'a', displayName: 'あ', lastAchievedDate: '2026-10-05' }), S({ userId: 'b', displayName: 'い', lastAchievedDate: '2026-10-06' })]
   assert.deepEqual(sortByAttention(list, today, { restDates: ['2026-10-06'] }).map((x) => x.userId), ['a', 'b'])
 })
+
+import { idleStudents, SUPPORT_TEMPLATES, weekStartOf, weekSummary } from '../src/admin/studentModel.ts'
+
+test('weekStartOf: 週は月曜はじまり', () => {
+  assert.equal(weekStartOf('2026-10-09'), '2026-10-05') // 金 → 月
+  assert.equal(weekStartOf('2026-10-05'), '2026-10-05') // 月
+  assert.equal(weekStartOf('2026-10-11'), '2026-10-05') // 日
+})
+
+test('weekSummary: 今週学習した人数と、今週の休息日', () => {
+  const list = [
+    S({ userId: 'a', activity: [{ date: '2026-10-06', count: 2 }] }),
+    S({ userId: 'b', activity: [{ date: '2026-10-02', count: 3 }] }), // 先週
+    S({ userId: 'c', activity: [{ date: '2026-10-08', count: 0 }] }),
+  ]
+  const w = weekSummary(list, today, ['2026-10-04', '2026-10-10', '2026-10-12'])
+  assert.equal(w.studied, 1)
+  assert.equal(w.total, 3)
+  assert.deepEqual(w.restDates, ['2026-10-10'])
+})
+
+test('idleStudents: しばらく記録がない生徒だけ、長い順', () => {
+  const list = [
+    S({ userId: 'ok' }),
+    S({ userId: 'gap5', lastAchievedDate: '2026-10-03' }),
+    S({ userId: 'gap3', lastAchievedDate: '2026-10-05' }),
+    S({ userId: 'new', lastAchievedDate: null }),
+  ]
+  assert.deepEqual(idleStudents(list, today).map((s) => s.userId), ['new', 'gap5', 'gap3'])
+})
+
+test('SUPPORT_TEMPLATES: 300文字以内で、責める言い方がない', () => {
+  assert.ok(SUPPORT_TEMPLATES.length >= 5)
+  for (const t of SUPPORT_TEMPLATES) {
+    assert.ok([...t].length <= 300)
+    assert.ok(!/なぜ|どうして|サボ|さぼ|だめ|ダメ/.test(t))
+  }
+})
+
+test('休息チケットの日は、空いた日に数えない（生徒ごと）', () => {
+  const s = S({ userId: 'x', lastAchievedDate: '2026-10-05', activity: [] }) // 6,7,8 の3日が空き
+  assert.equal(attentionOf(s, today).rank, 0)
+  assert.equal(attentionOf(s, today, { restByStudent: { x: ['2026-10-08'] } }).rank, 1, '3日 → 2日になり、しきい値(3日)を下回る')
+  assert.equal(attentionOf(s, today, { restByStudent: { y: ['2026-10-08'] } }).rank, 0, '他の生徒のチケットは影響しない')
+})

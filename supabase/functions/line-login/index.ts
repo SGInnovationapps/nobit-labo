@@ -29,7 +29,10 @@ const deps: Deps = {
     });
     if (!res.ok) return null;
     const body = await res.json();
-    return typeof body?.sub === "string" ? { sub: body.sub } : null;
+    // name は、ミニアプリが profile の権限を求めているときだけ入る（運営が生徒を見分けるための表示）
+    return typeof body?.sub === "string"
+      ? { sub: body.sub, name: typeof body?.name === "string" ? body.name.slice(0, 100) : undefined }
+      : null;
   },
 
   async ensureUser(email) {
@@ -42,7 +45,7 @@ const deps: Deps = {
     return { userId: link.data.user.id, hashedToken: link.data.properties.hashed_token };
   },
 
-  async ensureProfile(userId, lineUserId) {
+  async ensureProfile(userId, lineUserId, lineName) {
     // ignoreDuplicates：既にある行（運営・クラブ管理者のロールなど）は書き換えない
     const u = await admin.from("users").upsert({ id: userId, role: "student" }, { onConflict: "id", ignoreDuplicates: true });
     if (u.error) throw u.error;
@@ -51,6 +54,11 @@ const deps: Deps = {
       { onConflict: "line_user_id", ignoreDuplicates: true },
     );
     if (l.error) throw l.error;
+    // LINE の名前は変わりうるので、ログインのたびに更新する（取れたときだけ）
+    if (lineName) {
+      const n = await admin.from("line_accounts").update({ line_display_name: lineName }).eq("user_id", userId);
+      if (n.error) throw n.error;
+    }
   },
 
   async createSession(hashedToken) {

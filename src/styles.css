@@ -315,3 +315,22 @@ p { margin: 0; }
 .support-from { font-weight: 700; margin-right: 10px; color: var(--ink-soft); }
 .coin-line { margin: 0; font-size: 14px; color: var(--ink-soft); }
 .coin-line .num { font-size: 18px; color: var(--ink); }
+
+/* v1.7 ②：承認待ちの案内 */
+.pending-note { margin: 0; padding: 12px 20px; font-size: 14px; line-height: 1.6; color: #1F2B45; background: #F1EEFF; border-bottom: 1px solid #D9D2FF; }
+.pending-note strong { color: #5A45C9; }
+.btn-link { display: inline-block; min-height: 44px; padding: 0 4px; margin-left: 8px; background: none; border: 0; color: #5A45C9; font: inherit; text-decoration: underline; cursor: pointer; }
+
+/* v1.7 ④：デイリークエスト・休息チケット */
+.quests-title { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+.quests-sum { margin-left: 6px; font-family: 'Baloo 2', sans-serif; font-size: 22px; }
+.quest-list { list-style: none; margin: 0; padding: 0; }
+.quest { display: grid; grid-template-columns: minmax(0, 1fr) auto 56px; align-items: center; gap: 8px; min-height: 44px; padding: 8px 0; border-top: 1px solid var(--line, #E3E8EF); }
+.quest:first-child { border-top: 0; }
+.quest-progress { font-size: 18px; }
+.quest-state { font-size: 13px; text-align: right; color: #5B6679; }
+.quest.is-done .quest-state { color: #0B7A5A; font-weight: 700; }
+.ticket-note { margin: 0 0 8px; font-size: 14px; line-height: 1.7; color: #5B6679; }
+.ticket-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ticket-actions .btn { width: auto; min-width: 160px; }
+.ticket-confirm p { margin: 0 0 8px; line-height: 1.7; }

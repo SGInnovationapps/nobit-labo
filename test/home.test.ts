@@ -159,3 +159,29 @@ test('v1.7：追加ガチャの状態', () => {
   assert.equal(extraGachaState(true, false, EXTRA_GACHA_COST - 1), 'poor')
   assert.equal(extraGachaState(true, true, 100), 'drawn')
 })
+
+import { questsOf, questSummary, ticketErrorMessage, ticketNote } from '../src/home/homeModel.ts'
+
+test('questsOf: 配信タスク1つ・合計15分・2教科。配信タスクがない日は出さない', () => {
+  const T = (o: Record<string, unknown>) => ({ id: 'a', subject: '英語', title: 't', estimatedMinutes: null, isFree: false, completedAt: null, ...o }) as never
+  const q0 = questsOf({ tasks: [T({})], tags: [], timerSeconds: 0, timerSubjects: [] })
+  assert.deepEqual(q0.map((q) => q.key), ['assigned', 'minutes', 'subjects'])
+  assert.equal(questSummary(q0), '0 / 3')
+  const q1 = questsOf({ tasks: [T({ completedAt: '2026-10-09T01:00:00Z' })], tags: [{ id: 'g', subject: '数学', recordedAt: '2026-10-09T02:00:00Z' }], timerSeconds: 15 * 60 + 5, timerSubjects: [] })
+  assert.equal(questSummary(q1), '3 / 3')
+  assert.equal(q1[1].progress, '15 / 15分')
+  const q2 = questsOf({ tasks: [T({ isFree: true, completedAt: 'x' })], tags: [], timerSeconds: 14 * 60 + 59, timerSubjects: ['英語'] })
+  assert.deepEqual(q2.map((q) => q.key), ['minutes', 'subjects'], '自由登録だけの日は、配信タスクの項目を出さない')
+  assert.equal(q2[0].progress, '14 / 15分')
+  assert.equal(q2[1].done, false, '同じ教科は1教科と数える')
+})
+
+test('ticketNote・ticketErrorMessage', () => {
+  const t = { balance: 0, nextGrantOn: '2026-10-12', canProtectToday: false, canProtectYesterday: false }
+  assert.ok(ticketNote(t).includes('次の1枚'))
+  assert.ok(ticketNote({ ...t, balance: 1, canProtectYesterday: true }).includes('昨日'))
+  assert.ok(ticketNote({ ...t, balance: 1, canProtectToday: true }).includes('今日'))
+  assert.ok(ticketNote({ ...t, balance: 2 }).includes('毎週月曜'))
+  assert.ok(ticketErrorMessage(new Error('no_ticket')).includes('ありません'))
+  assert.ok(ticketErrorMessage(new Error('cannot_protect')).includes('つながりません'))
+})

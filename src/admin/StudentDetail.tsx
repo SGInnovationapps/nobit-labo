@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { buildBand, dateLabel, jstDate, timeLabel } from '../home/homeModel'
 import { RecordBand } from '../home/RecordBand'
 import { gradeLabel } from '../lib/steps'
-import { addSupportComment, deleteSupportComment, loadStudentDetail } from './adminApi'
+import { addSupportComment, deleteSupportComment, loadStudentDetail, sendSeen } from './adminApi'
 import type { StudentDetail } from './adminApi'
-import { COMMENT_MAX, commentError, lastStudyLabel, monthDays, STATE_TEXT, stateOf, subjectBreakdown, weeklyDays } from './studentModel'
+import { COMMENT_MAX, commentError, lastStudyLabel, monthDays, STATE_TEXT, stateOf, subjectBreakdown, SUPPORT_TEMPLATES, weeklyDays } from './studentModel'
 
 type ViewProps = {
   detail: StudentDetail
@@ -15,12 +15,13 @@ type ViewProps = {
   error: string | null
   onBack: () => void
   onSend: (body: string) => void
+  onSeen?: () => void
   onDelete: (id: string) => void
 }
 
 const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
 
-export function StudentDetailView({ detail, today, canComment, busy, error, onBack, onSend, onDelete }: ViewProps) {
+export function StudentDetailView({ detail, today, canComment, busy, error, onBack, onSend, onSeen, onDelete }: ViewProps) {
   const { student: s } = detail
   const [body, setBody] = useState('')
   const [shown, setShown] = useState<string | null>(null)
@@ -119,6 +120,22 @@ export function StudentDetailView({ detail, today, canComment, busy, error, onBa
               }
             }}
           >
+            <div className="adm-seen-row">
+              <button type="button" className="btn btn-primary" disabled={busy || detail.seenToday || s.activityToday === 0} onClick={() => onSeen?.()}>
+                {detail.seenToday ? '今日は見たよ済み' : '見たよ'}
+              </button>
+              <p className="adm-sub">
+                {s.activityToday === 0 ? '今日の記録が付いたら、1タップで送れます。' : '生徒のホームに「見たよ」が届きます（1日1回）。'}
+              </p>
+            </div>
+            <fieldset className="adm-templates">
+              <legend>定型文を選んで、編集して送る</legend>
+              <div className="adm-template-list">
+                {SUPPORT_TEMPLATES.map((t) => (
+                  <button type="button" key={t} className="adm-template" onClick={() => { setBody(t); setShown(null) }}>{t}</button>
+                ))}
+              </div>
+            </fieldset>
             <div className="field">
               <label htmlFor="support-body">
                 生徒に届く、アプリ内のコメント
@@ -142,7 +159,7 @@ export function StudentDetailView({ detail, today, canComment, busy, error, onBa
               <li className="adm-row adm-comment" key={c.id}>
                 <div>
                   <p className="adm-sub num">{dateLabel(jstDate(c.createdAt))}　{timeLabel(c.createdAt)}</p>
-                  <p className="adm-comment-body">{c.body}</p>
+                  <p className="adm-comment-body">{c.kind === 'seen' ? '見たよ' : c.body}</p>
                 </div>
                 {c.mine && (
                   <div className="adm-row-actions">
@@ -231,6 +248,7 @@ export default function StudentDetailPage({ clubId, studentId, myId, canComment,
       error={actionError}
       onBack={onBack}
       onSend={(body) => void run(() => addSupportComment(clubId, studentId, myId, body))}
+      onSeen={() => void run(async () => { await sendSeen(studentId) })}
       onDelete={(id) => void run(() => deleteSupportComment(id))}
     />
   )

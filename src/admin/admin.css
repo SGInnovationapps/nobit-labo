@@ -217,3 +217,38 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .msn-card > .btn { width: auto; display: inline-flex; justify-content: flex-start; padding-left: 0; }
 .alert-run { margin: 4px 0 12px; font-size: 14px; }
 .alert-run-warn { color: #b4313d; font-weight: 700; }
+
+/* v1.7 ②：一括承認 */
+.adm-bulk { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0 12px; border-bottom: 1px solid var(--line, #E3E8EF); }
+.adm-check { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.adm-check input { width: 22px; height: 22px; }
+.adm-check-row { margin: -6px 0 -2px; min-width: 44px; }
+.adm-bulk .btn { width: auto; }
+
+/* v1.7 ③：アラートの1行化 */
+.alert-line-name { margin-left: 10px; font-size: 13px; font-weight: 400; color: #5B6679; }
+.alert-reasons { list-style: none; margin: 4px 0 0; padding: 0; }
+.alert-reasons .alert-reason { margin: 2px 0; }
+.adm-notice .btn-link { margin-left: 12px; }
+.btn-link { display: inline-block; min-height: 44px; padding: 0 6px; background: none; border: 0; color: #5A45C9; font: inherit; text-decoration: underline; cursor: pointer; }
+
+/* v1.7 ③：スマホ向けの09、見たよ、定型文 */
+.adm-weeksum { padding: 8px 0 12px; }
+.adm-week-main { margin: 0; font-size: 18px; line-height: 1.6; }
+.adm-idle { padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.adm-idle h2 { margin: 0 0 8px; font-size: 16px; }
+.adm-idle-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.adm-idle-item { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; width: 100%; min-height: 44px; padding: 10px 0; border: 0; border-top: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.adm-idle-list li:first-child .adm-idle-item { border-top: 0; }
+.adm-idle-item .adm-sub { margin: 0; }
+.adm-seen-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+.adm-seen-row .btn { width: auto; min-width: 160px; }
+.adm-seen-row .adm-sub { margin: 0; }
+.adm-templates { margin: 0 0 12px; padding: 0; border: 0; }
+.adm-templates legend { padding: 0; margin-bottom: 6px; font-size: 14px; color: #5B6679; }
+.adm-template-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.adm-template { min-height: 44px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; text-align: left; }
+.adm-template:hover { border-color: var(--ink); }
+@media (max-width: 720px) {
+  .adm-row-actions .btn { width: 100%; }
+}

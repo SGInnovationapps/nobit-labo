@@ -19,6 +19,7 @@ import type { Applicant } from '../src/admin/applicants'
 
 const noop = () => undefined
 const apps: Applicant[] = [
+  { membershipId: '5', userId: 'u5', displayName: 'ジャイ子', grade: 7, status: 'pending', createdAt: '2026-10-09T01:00:00Z', reviewedAt: null, consentedVersions: [1] },
   { membershipId: '1', userId: 'u1', displayName: 'ノビ太', grade: 8, status: 'pending', createdAt: '2026-10-09T00:51:00Z', reviewedAt: null, consentedVersions: [1] },
   { membershipId: '2', userId: 'u2', displayName: 'しずか', grade: 9, status: 'pending', createdAt: '2026-10-08T10:20:00Z', reviewedAt: null, consentedVersions: [] },
   { membershipId: '3', userId: 'u3', displayName: null, grade: null, status: 'pending', createdAt: '2026-10-08T09:00:00Z', reviewedAt: null, consentedVersions: [1] },
@@ -63,7 +64,7 @@ const students: StudentRow[] = [
   stu({ displayName: 'ジャイ子', grade: 7, assignedDone: 1, activityToday: 1, currentDays: 8, longestDays: 12, lastAchievedDate: D(0), activity: act14([1,2,1,1,2,3,1,2,2,1,1,2,3,1]) }),
   stu({ displayName: 'デキ杉', grade: 11, assignedDone: 2, activityToday: 2, currentDays: 21, longestDays: 21, lastAchievedDate: D(0), activity: act14([2,3,2,3,3,2,2,3,3,2,3,3,2,3]) }),
 ]
-const sboard = { restDates: [] as string[], eventDates: [] as string[], gapRule: { enabled: true, thresholdDays: 3 }, students, clubActivity: [3,5,6,8,9,7,4,8,10,9,11,12,10,9].map((c, i) => ({ date: D(13 - i), count: c })) }
+const sboard = { restDates: [] as string[], eventDates: [] as string[], gapRule: { enabled: true, thresholdDays: 3 }, seenToday: [] as string[], studentRest: {} as Record<string, string[]>, students, clubActivity: [3,5,6,8,9,7,4,8,10,9,11,12,10,9].map((c, i) => ({ date: D(13 - i), count: c })) }
 const detail = {
   student: students[3],
   studyDates: Array.from({ length: 60 }, (_, i) => D(i)).filter((_, i) => i % 7 !== 4 && i % 11 !== 3),
@@ -73,7 +74,9 @@ const detail = {
     { id: '3', title: '漢字ドリル p.12', subject: '国語', completedAt: '2026-10-07T10:10:00Z' },
   ],
   subjects: ['数学','数学','英語','英語','英語','国語','理科'],
-  comments: [{ id: 'c1', body: '今週も続けているね。\n数学の文章題、がんばっていました。', createdAt: '2026-10-08T09:00:00Z', mine: true }, { id: 'c2', body: '期末テスト、応援しています。', createdAt: '2026-10-01T09:00:00Z', mine: false }],
+  comments: [{ id: 'c1', body: '今週も続けているね。\n数学の文章題、がんばっていました。', createdAt: '2026-10-08T09:00:00Z', mine: true, kind: 'comment' as const }, { id: 'c3', body: '見たよ', createdAt: '2026-10-08T12:00:00Z', mine: true, kind: 'seen' as const }, { id: 'c2', body: '期末テスト、応援しています。', createdAt: '2026-10-01T09:00:00Z', mine: false, kind: 'comment' as const }],
+  restDates: [] as string[],
+  seenToday: false,
 }
 const dprops = { detail, today: '2026-10-09', canComment: true, busy: false, error: null, onBack: noop, onSend: noop, onDelete: noop }
 const which = location.hash.slice(1)
@@ -81,36 +84,38 @@ const AM = (o: Partial<AdminMission>): AdminMission => ({ id: Math.random().toSt
 const screens: Record<string, React.ReactNode> = {
   missions: <Frame tab="m"><MissionAdminView clubName="［クラブ名］" today="2026-10-10" busy={false} error={null} notice="ミッションを作りました。" onCreate={noop} onCancel={noop} missions={[AM({}), AM({ title: '冬のスタート', status: 'upcoming', startsOn: '2026-10-26', endsOn: '2026-11-08', participants: 0, clubProgress: 0, personalReached: 0, students: [] }), AM({ title: '9月の記録チャレンジ', status: 'ended', startsOn: '2026-09-01', endsOn: '2026-09-30', clubProgress: 130, personalReached: 3 })]} /></Frame>,
   missions_empty: <Frame tab="m"><MissionAdminView clubName="［クラブ名］" today="2026-10-10" busy={false} error={null} notice={null} onCreate={noop} onCancel={noop} missions={[]} /></Frame>,
-  approvals: <Frame tab="a"><ApprovalsView applicants={apps} latestVersion={1} busyId={null} error={null} onApprove={noop} onReject={noop} /></Frame>,
+  approvals: <Frame tab="a"><ApprovalsView applicants={apps} latestVersion={1} busyId={null} error={null} onApprove={noop} onReject={noop} onBulkApprove={noop} bulkBusy={false} /></Frame>,
   clubs: <Frame tab="c"><ClubSettingsView club={club} liffId="2001234567-AbCdEfGh" busy={false} error={null} notice="コピーしました。" onCreate={noop} onRename={noop} onSetFreeTasks={noop} onRegenerate={noop} onCopy={noop} /></Frame>,
   tasks: <Frame tab="t"><TasksView {...tprops} notice="配信しました。" /></Frame>,
   tasks_form: <Frame tab="t"><TasksView {...tprops} creating /></Frame>,
   tasks_empty: <Frame tab="t"><TasksView {...tprops} board={{ tasks: [], doneToday: {}, students: 0 }} /></Frame>,
   students: <Frame tab="s"><StudentsView board={sboard} today="2026-10-09" onOpen={noop} /></Frame>,
+  students_admin: <Frame tab="s"><StudentsView board={{ ...sboard, eventDates: ['2026-10-10'], seenToday: [students[0].userId] }} today="2026-10-09" onOpen={noop} canSeen /></Frame>,
   student_detail: <Frame tab="s"><StudentDetailView {...dprops} /></Frame>,
   student_detail_op: <Frame tab="s"><StudentDetailView {...dprops} canComment={false} detail={{ ...detail, comments: [] }} /></Frame>,
-  events: <Frame tab="e"><ClubEventsView clubName="［クラブ名］" today="2026-10-09" busy={false} error={null} notice="日程を追加しました。" onAdd={noop} onRemove={noop} events={[
+  events: <Frame tab="e"><ClubEventsView clubName="［クラブ名］" today="2026-10-09" busy={false} error={null} notice="日程を追加しました。" onAdd={noop} onAddRange={noop} onRemove={noop} events={[
     { id: 'e1', date: '2026-10-09', kind: 'camp', note: '秋合宿 2日目' },
     { id: 'e2', date: '2026-10-25', kind: 'tournament', note: '県大会' },
     { id: 'e3', date: '2026-11-15', kind: 'trip', note: null },
     { id: 'e4', date: '2026-09-20', kind: 'tournament', note: '地区大会' },
   ]} /></Frame>,
-  events_empty: <Frame tab="e"><ClubEventsView clubName="［クラブ名］" today="2026-10-09" busy={false} error={null} notice={null} onAdd={noop} onRemove={noop} events={[]} /></Frame>,
+  events_empty: <Frame tab="e"><ClubEventsView clubName="［クラブ名］" today="2026-10-09" busy={false} error={null} notice={null} onAdd={noop} onAddRange={noop} onRemove={noop} events={[]} /></Frame>,
   alerts: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice="「記録が空いた」の設定を保存しました。" history={[
     { id: 'h1', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: {}, occurredOn: '2026-10-01', status: 'resolved', contactedAt: '2026-10-01T08:05:00Z', resolvedAt: '2026-10-02T03:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 5 },
     { id: 'h2', studentId: 's2', displayName: 'しずか', grade: 9, kind: 'gap', detail: {}, occurredOn: '2026-09-28', status: 'resolved', contactedAt: '2026-09-28T08:05:00Z', resolvedAt: null, resumedAfterContact: false, template: null, completedAfterContact: 0 },
     { id: 'h3', studentId: 's3', displayName: 'スネ夫', grade: 10, kind: 'streak_broken', detail: {}, occurredOn: '2026-10-08', status: 'contacted', contactedAt: '2026-10-08T08:05:00Z', resolvedAt: null, resumedAfterContact: null, template: null, completedAfterContact: 1 },
     { id: 'h4', studentId: 's4', displayName: 'ジャイ子', grade: 7, kind: 'not_started', detail: {}, occurredOn: '2026-10-09', status: 'resolved', contactedAt: '2026-10-09T09:00:00Z', resolvedAt: '2026-10-09T11:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 2 },
   ]} now={Date.parse('2026-10-10T00:00:00Z')} onSave={noop} rules={ALERT_DEFS.map((d, i) => ({ kind: d.kind, enabled: i !== 5, thresholdDays: d.kind === 'gap' ? 3 : null, sendMethod: 'manual' as const, template: d.defaultTemplate }))} /></Frame>,
-  alertlist: <Frame tab="s"><AlertListView busy={false} error={null} notice="連絡済みに記録しました。" onCopy={noop} onContacted={noop} onDismiss={noop} items={[
-    { id: '1', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: { missing_days: 4 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '今日も、ひとつ育てよう。短いタスクからで大丈夫。', completedAfterContact: null },
+  alertlist: <Frame tab="s"><AlertListView busy={false} error={null} notice="ノビ太さんの文面をコピーし、連絡済みに記録しました。" undoRow={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[
+    { id: '1', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: { missing_days: 4 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '今日も、ひとつ育てよう。短いタスクからで大丈夫。', completedAfterContact: null, lineName: 'のびた' },
+    { id: '1b', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'task_overdue', detail: { overdue: 2 }, occurredOn: '2026-10-08', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '期限が過ぎたタスクがあるよ。まずは1つから。', completedAfterContact: null, lineName: 'のびた' },
     { id: '2', studentId: 's2', displayName: 'しずか', grade: 9, kind: 'streak_milestone', detail: { days: 30 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '7日連続記録達成！おめでとう！', completedAfterContact: null },
-    { id: '3', studentId: 's3', displayName: 'スネ夫', grade: 10, kind: 'streak_broken', detail: { streak_days: 12 }, occurredOn: '2026-10-09', status: 'contacted', contactedAt: '2026-10-10T08:05:00Z', resolvedAt: null, resumedAfterContact: null, template: '今日から、また始めよう。短いタスクからで大丈夫。', completedAfterContact: 0 },
+    { id: '3', studentId: 's3', displayName: 'スネ夫', grade: 10, kind: 'streak_broken', detail: { streak_days: 12 }, occurredOn: '2026-10-09', status: 'contacted', contactedAt: new Date(Date.now() - 5 * 60000).toISOString(), resolvedAt: null, resumedAfterContact: null, template: '今日から、また始めよう。短いタスクからで大丈夫。', completedAfterContact: 0 },
     { id: '4', studentId: 's4', displayName: 'ジャイ子', grade: 7, kind: 'gap', detail: { missing_days: 5 }, occurredOn: '2026-10-05', status: 'resolved', contactedAt: '2026-10-07T08:05:00Z', resolvedAt: '2026-10-08T03:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 3 },
   ]} /></Frame>,
-  alertlist_run_ok: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onCopy={noop} onContacted={noop} onDismiss={noop} items={[]} lastRun={{ ranAt: '2026-10-10T14:05:00Z', ok: true }} now={Date.parse('2026-10-10T14:20:00Z')} /></Frame>,
-  alertlist_run_stale: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onCopy={noop} onContacted={noop} onDismiss={noop} items={[]} lastRun={{ ranAt: '2026-10-10T05:05:00Z', ok: true }} now={Date.parse('2026-10-10T14:20:00Z')} /></Frame>,
-  alertlist_empty: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onCopy={noop} onContacted={noop} onDismiss={noop} items={[]} /></Frame>,
+  alertlist_run_ok: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[]} lastRun={{ ranAt: '2026-10-10T14:05:00Z', ok: true }} now={Date.parse('2026-10-10T14:20:00Z')} /></Frame>,
+  alertlist_run_stale: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[]} lastRun={{ ranAt: '2026-10-10T05:05:00Z', ok: true }} now={Date.parse('2026-10-10T14:20:00Z')} /></Frame>,
+  alertlist_empty: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[]} /></Frame>,
   alerts_empty: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice={null} history={[]} now={0} onSave={noop} rules={[]} /></Frame>,
   login: <LoginForm />,
 }

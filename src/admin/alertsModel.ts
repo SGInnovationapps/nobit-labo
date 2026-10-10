@@ -21,7 +21,7 @@ type Def = { kind: AlertKind; label: string; condition: string; defaultTemplate:
 
 /** 仕様書 6章の表の順。provisional は［仮］の条件 */
 export const ALERT_DEFS: ReadonlyArray<Def> = [
-  { kind: 'not_started', label: '未着手', condition: 'その日のタスクがまだ1件も完了していない', defaultTemplate: '今日のクエスト、あと1つだよ！', provisional: false },
+  { kind: 'not_started', label: '未着手', condition: 'その日のタスクがまだ1件も完了していない（初期値はオフ）', defaultTemplate: '今日のクエスト、あと1つだよ！', provisional: false },
   { kind: 'gap', label: '記録が空いた', condition: '記録のない日が続いた（休息日は数えない）', defaultTemplate: '今日も、ひとつ育てよう。短いタスクからで大丈夫。', provisional: false },
   { kind: 'streak_broken', label: '連続記録が途切れた', condition: '連続記録が途切れた（休息日を除く）', defaultTemplate: '今日から、また始めよう。短いタスクからで大丈夫。', provisional: true },
   { kind: 'task_overdue', label: '配信タスクが未完了', condition: '配信タスクの期限を過ぎても未完了', defaultTemplate: '期限が過ぎたタスクがあるよ。まずは1つから。', provisional: true },

@@ -6,16 +6,18 @@ import type { Tab } from './TabBar'
 import { FocusDoneSheet } from './FocusDoneSheet'
 import { ResumeView } from './Resume'
 import { FocusPanel } from './FocusPanel'
+import { QuestPanel } from './QuestPanel'
 import { TagPanel } from './TagPanel'
+import { TicketPanel } from './TicketPanel'
 import { TimerPanel } from './TimerPanel'
 import { TimerSheet } from './TimerSheet'
 import {
   cancelStudyTimer, completeTask, markResumeSeen, loadHome, pauseFocusSession, recordStudyTag, resumeFocusSession,
-  setStudyContent, startFocusSession, startStudyTimer, stopStudyTimer,
+  setStudyContent, startFocusSession, startStudyTimer, stopStudyTimer, useRestTicket,
 } from './homeApi'
 import type { HomeData, StudyResult } from './homeApi'
 import {
-  buildBand, cheerOf, shortFirst, coinNote, dateLabel, focusNote, dayState, recordedTime, shouldShowSheet, sheetLabel, sortTasks,
+  addDays, buildBand, cheerOf, questsOf, shortFirst, ticketErrorMessage, coinNote, dateLabel, focusNote, dayState, recordedTime, shouldShowSheet, sheetLabel, sortTasks,
   STATE_LABEL, SUBJECTS, timeLabel,
 } from './homeModel'
 
@@ -52,6 +54,8 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
   const [resumeSeen, setResumeSeen] = useState(false)
   const [timerBusy, setTimerBusy] = useState(false)
   const [timerError, setTimerError] = useState<string | null>(null)
+  const [ticketBusy, setTicketBusy] = useState(false)
+  const [ticketError, setTicketError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -70,6 +74,24 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
+
+  async function onUseTicket(which: 'today' | 'yesterday') {
+    if (!data) return
+    setTicketBusy(true)
+    setTicketError(null)
+    try {
+      await useRestTicket(which === 'today' ? data.today : addDays(data.today, -1))
+      setResumeSeen(true)
+      void markResumeSeen()
+      await load()
+    } catch (e) {
+      console.error(e)
+      setTicketError(ticketErrorMessage(e))
+      await load()
+    } finally {
+      setTicketBusy(false)
+    }
+  }
 
   const noticeOf = (r: StudyResult) => `記録しました　${coinNote(r.coinsGranted)}`.trim()
 
@@ -239,6 +261,10 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
         longestDays={data.resume.longestDays}
         badgeCount={data.resume.badgeCount}
         tasks={shortFirst(data.tasks)}
+        tickets={data.tickets}
+        ticketBusy={ticketBusy}
+        ticketError={ticketError}
+        onUseTicket={(w) => void onUseTicket(w)}
         onStart={() => { setResumeSeen(true); void markResumeSeen() }}
       />
     ) : (
@@ -260,6 +286,9 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
       focusOpen={focusOpen}
       timerBusy={timerBusy}
       timerError={timerError}
+      ticketBusy={ticketBusy}
+      ticketError={ticketError}
+      onUseTicket={(w) => void onUseTicket(w)}
       onComplete={(id, title) => void onComplete(id, title)}
       onCloseDone={() => setDone(null)}
       onGacha={() => { setDone(null); onGacha?.() }}
@@ -298,6 +327,9 @@ export type HomeViewProps = {
   focusOpen: boolean
   timerBusy: boolean
   timerError: string | null
+  ticketBusy?: boolean
+  ticketError?: string | null
+  onUseTicket?: (which: 'today' | 'yesterday') => void
   onComplete: (id: string, title: string) => void
   onCloseDone: () => void
   onGacha: () => void
@@ -427,11 +459,17 @@ export function HomeView(p: HomeViewProps) {
 
       {data.support && (
         <p className="support-line">
-          <span className="support-from">クラブから</span>{data.support.body}
+          <span className="support-from">{data.support.authorName ?? 'クラブの管理者'}さんから</span>{data.support.kind === 'seen' ? '見たよ' : data.support.body}
         </p>
       )}
 
       <p className="coin-line">コイン <span className="num coin-num">{data.coins}</span></p>
+
+      <QuestPanel quests={questsOf({ tasks, tags: data.tags, timerSeconds: data.timerSeconds, timerSubjects: data.timerSubjects })} />
+
+      {data.tickets && (
+        <TicketPanel info={data.tickets} busy={p.ticketBusy ?? false} error={p.ticketError ?? null} onUse={(w) => p.onUseTicket?.(w)} />
+      )}
 
       {!timerRunning && (
         <section className="section" aria-label="15分集中">

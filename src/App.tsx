@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { forgetInvite, readInvite, rememberInvite } from './lib/invite'
 import { signInWithLine } from './lib/lineLogin'
 import { InviteError, joinClub, loadSnapshot, recordConsent, saveProfile } from './lib/onboardingApi'
-import { deriveStep, gradeLabel, progressOf } from './lib/steps'
+import { deriveStep, progressOf } from './lib/steps'
 import type { Snapshot } from './lib/steps'
 import { ConsentStep } from './screens/ConsentStep'
 import { Notice } from './screens/Notice'
@@ -124,11 +124,23 @@ export default function App() {
   const step = deriveStep(snapshot)
   const clubName = snapshot.membership?.clubName ?? null
 
-  if (step.name === 'approved' && snapshot.membership) {
+  if ((step.name === 'approved' || step.name === 'waiting') && snapshot.membership) {
+    const pending = step.name === 'waiting'
     return (
       <div className="shell">
+        {pending && (
+          <p className="pending-note" role="status">
+            <strong>承認待ち</strong>　クラブ管理者が確認するまでの間も、記録できます。記録は残ります。承認されるまで、クラブの管理者には見えません。
+            <button type="button" className="btn-link" onClick={() => void run(async () => undefined)} disabled={busy}>状態を更新する</button>
+          </p>
+        )}
         {tab === 'コレクション' ? (
           <Collection displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} autoGacha={gachaRequest} onAutoGacha={() => setGachaRequest(false)} />
+        ) : tab === 'ミッション' && pending ? (
+          <Notice title="ミッションは承認後に使えます">
+            <p>クラブ管理者が承認すると、クラブのミッションに参加できます。それまでも、記録は残ります。</p>
+            <button type="button" className="btn btn-secondary" onClick={() => setTab('ホーム')}>ホームへ戻る</button>
+          </Notice>
         ) : tab === 'ミッション' ? (
           <Missions onTab={setTab} />
         ) : tab === 'ふりかえり' ? (
@@ -188,26 +200,6 @@ export default function App() {
           error={actionError}
           onSubmit={(name, grade) => void run(() => saveProfile(snapshot.userId, name, grade))}
         />
-      )}
-
-      {step.name === 'waiting' && (
-        <Notice
-          status="承認待ち"
-          title="クラブ管理者の確認を待っています"
-          action={{
-            label: '状態を更新する',
-            busy,
-            onClick: () => void run(async () => undefined),
-          }}
-        >
-          <p>{clubName ?? 'クラブ'}の管理者が確認すると、NOBIT!を使えるようになります。</p>
-          <dl className="facts" style={{ marginTop: 20 }}>
-            <dt>表示名</dt>
-            <dd>{snapshot.displayName}</dd>
-            <dt>学年</dt>
-            <dd>{gradeLabel(snapshot.grade)}</dd>
-          </dl>
-        </Notice>
       )}
 
     </Shell>

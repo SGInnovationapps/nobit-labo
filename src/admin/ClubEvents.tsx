@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { dateLabel, jstDate } from '../home/homeModel'
 import type { Club } from './adminApi'
-import { addClubEvent, loadClubEvents, removeClubEvent } from './adminApi'
-import { dateProblem, EVENT_KINDS, eventErrorMessage, kindLabel, noteProblem, NOTE_MAX, splitEvents } from './eventsModel'
+import { addClubEvent, addClubEventsRange, loadClubEvents, removeClubEvent } from './adminApi'
+import { dateProblem, EVENT_KINDS, eventErrorMessage, kindLabel, noteProblem, NOTE_MAX, rangeDays, rangeProblem, splitEvents } from './eventsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
 
 type ViewProps = {
@@ -13,16 +13,19 @@ type ViewProps = {
   error: string | null
   notice: string | null
   onAdd: (date: string, kind: EventKind, note: string) => void
+  onAddRange: (from: string, to: string, kind: EventKind, note: string) => void
   onRemove: (id: string) => void
 }
 
-export function ClubEventsView({ clubName, events, today, busy, error, notice, onAdd, onRemove }: ViewProps) {
+export function ClubEventsView({ clubName, events, today, busy, error, notice, onAdd, onAddRange, onRemove }: ViewProps) {
   const [date, setDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [kind, setKind] = useState<EventKind>('tournament')
   const [note, setNote] = useState('')
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const { upcoming, past } = splitEvents(events, today)
-  const problem = date === '' ? null : dateProblem(date, today, events)
+  const isRange = endDate !== ''
+  const problem = date === '' ? null : isRange ? rangeProblem(date, endDate, today) : dateProblem(date, today, events)
   const nProblem = noteProblem(note)
   const canAdd = date !== '' && !problem && !nProblem && !busy
 
@@ -42,8 +45,12 @@ export function ClubEventsView({ clubName, events, today, busy, error, notice, o
         <h2 id="ev-add">日程を追加する</h2>
         <div className="adm-inline-form">
           <div className="field">
-            <label htmlFor="ev-date">日付</label>
+            <label htmlFor="ev-date">{isRange ? '開始日' : '日付'}</label>
             <input id="ev-date" type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="ev-end">終了日（合宿など、続く日はここまで）</label>
+            <input id="ev-end" type="date" value={endDate} min={date || today} onChange={(e) => setEndDate(e.target.value)} />
           </div>
           <fieldset className="choices adm-choices">
             <legend className="adm-sr">種別</legend>
@@ -60,8 +67,14 @@ export function ClubEventsView({ clubName, events, today, busy, error, notice, o
             <label htmlFor="ev-note">メモ（任意・{NOTE_MAX}文字まで）</label>
             <input id="ev-note" type="text" value={note} placeholder="例：県大会" onChange={(e) => setNote(e.target.value)} />
           </div>
-          <button type="button" className="btn btn-primary" disabled={!canAdd} onClick={() => { onAdd(date, kind, note); setDate(''); setNote('') }}>
-            追加する
+          <button type="button" className="btn btn-primary" disabled={!canAdd} onClick={() => {
+            if (isRange) onAddRange(date, endDate, kind, note)
+            else onAdd(date, kind, note)
+            setDate('')
+            setEndDate('')
+            setNote('')
+          }}>
+            {isRange && !problem ? `${rangeDays(date, endDate)}日分をまとめて追加する` : '追加する'}
           </button>
         </div>
         {(problem || nProblem) && <p className="error" role="alert">{problem ?? nProblem}</p>}
@@ -148,7 +161,7 @@ export default function ClubEvents({ club }: { club: Club }) {
     try {
       await action()
       await reload()
-      setNotice(done)
+      if (done) setNotice(done)
     } catch (e) {
       console.error(e)
       setError(eventErrorMessage(e))
@@ -167,6 +180,12 @@ export default function ClubEvents({ club }: { club: Club }) {
       error={error}
       notice={notice}
       onAdd={(d, k, n) => void run(() => addClubEvent(club.id, d, k, n), '日程を追加しました。')}
+      onAddRange={(f, t, k, n) =>
+        void run(async () => {
+          const r = await addClubEventsRange(club.id, f, t, k, n)
+          setNotice(r.skipped > 0 ? `${r.added}日分を追加しました（登録済みの${r.skipped}日は飛ばしました）。` : `${r.added}日分を追加しました。`)
+        }, '')
+      }
       onRemove={(id) => void run(() => removeClubEvent(id), '日程を削除しました。')}
     />
   )

@@ -242,3 +242,68 @@ export function recordedTime(tags: ReadonlyArray<TagRecord>, subject: string): s
   const t = tags.find((x) => x.subject === subject)
   return t ? timeLabel(t.recordedAt) : null
 }
+
+
+// ---- v1.7 ④：デイリークエストと休息チケット ----
+
+export const QUEST_MINUTES = 15
+export const QUEST_SUBJECTS = 2
+
+export type Quest = { key: 'assigned' | 'minutes' | 'subjects'; label: string; done: boolean; progress: string }
+
+/**
+ * デイリークエスト［仮］：配信タスク1つ・合計15分・2教科。コインは付けない（表示だけ）。
+ * 今日の配信タスクがないときは、その項目を出さない（分母に入れない）。
+ */
+export function questsOf(input: {
+  tasks: ReadonlyArray<HomeTask>
+  tags: ReadonlyArray<TagRecord>
+  /** 今日、終えたタイマーの合計秒数 */
+  timerSeconds: number
+  /** 今日、タイマーで記録した教科 */
+  timerSubjects: ReadonlyArray<string>
+}): Quest[] {
+  const out: Quest[] = []
+  const assigned = input.tasks.filter((t) => !t.isFree)
+  if (assigned.length > 0) {
+    const n = assigned.filter((t) => t.completedAt).length
+    out.push({ key: 'assigned', label: '配信タスクを1つ完了', done: n >= 1, progress: `${Math.min(n, 1)} / 1` })
+  }
+  const minutes = Math.floor(input.timerSeconds / 60)
+  out.push({ key: 'minutes', label: `合計${QUEST_MINUTES}分、学習する`, done: minutes >= QUEST_MINUTES, progress: `${Math.min(minutes, QUEST_MINUTES)} / ${QUEST_MINUTES}分` })
+  const subjects = new Set<string>([
+    ...input.tasks.filter((t) => t.completedAt).map((t) => t.subject),
+    ...input.tags.map((t) => t.subject),
+    ...input.timerSubjects,
+  ])
+  out.push({ key: 'subjects', label: `${QUEST_SUBJECTS}教科を記録`, done: subjects.size >= QUEST_SUBJECTS, progress: `${Math.min(subjects.size, QUEST_SUBJECTS)} / ${QUEST_SUBJECTS}` })
+  return out
+}
+
+export function questSummary(quests: ReadonlyArray<Quest>): string {
+  return `${quests.filter((q) => q.done).length} / ${quests.length}`
+}
+
+export type TicketInfo = {
+  balance: number
+  /** 次に1枚付く日（月曜） */
+  nextGrantOn: string
+  canProtectToday: boolean
+  canProtectYesterday: boolean
+}
+
+/** 休息チケットの使いみちを一文で。使えるときだけ、使える日を返す */
+export function ticketNote(t: TicketInfo): string {
+  if (t.balance === 0) return `次の1枚は ${dateLabel(t.nextGrantOn)} に付きます。`
+  if (t.canProtectYesterday) return '昨日を休息日にして、連続記録を戻せます。学習日には数えません。'
+  if (t.canProtectToday) return '今日を休息日にして、連続記録を守れます。学習日には数えません。'
+  return '連続記録が途切れそうなときに使えます。毎週月曜に1枚、2枚までためられます。'
+}
+
+export function ticketErrorMessage(e: unknown): string {
+  const text = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : ''
+  if (text.includes('no_ticket')) return '休息チケットがありません。'
+  if (text.includes('cannot_protect')) return 'この日は、チケットを使っても連続記録がつながりません。'
+  if (text.includes('date_not_allowed')) return '使えるのは、今日と昨日だけです。'
+  return '使えませんでした。通信を確認して、もう一度お試しください。'
+}

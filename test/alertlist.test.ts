@@ -86,3 +86,52 @@ test('lastRunNote: 動いている・止まっている・失敗・記録なし'
   assert.match(lastRunNote({ ranAt: '2026-10-10T14:05:00Z', ok: false }, now).text, /失敗/)
   assert.equal(lastRunNote(null, now).warn, true)
 })
+
+import { canUndo, contactedToday, guidelineNote, rowsByStudent, sectionsOf } from '../src/admin/alertListModel.ts'
+
+test('rowsByStudent: 生徒ごとに1行。文面は優先度の高いアラートのもの', () => {
+  const rows = rowsByStudent([
+    item({ id: '1', kind: 'task_overdue', detail: { overdue: 1 }, occurredOn: '2026-10-08' }),
+    item({ id: '2', kind: 'gap' }),
+    item({ id: '3', studentId: 't', displayName: 'しずか', kind: 'gap', occurredOn: '2026-10-05' }),
+  ])
+  assert.equal(rows.length, 2)
+  assert.equal(rows[0].studentId, 't', '古いほうが先')
+  const r = rows.find((x) => x.studentId === 's')!
+  assert.deepEqual(r.ids, ['2', '1'], '記録が空いた → 期限切れ の順')
+  assert.ok(r.text.includes('短いタスク'))
+  assert.equal(r.since, '2026-10-08')
+})
+
+test('sectionsOf: お祝い系は「余裕があれば」に分ける', () => {
+  const s = sectionsOf([
+    item({ id: '1', kind: 'gap' }),
+    item({ id: '2', kind: 'streak_milestone', detail: { days: 7 } }),
+    item({ id: '3', studentId: 'u', kind: 'badge_earned', detail: { item: 'x' } }),
+    item({ id: '4', studentId: 'v', status: 'contacted', contactedAt: '2026-10-10T01:00:00Z' }),
+  ])
+  assert.equal(s.open.length, 1)
+  assert.deepEqual(s.open[0].ids, ['1'])
+  assert.equal(s.extra.length, 2)
+  assert.equal(s.contacted.length, 1)
+})
+
+test('canUndo: 30分以内だけ', () => {
+  const t = Date.parse('2026-10-10T01:00:00Z')
+  assert.equal(canUndo('2026-10-10T00:40:00Z', t), true)
+  assert.equal(canUndo('2026-10-10T00:20:00Z', t), false)
+  assert.equal(canUndo(null, t), false)
+})
+
+test('contactedToday・guidelineNote: 今日（JST）に連絡した人数と、20人の目安', () => {
+  const its = [
+    item({ id: '1', studentId: 'a', contactedAt: '2026-10-10T01:00:00Z', status: 'contacted' }),
+    item({ id: '2', studentId: 'a', contactedAt: '2026-10-10T01:00:00Z', status: 'contacted' }),
+    item({ id: '3', studentId: 'b', contactedAt: '2026-10-09T10:00:00Z', status: 'contacted' }), // JSTでは10/9の19時
+    item({ id: '4', studentId: 'c', contactedAt: '2026-10-09T15:30:00Z', status: 'contacted' }), // JSTでは10/10の0:30
+  ]
+  assert.equal(contactedToday(its, '2026-10-10'), 2)
+  assert.equal(guidelineNote(19).warn, false)
+  assert.equal(guidelineNote(20).warn, true)
+  assert.ok(guidelineNote(20).text.includes('push'))
+})

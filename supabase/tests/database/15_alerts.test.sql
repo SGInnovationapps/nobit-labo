@@ -55,7 +55,8 @@ select is((select count(*)::int from public.alerts where student_id = '00000000-
 select private.generate_alerts((private.jst_today()::timestamp + interval '11 hours') at time zone 'Asia/Tokyo');
 select is((select count(*)::int from public.alerts where student_id = '00000000-0000-0000-0000-0000000000c1' and kind in ('gap', 'streak_broken')), 1, '何度生成しても 1 件');
 
--- 夕方（18 時）：未着手
+-- 夕方（18 時）：未着手（v1.7：初期値はオフなので、オンにして確かめる）
+update public.alert_rules set enabled = true where kind = 'not_started';
 select private.generate_alerts((private.jst_today()::timestamp + interval '18 hours') at time zone 'Asia/Tokyo');
 select is((select count(*)::int from public.alerts where student_id = '00000000-0000-0000-0000-0000000000c4' and kind = 'not_started'), 1, '16 時以降は未着手を出す');
 

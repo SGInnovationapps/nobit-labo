@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { dateProblem, eventErrorMessage, kindLabel, noteProblem, splitEvents } from '../src/admin/eventsModel.ts'
+import { dateProblem, eventErrorMessage, kindLabel, noteProblem, rangeDays, rangeProblem, splitEvents } from '../src/admin/eventsModel.ts'
 import type { ClubEvent } from '../src/admin/eventsModel.ts'
 import { buildBand } from '../src/home/homeModel.ts'
 import { calendarCells, periodOf } from '../src/home/reflectModel.ts'
@@ -37,4 +37,15 @@ test('休息日は記録の帯とカレンダーで rest になる。記録が�
   assert.deepEqual(cells.map((c) => c.kind), ['none', 'rest', 'done', 'none'])
   const cal = calendarCells(periodOf('week', '2026-10-09'), [], '2026-10-09', ['2026-10-11'])
   assert.equal(cal.find((c) => c?.date === '2026-10-11')?.kind, 'rest')
+})
+
+test('rangeDays / rangeProblem: 期間の検証（開始日・終了日を含む、最大31日）', () => {
+  assert.equal(rangeDays('2026-10-10', '2026-10-12'), 3)
+  assert.equal(rangeDays('2026-10-10', '2026-10-10'), 1)
+  assert.equal(rangeProblem('2026-10-10', '2026-10-12', '2026-10-09'), null)
+  assert.match(rangeProblem('2026-10-08', '2026-10-12', '2026-10-09') ?? '', /今日より前/)
+  assert.match(rangeProblem('2026-10-12', '2026-10-10', '2026-10-09') ?? '', /終了日/)
+  assert.equal(rangeProblem('2026-10-10', '2026-11-09', '2026-10-09'), null) // 31日
+  assert.match(rangeProblem('2026-10-10', '2026-11-10', '2026-10-09') ?? '', /31日/)
+  assert.match(eventErrorMessage(new Error('range_too_long')), /31日/)
 })

@@ -58,6 +58,13 @@ export type AttentionOpts = {
   gapRule?: GapRule
   /** 大会・遠征・合宿の日（空いた日に数えない） */
   restDates?: ReadonlyArray<string>
+  /** 生徒ごとの、休息チケットで休息日にした日（空いた日に数えない） */
+  restByStudent?: Readonly<Record<string, ReadonlyArray<string>>>
+}
+
+/** 生徒ひとりぶんの休息日（クラブ共通＋休息チケット） */
+export function restFor(userId: string, opts: AttentionOpts): string[] {
+  return [...(opts.restDates ?? []), ...(opts.restByStudent?.[userId] ?? [])]
 }
 
 /** 最後に達成した日の翌日から昨日までの、休息日でない日の数。記録がなければ null */
@@ -74,7 +81,7 @@ export type Attention = { rank: 0 | 1 | 2 | 3; reason: string | null }
 /** 対応が必要な順。0 = 記録が空いている、1 = 今日は未着手、2 = 一部完了、3 = すべて完了 */
 export function attentionOf(s: StudentRow, today: string, opts: AttentionOpts = {}): Attention {
   const rule = opts.gapRule ?? DEFAULT_GAP_RULE
-  const missing = missingDays(s.lastAchievedDate, today, opts.restDates)
+  const missing = missingDays(s.lastAchievedDate, today, restFor(s.userId, opts))
   const state = stateOf(s)
   if (missing === null) return state === 'all' ? { rank: 3, reason: null } : { rank: 0, reason: 'まだ記録がありません' }
   if (rule.enabled && missing >= rule.thresholdDays && state !== 'all') return { rank: 0, reason: `記録が${missing}日空いています（休息日は数えません）` }
@@ -86,7 +93,7 @@ export function attentionOf(s: StudentRow, today: string, opts: AttentionOpts = 
 export function sortByAttention(list: ReadonlyArray<StudentRow>, today: string, opts: AttentionOpts = {}): StudentRow[] {
   const key = (s: StudentRow) => {
     const a = attentionOf(s, today, opts)
-    const gap = missingDays(s.lastAchievedDate, today, opts.restDates)
+    const gap = missingDays(s.lastAchievedDate, today, restFor(s.userId, opts))
     // 同じ段の中では、空いた日数が長い順（記録なしが最も長い）
     return { rank: a.rank, gap: gap === null ? Number.MAX_SAFE_INTEGER : gap }
   }
@@ -186,3 +193,43 @@ export function commentError(body: string): string | null {
   if (t.length > COMMENT_MAX) return `${COMMENT_MAX}文字までです`
   return null
 }
+
+
+// ---- v1.7 ③：スマホ向けの09（今週のまとめ・しばらく記録がない生徒）と、応援の定型文 ----
+
+/** その週の月曜日（週は月〜日［仮］） */
+export function weekStartOf(today: string): string {
+  const [y, m, d] = today.split('-').map(Number)
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay() // 0 = 日
+  return addDays(today, -((dow + 6) % 7))
+}
+
+export type WeekSummary = { studied: number; total: number; weekStart: string; restDates: string[] }
+
+/** 今週（月曜〜今日）に学習した生徒の数と、今週の休息日（大会・遠征・合宿）。学習した日は完了数が1以上の日 */
+export function weekSummary(students: ReadonlyArray<StudentRow>, today: string, eventDates: ReadonlyArray<string> = []): WeekSummary {
+  const start = weekStartOf(today)
+  const end = addDays(start, 6)
+  const studied = students.filter((s) => s.activity.some((a) => a.count > 0 && a.date >= start && a.date <= today)).length
+  return {
+    studied,
+    total: students.length,
+    weekStart: start,
+    restDates: eventDates.filter((d) => d >= start && d <= end).sort(),
+  }
+}
+
+/** しばらく記録がない生徒（対応が必要な順の先頭の段）。連絡が必要な人から並ぶ */
+export function idleStudents(students: ReadonlyArray<StudentRow>, today: string, opts: AttentionOpts = {}): StudentRow[] {
+  return sortByAttention(students, today, opts).filter((s) => attentionOf(s, today, opts).rank === 0)
+}
+
+/** 応援の定型文。選んで編集できる。できなかったことには触れない［仮］ */
+export const SUPPORT_TEMPLATES: ReadonlyArray<string> = [
+  '今日もおつかれさま。ひとつ育ったね。',
+  '続けているところ、ちゃんと見ているよ。',
+  '今週もがんばっているね。この調子でいこう。',
+  '短い時間でも、記録できたのがえらいよ。',
+  '無理せず、できる日にやろう。待っているよ。',
+  '大会に向けて、体も頭も育てていこう。',
+]

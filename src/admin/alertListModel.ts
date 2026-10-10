@@ -20,6 +20,8 @@ export type AlertItem = {
   template: string | null
   /** 連絡後7日間の完了タスク数 */
   completedAfterContact: number | null
+  /** 生徒の LINE の表示名（取れているときだけ） */
+  lineName?: string | null
 }
 
 /** 終了前日用の既定文面 [仮] */
@@ -75,6 +77,7 @@ export function outcomeText(i: AlertItem): string | null {
 
 export function alertErrorMessage(e: unknown): string {
   const text = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : ''
+  if (text.includes('clipboard')) return '文面をコピーできませんでした。表示している文面を選んで、コピーしてください。連絡済みにはしていません。'
   if (text.includes('not_open')) return 'このアラートは、すでに対応済みです。一覧を更新しました。'
   if (text.includes('forbidden')) return 'アラートを扱えるのは運営だけです。'
   return '処理できませんでした。通信を確認して、もう一度お試しください。'
@@ -130,4 +133,98 @@ export function lastRunNote(last: LastRun, nowMs: number): { text: string; warn:
   if (!last.ok) return { text: `自動生成が失敗しました（最後の実行 ${hhmm}）。この画面を開いたときは生成します。`, warn: true }
   if (nowMs - t > 3 * 3600_000) return { text: `自動生成が止まっているようです（最後の実行 ${hhmm}）。この画面を開いたときは生成します。`, warn: true }
   return { text: `自動生成：1時間おき（最後の実行 ${hhmm}）`, warn: false }
+}
+
+
+// ---- v1.7 ③：生徒ごとの1行 ----
+
+/** お祝い系。アプリ内でも伝えるので、管理画面では「余裕があれば」に分ける */
+export const CELEBRATION_KINDS: ReadonlyArray<AlertKind> = ['streak_milestone', 'badge_earned', 'club_mission']
+export const isCelebration = (k: AlertKind): boolean => CELEBRATION_KINDS.includes(k)
+
+/** 文面に使うアラートの優先順（先にあるほど優先）［仮］ */
+const PRIORITY: ReadonlyArray<AlertKind> = ['streak_broken', 'gap', 'task_overdue', 'not_started', 'club_mission', 'badge_earned', 'streak_milestone']
+
+/** 手で送る件数の目安（1日）。超える日が続くなら push への切り替えを判断する［仮］ */
+export const DAILY_GUIDELINE = 20
+
+/** 連絡済みの取り消しができる時間（DB と同じ30分） */
+export const UNDO_MINUTES = 30
+
+export type StudentAlertRow = {
+  studentId: string
+  displayName: string | null
+  lineName: string | null
+  grade: number | null
+  items: AlertItem[]
+  /** 公式LINE に貼る文面（優先度の最も高いアラートのもの） */
+  text: string
+  /** まとめて操作するアラートの id */
+  ids: string[]
+  /** 古い順に並べる基準日 */
+  since: string
+  /** 連絡済みのとき、いちばん新しい連絡の時刻 */
+  contactedAt: string | null
+}
+
+/** 同じ状態のアラートを、生徒ごと1行にまとめる。古い順（連絡済みは連絡の新しい順）に並べる */
+export function rowsByStudent(items: ReadonlyArray<AlertItem>): StudentAlertRow[] {
+  const map = new Map<string, AlertItem[]>()
+  for (const i of items) map.set(i.studentId, [...(map.get(i.studentId) ?? []), i])
+  const rows = [...map.values()].map((list): StudentAlertRow => {
+    const sorted = [...list].sort((a, b) => PRIORITY.indexOf(a.kind) - PRIORITY.indexOf(b.kind))
+    const top = sorted[0]
+    return {
+      studentId: top.studentId,
+      displayName: top.displayName,
+      lineName: top.lineName ?? null,
+      grade: top.grade,
+      items: sorted,
+      text: copyText(top.kind, top.template, top.detail),
+      ids: sorted.map((x) => x.id),
+      since: sorted.reduce((m, x) => (x.occurredOn < m ? x.occurredOn : m), sorted[0].occurredOn),
+      contactedAt: sorted.reduce<string | null>((m, x) => (x.contactedAt && (!m || x.contactedAt > m) ? x.contactedAt : m), null),
+    }
+  })
+  return rows.sort((a, b) => a.since.localeCompare(b.since) || (a.displayName ?? '').localeCompare(b.displayName ?? '', 'ja'))
+}
+
+export type AlertSections = {
+  /** 対応待ち（お祝い系を除く） */
+  open: StudentAlertRow[]
+  /** 余裕があれば（お祝い系の対応待ち） */
+  extra: StudentAlertRow[]
+  contacted: StudentAlertRow[]
+  resolved: StudentAlertRow[]
+}
+
+export function sectionsOf(items: ReadonlyArray<AlertItem>): AlertSections {
+  const open = items.filter((i) => i.status === 'open')
+  return {
+    open: rowsByStudent(open.filter((i) => !isCelebration(i.kind))),
+    extra: rowsByStudent(open.filter((i) => isCelebration(i.kind))),
+    contacted: rowsByStudent(items.filter((i) => i.status === 'contacted')).sort((a, b) => (b.contactedAt ?? '').localeCompare(a.contactedAt ?? '')),
+    resolved: rowsByStudent(items.filter((i) => i.status === 'resolved')),
+  }
+}
+
+/** 押し間違いの取り消しができるか */
+export function canUndo(contactedAt: string | null, nowMs: number): boolean {
+  return contactedAt !== null && nowMs - new Date(contactedAt).getTime() < UNDO_MINUTES * 60_000
+}
+
+/** 今日（JST）連絡した人数 */
+export function contactedToday(items: ReadonlyArray<AlertItem>, today: string): number {
+  const ids = new Set<string>()
+  for (const i of items) {
+    if (i.contactedAt && new Date(new Date(i.contactedAt).getTime() + 9 * 3600_000).toISOString().slice(0, 10) === today) ids.add(i.studentId)
+  }
+  return ids.size
+}
+
+export function guidelineNote(n: number): { text: string; warn: boolean } {
+  if (n >= DAILY_GUIDELINE) {
+    return { text: `今日の連絡 ${n}人（手で送る目安は1日${DAILY_GUIDELINE}人）。この日が続くようなら、自動送信（push）への切り替えを考えるときです。`, warn: true }
+  }
+  return { text: `今日の連絡 ${n}人（手で送る目安は1日${DAILY_GUIDELINE}人）`, warn: false }
 }

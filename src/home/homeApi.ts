@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { HomeTask, TagRecord } from './homeModel'
+import type { HomeTask, TagRecord, TicketInfo } from './homeModel'
 import { addDays, jstDate, needsResume } from './homeModel'
 
 export type HomeData = {
@@ -23,7 +23,12 @@ export type HomeData = {
   /** 今日、教科ボタンで記録したもの（同じ教科は1日1回） */
   tags: TagRecord[]
   /** クラブの管理者からの、最新の応援コメント */
-  support: { body: string; createdAt: string } | null
+  support: { body: string; createdAt: string; kind: 'comment' | 'seen'; authorName: string | null } | null
+  /** 今日、終えたタイマーの合計秒数と教科（デイリークエスト用） */
+  timerSeconds: number
+  timerSubjects: string[]
+  /** 休息チケット（読めなかったときは null） */
+  tickets: TicketInfo | null
 }
 
 export type CompleteResult = {
@@ -57,7 +62,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const monthStart = `${today.slice(0, 7)}-01`
   const activityFrom = monthStart < addDays(today, -29) ? monthStart : addDays(today, -29)
 
-  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes] = await Promise.all([
+  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes, timerDoneRes, ticketRes, usesRes] = await Promise.all([
     supabase
       .from('user_tasks')
       .select('id, completed_at, tasks(title, subject, estimated_minutes, kind)')
@@ -70,12 +75,15 @@ export async function loadHome(clubId: string): Promise<HomeData> {
       .gte('activity_date', activityFrom)
       .lte('activity_date', today),
     supabase.from('clubs').select('allow_free_tasks').eq('id', clubId).maybeSingle(),
-    supabase.from('support_comments').select('body, created_at').order('created_at', { ascending: false }).limit(1),
+    supabase.rpc('my_latest_support'),
     supabase.from('coin_balances').select('balance').maybeSingle(),
     supabase.from('study_records').select('id, subject, content, started_at, focus_target_seconds, paused_at, paused_seconds').is('ended_at', null).maybeSingle(),
     supabase.from('club_events').select('event_date').gte('event_date', activityFrom).lte('event_date', today),
     supabase.from('user_items').select('id', { count: 'exact', head: true }).eq('category', 'badge'),
     supabase.from('study_records').select('id, subject, started_at').eq('kind', 'tag').eq('record_date', today).order('started_at', { ascending: true }),
+    supabase.from('study_records').select('subject, duration_seconds').eq('kind', 'timer').eq('record_date', today),
+    supabase.rpc('my_rest_tickets'),
+    supabase.from('rest_ticket_uses').select('rest_date').gte('rest_date', activityFrom).lte('rest_date', today),
   ])
   if (eventRes.error) throw eventRes.error
   if (tasksRes.error) throw tasksRes.error
@@ -106,7 +114,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     resume: needsResume(streakRes.data?.current_days ?? 0, (streakRes.data?.last_achieved_date as string | null) ?? null, (streakRes.data?.resume_seen_for as string | null) ?? null)
       ? { longestDays: streakRes.data?.longest_days ?? 0, badgeCount: badgeRes.count ?? 0 }
       : null,
-    restDates: (eventRes.data ?? []).map((e) => e.event_date as string),
+    restDates: [...(eventRes.data ?? []).map((e) => e.event_date as string), ...(usesRes.data ?? []).map((u) => u.rest_date as string)],
     coins: coinRes.data?.balance ?? 0,
     timer: timerRes.data
       ? {
@@ -121,8 +129,37 @@ export async function loadHome(clubId: string): Promise<HomeData> {
       : null,
     allowFreeTasks: clubRes.data?.allow_free_tasks ?? false,
     tags: (tagRes.data ?? []).map((t) => ({ id: t.id as string, subject: t.subject as string, recordedAt: t.started_at as string })),
-    support: supportRes.data?.[0] ? { body: supportRes.data[0].body as string, createdAt: supportRes.data[0].created_at as string } : null,
+    timerSeconds: (timerDoneRes.data ?? []).reduce((n, r) => n + ((r.duration_seconds as number | null) ?? 0), 0),
+    timerSubjects: (timerDoneRes.data ?? []).map((r) => r.subject as string),
+    tickets: ticketOf(ticketRes.data),
+    support: supportRes.data?.[0]
+      ? {
+          body: supportRes.data[0].body as string,
+          createdAt: supportRes.data[0].created_at as string,
+          kind: (supportRes.data[0].kind as 'comment' | 'seen' | null) ?? 'comment',
+          authorName: (supportRes.data[0].author_name as string | null) ?? null,
+        }
+      : null,
   }
+}
+
+function ticketOf(d: unknown): TicketInfo | null {
+  if (!d || typeof d !== 'object') return null
+  const r = d as Record<string, unknown>
+  return {
+    balance: (r.balance as number) ?? 0,
+    nextGrantOn: r.next_grant_on as string,
+    canProtectToday: (r.can_protect_today as boolean) ?? false,
+    canProtectYesterday: (r.can_protect_yesterday as boolean) ?? false,
+  }
+}
+
+/** 休息チケットを使う。which は「今日」か「昨日」 */
+export async function useRestTicket(date: string): Promise<{ balance: number; currentDays: number }> {
+  const { data, error } = await supabase.rpc('use_rest_ticket', { p_date: date })
+  if (error) throw error
+  const d = data as Record<string, unknown>
+  return { balance: d.balance as number, currentDays: d.current_days as number }
 }
 
 export async function completeTask(userTaskId: string): Promise<CompleteResult> {

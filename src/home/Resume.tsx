@@ -1,6 +1,7 @@
 import { RecordBand } from './RecordBand'
 import { Nobit } from './Nobit'
-import type { BandCell, HomeTask } from './homeModel'
+import { TicketPanel } from './TicketPanel'
+import type { BandCell, HomeTask, TicketInfo } from './homeModel'
 
 type Props = {
   cells: ReadonlyArray<BandCell>
@@ -9,10 +10,15 @@ type Props = {
   /** 今日のタスク（短い順に並べたもの） */
   tasks: ReadonlyArray<HomeTask>
   onStart: () => void
+  /** 昨日にさかのぼって休息チケットを使える間だけ出す */
+  tickets?: TicketInfo | null
+  ticketBusy?: boolean
+  ticketError?: string | null
+  onUseTicket?: (which: 'today' | 'yesterday') => void
 }
 
 /** 画面08：連続記録が途切れたあと。責めず、過去の記録がそのまま残っていることを見せる */
-export function ResumeView({ cells, longestDays, badgeCount, tasks, onStart }: Props) {
+export function ResumeView({ cells, longestDays, badgeCount, tasks, onStart, tickets, ticketBusy = false, ticketError = null, onUseTicket }: Props) {
   return (
     <div className="resume">
       <Nobit mood="wave" className="resume-nobit" />
@@ -33,6 +39,10 @@ export function ResumeView({ cells, longestDays, badgeCount, tasks, onStart }: P
           <dd><span className="num">{badgeCount}</span><span className="resume-unit">個</span></dd>
         </div>
       </dl>
+
+      {tickets && tickets.balance > 0 && tickets.canProtectYesterday && (
+        <TicketPanel info={tickets} busy={ticketBusy} error={ticketError} onUse={(w) => onUseTicket?.(w)} />
+      )}
 
       <section className="resume-tasks" aria-labelledby="resume-tasks-h">
         <h2 id="resume-tasks-h">今日、短く始められるタスク</h2>

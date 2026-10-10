@@ -96,6 +96,18 @@ export async function reviewMembership(membershipId: string, approve: boolean): 
   if (error) throw error
 }
 
+export type BulkResult = { done: number; failed: { id: string; reason: string }[] }
+
+export async function reviewMemberships(ids: string[], approve: boolean): Promise<BulkResult> {
+  const { data, error } = await supabase.rpc('review_memberships', { p_ids: ids, p_approve: approve })
+  if (error) throw error
+  return data as BulkResult
+}
+
+export function bulkResultMessage(r: BulkResult): string {
+  return `${r.done}人を承認しました。${r.failed.length}人は承認できませんでした（同意や入力がまだ、または処理済み）。`
+}
+
 const REVIEW_MESSAGES: Record<string, string> = {
   consent_required: '保護者の同意がまだなので、承認できません。',
   profile_incomplete: '表示名と学年が未入力なので、承認できません。',
@@ -230,8 +242,12 @@ export type StudentBoard = {
   restDates: string[]
   /** 画面13「記録が空いた」の設定（なければ既定） */
   gapRule: GapRule
-  /** 空いた日数の計算に使う、直近90日の大会・遠征・合宿の日 */
+  /** 空いた日数の計算に使う、直近90日から1週間先までの大会・遠征・合宿の日 */
   eventDates: string[]
+  /** 今日、「見たよ」を送った生徒 */
+  seenToday: string[]
+  /** 生徒ごとの、休息チケットで休息日にした日（直近90日から1週間先まで） */
+  studentRest: Record<string, string[]>
 }
 
 type MemberRow = {
@@ -241,7 +257,7 @@ type MemberRow = {
 
 export async function loadStudentBoard(clubId: string, today: string): Promise<StudentBoard> {
   const since = addDays(today, -13)
-  const [memberRes, streakRes, activityRes, tasksRes, eventRes, ruleRes] = await Promise.all([
+  const [memberRes, streakRes, activityRes, tasksRes, eventRes, ruleRes, seenRes, usesRes] = await Promise.all([
     supabase
       .from('club_members')
       .select('user_id, users!club_members_user_id_fkey(display_name, grade)')
@@ -252,20 +268,27 @@ export async function loadStudentBoard(clubId: string, today: string): Promise<S
     supabase.from('daily_activity').select('student_id, activity_date, completed_count').eq('club_id', clubId).gte('activity_date', since).lte('activity_date', today),
     // 配信されたタスクだけ。自由登録の中身（と有無）は、クラブ管理者には見せない
     supabase.from('user_tasks').select('student_id, completed_at').eq('club_id', clubId).eq('is_free', false).eq('task_date', today),
-    supabase.from('club_events').select('event_date').eq('club_id', clubId).gte('event_date', addDays(today, -90)).lte('event_date', today),
+    supabase.from('club_events').select('event_date').eq('club_id', clubId).gte('event_date', addDays(today, -90)).lte('event_date', addDays(today, 7)),
     supabase.from('alert_rules').select('enabled, threshold_days').eq('club_id', clubId).eq('kind', 'gap').maybeSingle(),
+    supabase.from('support_comments').select('student_id').eq('club_id', clubId).eq('kind', 'seen').eq('seen_on', today),
+    supabase.from('rest_ticket_uses').select('student_id, rest_date').eq('club_id', clubId).gte('rest_date', addDays(today, -90)).lte('rest_date', addDays(today, 7)),
   ])
   if (eventRes.error) throw eventRes.error
+  if (seenRes.error) throw seenRes.error
+  if (usesRes.error) throw usesRes.error
   if (memberRes.error) throw memberRes.error
   if (streakRes.error) throw streakRes.error
   if (activityRes.error) throw activityRes.error
   if (tasksRes.error) throw tasksRes.error
 
+  // 承認待ちの生徒は、運営が見ても合計に数えない（承認までクラブの数字に入れない）
+  const approvedIds = new Set((memberRes.data as unknown as MemberRow[]).map((m) => m.user_id))
   const streaks = new Map(streakRes.data.map((r) => [r.student_id as string, r]))
   const activity = new Map<string, { date: string; count: number }[]>()
   const club = new Map<string, number>()
   for (const r of activityRes.data) {
     const sid = r.student_id as string
+    if (!approvedIds.has(sid)) continue
     const date = r.activity_date as string
     const count = r.completed_count as number
     activity.set(sid, [...(activity.get(sid) ?? []), { date, count }])
@@ -301,13 +324,19 @@ export async function loadStudentBoard(clubId: string, today: string): Promise<S
   return {
     students,
     clubActivity: [...club.entries()].map(([date, count]) => ({ date, count })),
-    restDates: eventRes.data.map((e) => e.event_date as string).filter((d) => d >= since),
+    restDates: eventRes.data.map((e) => e.event_date as string).filter((d) => d >= since && d <= today),
     eventDates: eventRes.data.map((e) => e.event_date as string),
+    seenToday: (seenRes.data ?? []).map((r) => r.student_id as string),
+    studentRest: (usesRes.data ?? []).reduce<Record<string, string[]>>((m, r) => {
+      const id = r.student_id as string
+      m[id] = [...(m[id] ?? []), r.rest_date as string]
+      return m
+    }, {}),
     gapRule: ruleRes.data ? { enabled: ruleRes.data.enabled as boolean, thresholdDays: ruleRes.data.threshold_days as number } : DEFAULT_GAP_RULE,
   }
 }
 
-export type SupportComment = { id: string; body: string; createdAt: string; mine: boolean }
+export type SupportComment = { id: string; body: string; createdAt: string; mine: boolean; kind: 'comment' | 'seen' }
 export type HistoryItem = { id: string; title: string; subject: string; completedAt: string }
 export type StudentDetail = {
   student: StudentRow
@@ -318,6 +347,8 @@ export type StudentDetail = {
   subjects: string[]
   comments: SupportComment[]
   restDates: string[]
+  /** 今日、「見たよ」を送ったか */
+  seenToday: boolean
 }
 
 type HistoryRow = {
@@ -342,7 +373,7 @@ export async function loadStudentDetail(clubId: string, studentId: string, today
       .not('completed_at', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(60),
-    supabase.from('support_comments').select('id, body, created_at, author_id').eq('student_id', studentId).order('created_at', { ascending: false }).limit(50),
+    supabase.from('support_comments').select('id, body, created_at, author_id, kind').eq('student_id', studentId).order('created_at', { ascending: false }).limit(50),
   ])
   if (activityRes.error) throw activityRes.error
   if (historyRes.error) throw historyRes.error
@@ -358,14 +389,22 @@ export async function loadStudentDetail(clubId: string, studentId: string, today
     studyDates: activityRes.data.map((r) => r.activity_date as string),
     history,
     subjects: history.filter((h) => jstDate(h.completedAt) >= from).map((h) => h.subject),
-    restDates: board.restDates,
-    comments: commentRes.data.map((c) => ({ id: c.id as string, body: c.body as string, createdAt: c.created_at as string, mine: c.author_id === myId })),
+    restDates: [...board.restDates, ...(board.studentRest[studentId] ?? []).filter((d) => d <= today)],
+    seenToday: board.seenToday.includes(studentId),
+    comments: commentRes.data.map((c) => ({ id: c.id as string, body: c.body as string, createdAt: c.created_at as string, mine: c.author_id === myId, kind: ((c.kind as string | null) ?? 'comment') as 'comment' | 'seen' })),
   }
 }
 
 export async function addSupportComment(clubId: string, studentId: string, authorId: string, body: string): Promise<void> {
   const { error } = await supabase.from('support_comments').insert({ club_id: clubId, student_id: studentId, author_id: authorId, body: body.trim() })
   if (error) throw error
+}
+
+/** 「見たよ」を送る。その日すでに送っていたら false */
+export async function sendSeen(studentId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('send_seen', { p_student_id: studentId })
+  if (error) throw error
+  return data as boolean
 }
 
 export async function deleteSupportComment(id: string): Promise<void> {
@@ -391,6 +430,16 @@ export async function loadClubEvents(clubId: string, from: string): Promise<Club
 export async function addClubEvent(clubId: string, date: string, kind: EventKind, note: string): Promise<void> {
   const { error } = await supabase.rpc('add_club_event', { p_club_id: clubId, p_date: date, p_kind: kind, p_note: note.trim() === '' ? null : note.trim() })
   if (error) throw error
+}
+
+export type RangeResult = { added: number; skipped: number }
+
+export async function addClubEventsRange(clubId: string, from: string, to: string, kind: EventKind, note: string): Promise<RangeResult> {
+  const { data, error } = await supabase.rpc('add_club_events_range', {
+    p_club_id: clubId, p_from: from, p_to: to, p_kind: kind, p_note: note.trim() === '' ? null : note.trim(),
+  })
+  if (error) throw error
+  return data as RangeResult
 }
 
 export async function removeClubEvent(id: string): Promise<void> {
@@ -429,6 +478,7 @@ type AlertRow = {
   id: string; student_id: string; display_name: string | null; grade: number | null; kind: AlertKind; detail: Record<string, unknown> | null
   occurred_on: string; status: AlertItem['status']; contacted_at: string | null; resolved_at: string | null
   resumed_after_contact: boolean | null; template: string | null; completed_after_contact: number | null
+  line_display_name?: string | null
 }
 
 /** 定時生成の最後の実行（運営のみ）。読めなくても画面は止めない */
@@ -446,7 +496,7 @@ export async function loadAlerts(clubId: string, now = Date.now()): Promise<Aler
   const since = new Date(now - 7 * 86_400_000).toISOString()
   const { data, error } = await supabase
     .from('alert_list')
-    .select('id, student_id, display_name, grade, kind, detail, occurred_on, status, contacted_at, resolved_at, resumed_after_contact, template, completed_after_contact')
+    .select('id, student_id, display_name, grade, kind, detail, occurred_on, status, contacted_at, resolved_at, resumed_after_contact, template, completed_after_contact, line_display_name')
     .eq('club_id', clubId)
     .or(`status.in.(open,contacted),and(status.eq.resolved,resolved_at.gte.${since})`)
   if (error) throw error
@@ -454,7 +504,23 @@ export async function loadAlerts(clubId: string, now = Date.now()): Promise<Aler
     id: r.id, studentId: r.student_id, displayName: r.display_name, grade: r.grade, kind: r.kind, detail: r.detail ?? {},
     occurredOn: r.occurred_on, status: r.status, contactedAt: r.contacted_at, resolvedAt: r.resolved_at,
     resumedAfterContact: r.resumed_after_contact, template: r.template, completedAfterContact: r.completed_after_contact,
+    lineName: r.line_display_name ?? null,
   }))
+}
+
+export async function markAlertsContacted(ids: string[]): Promise<void> {
+  const { error } = await supabase.rpc('mark_alerts_contacted', { p_ids: ids })
+  if (error) throw error
+}
+
+export async function undoAlertsContacted(ids: string[]): Promise<void> {
+  const { error } = await supabase.rpc('undo_alerts_contacted', { p_ids: ids })
+  if (error) throw error
+}
+
+export async function dismissAlerts(ids: string[]): Promise<void> {
+  const { error } = await supabase.rpc('dismiss_alerts', { p_ids: ids })
+  if (error) throw error
 }
 
 export async function markAlertContacted(id: string): Promise<void> {

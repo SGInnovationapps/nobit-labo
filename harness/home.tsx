@@ -8,7 +8,7 @@ import type { HomeData } from '../src/home/homeApi'
 const today = '2026-10-09'
 const act = [1,2,3,5,6,7,8,12,13,14,15,16,17,20,21,22,24,25,26,27,28].map((n, i) => ({ date: `2026-09-${String(n+1).padStart(2,'0')}`, count: (i % 4) + 1 }))
 const mk = (tasks: HomeData['tasks'], extra: Partial<HomeData> = {}): HomeData => ({
-  today, tasks, streak: { current: 12, longest: 21 }, activity: [...act, { date: '2026-10-07', count: 2 }, { date: '2026-10-08', count: 3 }, { date: '2026-10-09', count: tasks.filter(t => t.completedAt).length }], restDates: ['2026-10-05', '2026-10-06'], allowFreeTasks: false, tags: [], support: null, coins: 240, timer: null, ...extra,
+  today, tasks, streak: { current: 12, longest: 21 }, activity: [...act, { date: '2026-10-07', count: 2 }, { date: '2026-10-08', count: 3 }, { date: '2026-10-09', count: tasks.filter(t => t.completedAt).length }], restDates: ['2026-10-05', '2026-10-06'], allowFreeTasks: false, tags: [], support: null, coins: 240, timer: null, timerSeconds: 600, timerSubjects: ['数学'], tickets: { balance: 1, nextGrantOn: '2026-10-12', canProtectToday: false, canProtectYesterday: false }, ...extra,
 })
 const T = (id: string, subject: string, title: string, completedAt: string | null, isFree = false) => ({ id, subject, title, estimatedMinutes: null, isFree, completedAt })
 const base = {
@@ -24,9 +24,12 @@ const empty = mk([])
 const first = { label: '今日の最初の記録', title: '方程式の文章題 5問', completedAt: '2026-10-09T08:05:00Z', currentDays: 12, completedToday: 1, firstOfDay: true }
 const tagged = [{ id: 'g1', subject: '数学', recordedAt: '2026-10-09T08:05:00Z' }]
 const screens: Record<string, React.ReactNode> = {
+  ticket_use: <HomeView {...base} data={{ ...partial, tickets: { balance: 2, nextGrantOn: '2026-10-12', canProtectToday: true, canProtectYesterday: true } }} />,
+  ticket_zero: <HomeView {...base} data={{ ...partial, tickets: { balance: 0, nextGrantOn: '2026-10-12', canProtectToday: false, canProtectYesterday: false } }} />,
+  quest_done: <HomeView {...base} data={{ ...all, timerSeconds: 1000, timerSubjects: ['理科'] }} />,
   partial: <HomeView {...base} data={partial} />,
   none: <HomeView {...base} data={none} />,
-  support: <HomeView {...base} data={{ ...partial, support: { body: '今週も続けているね。数学の文章題、がんばっていました。', createdAt: '2026-10-08T09:00:00Z' } }} />,
+  support: <HomeView {...base} data={{ ...partial, support: { body: '今週も続けているね。数学の文章題、がんばっていました。', createdAt: '2026-10-08T09:00:00Z', kind: 'comment' as const, authorName: '［管理者名］' } }} />,
   all: <HomeView {...base} data={all} />,
   empty: <HomeView {...base} data={empty} />,
   sheet: <HomeView {...base} data={partial} done={first} />,

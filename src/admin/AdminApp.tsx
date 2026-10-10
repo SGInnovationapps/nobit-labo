@@ -147,7 +147,7 @@ function Signed({ userId }: { userId: string }) {
               ) : (
                 <>
                   {isOperator && <AlertList key={club.id} clubId={club.id} />}
-                  <Students clubId={club.id} onOpen={(st) => setStudentId(st.userId)} />
+                  <Students clubId={club.id} canSeen={me.role === 'club_admin'} onOpen={(st) => setStudentId(st.userId)} />
                 </>
               )
             ) : (
