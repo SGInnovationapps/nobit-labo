@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { HomeTask, TagRecord, TicketInfo } from './homeModel'
+import type { HomeTask, TagRecord, TicketInfo, TimerRecord } from './homeModel'
 import { addDays, jstDate, needsResume } from './homeModel'
 
 export type HomeData = {
@@ -27,6 +27,12 @@ export type HomeData = {
   /** 今日、終えたタイマーの合計秒数と教科（デイリークエスト用） */
   timerSeconds: number
   timerSubjects: string[]
+  /** 今日、終えたタイマーの記録 */
+  timerRecords: TimerRecord[]
+  /** これまでに学習の記録がある日の数（0 なら「はじめて」） */
+  studyDaysTotal: number
+  /** 今日の無料ガチャを引いたか */
+  gachaDrawnToday: boolean
   /** 休息チケット（読めなかったときは null） */
   tickets: TicketInfo | null
 }
@@ -62,7 +68,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const monthStart = `${today.slice(0, 7)}-01`
   const activityFrom = monthStart < addDays(today, -29) ? monthStart : addDays(today, -29)
 
-  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes, timerDoneRes, ticketRes, usesRes] = await Promise.all([
+  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes, timerDoneRes, ticketRes, usesRes, daysRes, gachaRes] = await Promise.all([
     supabase
       .from('user_tasks')
       .select('id, completed_at, tasks(title, subject, estimated_minutes, kind)')
@@ -81,9 +87,11 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     supabase.from('club_events').select('event_date').gte('event_date', activityFrom).lte('event_date', today),
     supabase.from('user_items').select('id', { count: 'exact', head: true }).eq('category', 'badge'),
     supabase.from('study_records').select('id, subject, started_at').eq('kind', 'tag').eq('record_date', today).order('started_at', { ascending: true }),
-    supabase.from('study_records').select('subject, duration_seconds').eq('kind', 'timer').eq('record_date', today),
+    supabase.from('study_records').select('id, subject, content, ended_at, duration_seconds, user_task_id').eq('kind', 'timer').eq('record_date', today),
     supabase.rpc('my_rest_tickets'),
     supabase.from('rest_ticket_uses').select('rest_date').gte('rest_date', activityFrom).lte('rest_date', today),
+    supabase.from('daily_activity').select('activity_date', { count: 'exact', head: true }).gt('completed_count', 0),
+    supabase.from('gacha_draws').select('id').eq('drawn_on', today).eq('is_extra', false).limit(1),
   ])
   if (eventRes.error) throw eventRes.error
   if (tasksRes.error) throw tasksRes.error
@@ -131,6 +139,13 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     tags: (tagRes.data ?? []).map((t) => ({ id: t.id as string, subject: t.subject as string, recordedAt: t.started_at as string })),
     timerSeconds: (timerDoneRes.data ?? []).reduce((n, r) => n + ((r.duration_seconds as number | null) ?? 0), 0),
     timerSubjects: (timerDoneRes.data ?? []).map((r) => r.subject as string),
+    timerRecords: (timerDoneRes.data ?? []).flatMap((r): TimerRecord[] =>
+      r.ended_at
+        ? [{ id: r.id as string, subject: r.subject as string, content: (r.content as string | null) ?? null, endedAt: r.ended_at as string, seconds: (r.duration_seconds as number | null) ?? 0, taskLinked: r.user_task_id !== null }]
+        : [],
+    ),
+    studyDaysTotal: daysRes.count ?? 0,
+    gachaDrawnToday: (gachaRes.data ?? []).length > 0,
     tickets: ticketOf(ticketRes.data),
     support: supportRes.data?.[0]
       ? {

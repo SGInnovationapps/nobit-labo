@@ -185,3 +185,51 @@ test('ticketNote・ticketErrorMessage', () => {
   assert.ok(ticketErrorMessage(new Error('no_ticket')).includes('ありません'))
   assert.ok(ticketErrorMessage(new Error('cannot_protect')).includes('つながりません'))
 })
+
+import { BAND_NOTE, homeStateOf, isNewSupport, nextMilestone, stateCheer, todayRecords, weekdayChar } from '../src/home/homeModel.ts'
+
+const HT = (o: Record<string, unknown>) => ({ id: 'a', subject: '英語', title: 't', estimatedMinutes: null, isFree: false, completedAt: null, ...o }) as never
+
+test('homeStateOf: はじめて・今日まだ・記録中・タスク完了・再開', () => {
+  const open = [HT({ id: '1' }), HT({ id: '2', completedAt: 'x' })]
+  const all = [HT({ id: '1', completedAt: 'x' }), HT({ id: '2', completedAt: 'y' })]
+  assert.equal(homeStateOf({ todayCount: 0, studyDaysTotal: 0, tasks: open, resume: false }), 'first')
+  assert.equal(homeStateOf({ todayCount: 0, studyDaysTotal: 5, tasks: open, resume: false }), 'notyet')
+  assert.equal(homeStateOf({ todayCount: 0, studyDaysTotal: 5, tasks: open, resume: true }), 'resume')
+  assert.equal(homeStateOf({ todayCount: 1, studyDaysTotal: 5, tasks: open, resume: true }), 'recording', '記録があれば、再開は終わる')
+  assert.equal(homeStateOf({ todayCount: 2, studyDaysTotal: 5, tasks: all, resume: false }), 'done')
+  assert.equal(homeStateOf({ todayCount: 1, studyDaysTotal: 5, tasks: [], resume: false }), 'recording', '配信がない日は記録中')
+  assert.equal(homeStateOf({ todayCount: 1, studyDaysTotal: 5, tasks: [HT({ isFree: true, completedAt: 'x' })], resume: false }), 'recording', '自由登録だけでは完了にならない')
+})
+
+test('stateCheer: ノビットの一文。再開は置かない', () => {
+  assert.equal(stateCheer('first', 0), '最初の1件を残そう。')
+  assert.equal(stateCheer('notyet', 0), '今日のページは、まだこれから。')
+  assert.equal(stateCheer('recording', 2), '今日の自分、2件すすんだ。')
+  assert.equal(stateCheer('done', 3), 'よくがんばったね。')
+  assert.equal(stateCheer('resume', 0), null)
+})
+
+test('todayRecords: 新しい順。タスクから始めたタイマーは別の行にしない', () => {
+  const r = todayRecords({
+    tasks: [HT({ id: 't1', title: '文章題', completedAt: '2026-10-09T08:05:00Z' }), HT({ id: 't2' })],
+    tags: [{ id: 'g1', subject: '理科', recordedAt: '2026-10-09T09:10:00Z' }],
+    timers: [
+      { id: 'm1', subject: '国語', content: '漢字', endedAt: '2026-10-09T10:30:00Z', seconds: 1500, taskLinked: false },
+      { id: 'm2', subject: '数学', content: null, endedAt: '2026-10-09T08:05:00Z', seconds: 600, taskLinked: true },
+    ],
+  })
+  assert.deepEqual(r.map((x) => x.kind), ['タイマー', '教科', 'タスク'])
+  assert.equal(r[0].minutes, 25)
+  assert.equal(r[0].name, '国語　漢字')
+})
+
+test('nextMilestone・isNewSupport・weekdayChar・BAND_NOTE', () => {
+  assert.deepEqual(nextMilestone(4), { target: 7, remaining: 3, ratio: 4 / 7 })
+  assert.equal(nextMilestone(7)?.target, 30)
+  assert.equal(nextMilestone(400), null)
+  assert.equal(isNewSupport('2026-10-09T01:00:00Z', '2026-10-09'), true)
+  assert.equal(isNewSupport('2026-10-08T01:00:00Z', '2026-10-09'), false)
+  assert.equal(weekdayChar('2026-10-09'), '金')
+  assert.ok(BAND_NOTE.includes('責めない'))
+})

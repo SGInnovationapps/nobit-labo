@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CompletionSheet } from './CompletionSheet'
 import { RecordBand } from './RecordBand'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
 import { FocusDoneSheet } from './FocusDoneSheet'
-import { ResumeView } from './Resume'
+import { Nobit } from './Nobit'
 import { FocusPanel } from './FocusPanel'
 import { QuestPanel } from './QuestPanel'
 import { TagPanel } from './TagPanel'
@@ -16,9 +16,10 @@ import {
   setStudyContent, startFocusSession, startStudyTimer, stopStudyTimer, useRestTicket,
 } from './homeApi'
 import type { HomeData, StudyResult } from './homeApi'
+import type { HomeTask } from './homeModel'
 import {
-  addDays, buildBand, cheerOf, questsOf, shortFirst, ticketErrorMessage, coinNote, dateLabel, focusNote, dayState, recordedTime, shouldShowSheet, sheetLabel, sortTasks,
-  STATE_LABEL, SUBJECTS, timeLabel,
+  addDays, BAND_NOTE, buildBand, homeStateOf, isNewSupport, nextMilestone, questsOf, shortFirst, stateCheer, ticketErrorMessage, todayRecords, coinNote, dateLabel, focusNote, recordedTime, shouldShowSheet, sheetLabel, sortTasks,
+  SUBJECTS, timeLabel,
 } from './homeModel'
 
 type Props = { clubId: string; clubName: string | null; displayName: string | null; onTab?: (tab: Tab) => void; onGacha?: () => void }
@@ -51,7 +52,9 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
   const [notice, setNotice] = useState<string | null>(null)
   const [focusOpen, setFocusOpen] = useState(false)
   const [focusDone, setFocusDone] = useState<{ subject: string; coins: number; currentDays: number } | null>(null)
-  const [resumeSeen, setResumeSeen] = useState(false)
+  // 再開の状態：途切れたあとの最初の起動で出し、見たことを記録する。記録するまでは画面を保つ（閉じる操作はない）
+  const [resumeActive, setResumeActive] = useState(false)
+  const resumeMarked = useRef(false)
   const [timerBusy, setTimerBusy] = useState(false)
   const [timerError, setTimerError] = useState<string | null>(null)
   const [ticketBusy, setTicketBusy] = useState(false)
@@ -81,8 +84,7 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
     setTicketError(null)
     try {
       await useRestTicket(which === 'today' ? data.today : addDays(data.today, -1))
-      setResumeSeen(true)
-      void markResumeSeen()
+      setResumeActive(false)
       await load()
     } catch (e) {
       console.error(e)
@@ -92,6 +94,16 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
       setTicketBusy(false)
     }
   }
+
+  useEffect(() => {
+    if (data?.resume && !resumeMarked.current) {
+      resumeMarked.current = true
+      setResumeActive(true)
+      void markResumeSeen()
+    }
+    // 記録が付いたら、再開の状態は終わる
+    if (data && (data.activity.find((a) => a.date === data.today)?.count ?? 0) > 0) setResumeActive(false)
+  }, [data])
 
   const noticeOf = (r: StudyResult) => `記録しました　${coinNote(r.coinsGranted)}`.trim()
 
@@ -255,20 +267,8 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
   }
 
   return (
-    data.resume && !resumeSeen ? (
-      <ResumeView
-        cells={buildBand(data.activity, data.today, 30, data.restDates)}
-        longestDays={data.resume.longestDays}
-        badgeCount={data.resume.badgeCount}
-        tasks={shortFirst(data.tasks)}
-        tickets={data.tickets}
-        ticketBusy={ticketBusy}
-        ticketError={ticketError}
-        onUseTicket={(w) => void onUseTicket(w)}
-        onStart={() => { setResumeSeen(true); void markResumeSeen() }}
-      />
-    ) : (
     <HomeView
+      resume={resumeActive}
       data={data}
       clubName={clubName}
       displayName={displayName}
@@ -305,7 +305,6 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
       onStopTimer={(m) => void onStopTimer(m)}
       onCancelTimer={() => void onCancelTimer()}
     />
-    )
   )
 }
 
@@ -330,6 +329,8 @@ export type HomeViewProps = {
   ticketBusy?: boolean
   ticketError?: string | null
   onUseTicket?: (which: 'today' | 'yesterday') => void
+  /** 連続記録が途切れたあとの最初の起動（ホームの再開の状態） */
+  resume?: boolean
   onComplete: (id: string, title: string) => void
   onCloseDone: () => void
   onGacha: () => void
@@ -350,14 +351,22 @@ export type HomeViewProps = {
 export function HomeView(p: HomeViewProps) {
   const { data, clubName, displayName, error, pending, done } = p
   const tasks = sortTasks(data.tasks)
-  const state = dayState(tasks)
-  const cells = buildBand(data.activity, data.today, 30, data.restDates)
-  const noTasks = tasks.length === 0
+  const cells = buildBand(data.activity, data.today, 14, data.restDates)
   const timerRunning = data.timer !== null
+  const todayCount = data.activity.find((a) => a.date === data.today)?.count ?? 0
+  const state = homeStateOf({ todayCount, studyDaysTotal: data.studyDaysTotal, tasks, resume: p.resume ?? false })
+  const cheer = stateCheer(state, todayCount)
+  const records = todayRecords({ tasks, tags: data.tags, timers: data.timerRecords })
+  const remaining = tasks.filter((t) => !t.completedAt)
+  const milestone = nextMilestone(data.streak.current)
+  const newSupport = data.support && isNewSupport(data.support.createdAt, data.today)
+  const [showSubjects, setShowSubjects] = useState(false)
+  const supportText = data.support ? (data.support.kind === 'seen' ? '見たよ' : data.support.body) : ''
+  const supportFrom = data.support ? `${data.support.authorName ?? 'クラブの管理者'}さんから` : ''
 
   const subjects = (
-    <section className={noTasks ? 'section subjects is-primary' : 'section subjects'} aria-labelledby="tag-h">
-      <h2 id="tag-h">{noTasks ? '今日の勉強を記録する' : '教科で記録する'}</h2>
+    <section className={state === 'first' ? 'section subjects is-primary' : 'section subjects'} aria-labelledby="tag-h">
+      <h2 id="tag-h">{state === 'first' ? '今日の勉強を記録する' : '教科で記録する'}</h2>
       <div className="tag-row">
         {SUBJECTS.map((s) => {
           const time = recordedTime(data.tags, s)
@@ -385,16 +394,91 @@ export function HomeView(p: HomeViewProps) {
     </section>
   )
 
+  const taskRows = (list: ReadonlyArray<HomeTask>) => (
+    <ul className="tasks">
+      {list.map((t) => (
+        <li key={t.id} className={t.completedAt ? 'task is-done' : 'task'}>
+          <div className="task-body">
+            <span className="task-subject">{t.subject}</span>
+            <span className="task-title">{t.title}</span>
+          </div>
+          {t.completedAt ? (
+            <span className="task-time num">{timeLabel(t.completedAt)}</span>
+          ) : (
+            <div className="task-actions">
+              <button type="button" className="task-btn" disabled={pending !== null} onClick={() => p.onComplete(t.id, t.title)}>
+                {pending === t.id ? '記録中…' : '完了'}
+              </button>
+              <button type="button" className="task-btn task-btn-sub" disabled={pending !== null || timerRunning || p.timerBusy} onClick={() => p.onTaskTimer({ id: t.id, subject: t.subject, title: t.title })}>
+                タイマー
+              </button>
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+
+  const todayTasks = (title: string, list: ReadonlyArray<HomeTask>, emptyText: string) => (
+    <section className="section" aria-labelledby="today-h">
+      <div className="today-head">
+        <h2 id="today-h">{title}</h2>
+      </div>
+      {list.length === 0 ? <p className="muted">{emptyText}</p> : taskRows(list)}
+    </section>
+  )
+
+  const recordList = (
+    <section className="section" aria-labelledby="rec-h">
+      <div className="today-head">
+        <h2 id="rec-h">今日の記録</h2>
+        <span className="rec-count"><span className="num">{todayCount}</span> 件</span>
+      </div>
+      <ul className="rec-list">
+        {records.map((r) => (
+          <li key={r.key} className="rec-row">
+            <span className="rec-time num">{timeLabel(r.at)}</span>
+            <span className="rec-name">{r.name}{r.minutes !== null && <span className="rec-min"> <span className="num">{r.minutes}</span>分</span>}</span>
+            <span className="rec-kind">{r.kind}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+
+  const gachaLine = todayCount > 0 && !data.gachaDrawnToday && p.onGacha && (
+    <p className="gacha-line">
+      <span>今日のガチャを引けます</span>
+      <button type="button" className="btn-link" onClick={p.onGacha}>引く</button>
+    </p>
+  )
+
   return (
     <div className="home">
       <header className="home-head">
-        <div className="brand">NOBIT!</div>
         <p className="muted home-sub">{dateLabel(data.today)}　{clubName ?? ''}{displayName ? `　${displayName}` : ''}</p>
       </header>
 
-      <section className="streak" aria-label="連続記録">
-        <p className="streak-main"><span className="num streak-num">{data.streak.current}</span><span className="streak-unit">日連続</span></p>
-      </section>
+      {state === 'resume' ? (
+        <section className="resume-head" aria-label="おかえり">
+          <Nobit mood="wave" className="resume-nobit" />
+          <h1 className="resume-title">おかえり。また今日から。</h1>
+        </section>
+      ) : state === 'first' ? (
+        <section className="streak" aria-label="1日目">
+          <p className="streak-main"><span className="streak-first">今日が1日目</span></p>
+        </section>
+      ) : (
+        <section className="streak" aria-label="連続記録">
+          <p className="streak-main"><span className="num streak-num">{data.streak.current}</span><span className="streak-unit">日連続</span></p>
+          {state === 'notyet' && milestone && <p className="streak-sub">あと<span className="num">{milestone.remaining}</span>日で連続{milestone.target}日</p>}
+        </section>
+      )}
+
+      {cheer && <p className="cheer"><span className="cheer-name">ノビット</span>{cheer}</p>}
+      {newSupport && state !== 'resume' && (
+        <p className="support-line"><span className="support-from">{supportFrom}</span>{supportText}</p>
+      )}
 
       {error && <p className="error" role="alert">{error}</p>}
 
@@ -414,66 +498,92 @@ export function HomeView(p: HomeViewProps) {
         p.timerError && <p className="error" role="alert">{p.timerError}</p>
       )}
 
-      {noTasks && subjects}
-
-      <section className="section" aria-labelledby="today-h">
-        <div className="today-head">
-          <h2 id="today-h">今日のタスク</h2>
-          <span className={`state state-${state}`}>{STATE_LABEL[state]}</span>
-        </div>
-        {noTasks ? (
-          <p className="muted">配信されたタスクは、まだありません。</p>
-        ) : (
-          <ul className="tasks">
-            {tasks.map((t) => (
-              <li key={t.id} className={t.completedAt ? 'task is-done' : 'task'}>
-                <div className="task-body">
-                  <span className="task-subject">{t.subject}</span>
-                  <span className="task-title">{t.title}</span>
-                </div>
-                {t.completedAt ? (
-                  <span className="task-time num">{timeLabel(t.completedAt)}</span>
-                ) : (
-                  <div className="task-actions">
-                    <button type="button" className="task-btn" disabled={pending !== null} onClick={() => p.onComplete(t.id, t.title)}>
-                      {pending === t.id ? '記録中…' : '完了'}
-                    </button>
-                    <button type="button" className="task-btn task-btn-sub" disabled={pending !== null || timerRunning || p.timerBusy} onClick={() => p.onTaskTimer({ id: t.id, subject: t.subject, title: t.title })}>
-                      タイマー
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {!noTasks && subjects}
-
-      <section className="section" aria-label="記録の帯">
-        <RecordBand cells={cells} />
-      </section>
-
-      <p className="cheer"><span className="cheer-name">ノビット</span>{cheerOf(tasks)}</p>
-
-      {data.support && (
-        <p className="support-line">
-          <span className="support-from">{data.support.authorName ?? 'クラブの管理者'}さんから</span>{data.support.kind === 'seen' ? '見たよ' : data.support.body}
-        </p>
+      {state === 'resume' && (
+        <>
+          <dl className="resume-stats">
+            <div>
+              <dt>最長記録</dt>
+              <dd><span className="num">{data.streak.longest}</span><span className="resume-unit">日</span></dd>
+            </div>
+            <div>
+              <dt>これまでの学習日数</dt>
+              <dd><span className="num">{data.studyDaysTotal}</span><span className="resume-unit">日</span></dd>
+            </div>
+          </dl>
+          {data.tickets && data.tickets.balance > 0 && data.tickets.canProtectYesterday && (
+            <TicketPanel info={data.tickets} busy={p.ticketBusy ?? false} error={p.ticketError ?? null} onUse={(w) => p.onUseTicket?.(w)} />
+          )}
+          {subjects}
+          {todayTasks('今日、短く始められるタスク', shortFirst(tasks), '今日のタスクはまだありません。教科の記録やタイマーからも始められます。')}
+        </>
       )}
 
-      <p className="coin-line">コイン <span className="num coin-num">{data.coins}</span></p>
+      {state === 'first' && (
+        <>
+          {subjects}
+          {todayTasks('今日のタスク', tasks, '配信されたタスクは、まだありません。')}
+        </>
+      )}
+
+      {state === 'notyet' && (
+        <>
+          {subjects}
+          {todayTasks('今日のタスク', tasks, '配信されたタスクは、まだありません。')}
+        </>
+      )}
+
+      {state === 'recording' && (
+        <>
+          {recordList}
+          {gachaLine}
+          {remaining.length > 0 && todayTasks('残りのタスク', remaining, '')}
+          {subjects}
+        </>
+      )}
+
+      {state === 'done' && (
+        <>
+          <p className="done-line">今日のタスクは完了</p>
+          {recordList}
+          {gachaLine}
+          <p className="quiet-entry">
+            <button type="button" className="btn-link" onClick={() => setShowSubjects((v) => !v)}>教科を記録する</button>
+            {!timerRunning && <button type="button" className="btn-link" onClick={p.onOpenFocus}>15分集中</button>}
+          </p>
+          {(showSubjects || p.tagPanel) && subjects}
+        </>
+      )}
+
+      <section className="section below" aria-label="続けるために">
+        {milestone && (
+          <div className="next-title">
+            <p className="next-title-text">連続{milestone.target}日まで　あと<span className="num">{milestone.remaining}</span>日</p>
+            <div className="next-bar" role="progressbar" aria-valuemin={0} aria-valuemax={milestone.target} aria-valuenow={data.streak.current} aria-label="次の節目までの進み">
+              <i style={{ width: `${Math.round(milestone.ratio * 100)}%` }} />
+            </div>
+          </div>
+        )}
+        <RecordBand cells={cells} weekdays />
+        <p className="band-note">{BAND_NOTE}</p>
+      </section>
 
       <QuestPanel quests={questsOf({ tasks, tags: data.tags, timerSeconds: data.timerSeconds, timerSubjects: data.timerSubjects })} />
 
-      {data.tickets && (
+      <p className="coin-line">コイン <span className="num coin-num">{data.coins}</span></p>
+
+      {data.tickets && state !== 'resume' && (
         <TicketPanel info={data.tickets} busy={p.ticketBusy ?? false} error={p.ticketError ?? null} onUse={(w) => p.onUseTicket?.(w)} />
       )}
 
-      {!timerRunning && (
+      {!timerRunning && state !== 'done' && (
         <section className="section" aria-label="15分集中">
           <button type="button" className="btn btn-secondary" onClick={p.onOpenFocus}>15分集中する</button>
+        </section>
+      )}
+
+      {data.support && (
+        <section className="section" aria-label="クラブ管理者の応援">
+          <p className="support-line"><span className="support-from">{supportFrom}</span>{supportText}</p>
         </section>
       )}
 

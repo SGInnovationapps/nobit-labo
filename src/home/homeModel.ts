@@ -307,3 +307,87 @@ export function ticketErrorMessage(e: unknown): string {
   if (text.includes('date_not_allowed')) return '使えるのは、今日と昨日だけです。'
   return '使えませんでした。通信を確認して、もう一度お試しください。'
 }
+
+
+// ---- v1.7 新ホーム：5つの状態 ----
+
+export type HomeState = 'first' | 'notyet' | 'recording' | 'done' | 'resume'
+
+/**
+ * ホームの状態。
+ * 再開 … 連続記録が途切れたあとの最初の起動で、今日まだ記録がない
+ * はじめて … まだ一度も学習の記録がない
+ * 今日まだ … 今日の記録が0件
+ * 記録中 … 今日の記録が1件以上あり、配信タスクが残っている（配信がない日を含む）
+ * タスク完了 … 今日の配信タスクがすべて完了
+ */
+export function homeStateOf(input: {
+  todayCount: number
+  studyDaysTotal: number
+  tasks: ReadonlyArray<HomeTask>
+  resume: boolean
+}): HomeState {
+  if (input.todayCount === 0) {
+    if (input.resume) return 'resume'
+    if (input.studyDaysTotal === 0) return 'first'
+    return 'notyet'
+  }
+  const assigned = input.tasks.filter((t) => !t.isFree)
+  if (assigned.length > 0 && assigned.every((t) => t.completedAt)) return 'done'
+  return 'recording'
+}
+
+/** ノビットの一文（画像なし）。再開の状態は画像で出すので一文は置かない */
+export function stateCheer(state: HomeState, todayCount: number): string | null {
+  switch (state) {
+    case 'first': return '最初の1件を残そう。'
+    case 'notyet': return '今日のページは、まだこれから。'
+    case 'recording': return `今日の自分、${todayCount}件すすんだ。`
+    case 'done': return 'よくがんばったね。'
+    case 'resume': return null
+  }
+}
+
+export type TodayRecord = { key: string; at: string; name: string; kind: 'タスク' | '教科' | 'タイマー'; minutes: number | null }
+
+export type TimerRecord = { id: string; subject: string; content: string | null; endedAt: string; seconds: number; taskLinked: boolean }
+
+/**
+ * 今日の記録の一覧（新しい順）。タスクから始めたタイマーは、タスクの行に時刻が入るので、別の行にしない
+ * （記録の数え方と同じ：タスクの完了で1件）
+ */
+export function todayRecords(input: {
+  tasks: ReadonlyArray<HomeTask>
+  tags: ReadonlyArray<TagRecord>
+  timers: ReadonlyArray<TimerRecord>
+}): TodayRecord[] {
+  const out: TodayRecord[] = []
+  for (const t of input.tasks) if (t.completedAt) out.push({ key: `t:${t.id}`, at: t.completedAt, name: t.title, kind: 'タスク', minutes: null })
+  for (const g of input.tags) out.push({ key: `g:${g.id}`, at: g.recordedAt, name: g.subject, kind: '教科', minutes: null })
+  for (const m of input.timers) {
+    if (m.taskLinked) continue
+    out.push({ key: `m:${m.id}`, at: m.endedAt, name: m.content ? `${m.subject}　${m.content}` : m.subject, kind: 'タイマー', minutes: Math.max(1, Math.round(m.seconds / 60)) })
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at))
+}
+
+/** 連続日数の次の節目（7・30・100・365日）。称号・バッジの仕組みができるまでの［仮］ */
+export const STREAK_MILESTONES = [7, 30, 100, 365] as const
+
+export function nextMilestone(current: number): { target: number; remaining: number; ratio: number } | null {
+  const target = STREAK_MILESTONES.find((m) => m > current)
+  if (!target) return null
+  return { target, remaining: target - current, ratio: current / target }
+}
+
+/** 応援は、新しく届いた日（その日のうち）だけ、ノビットの一文の下に出す */
+export function isNewSupport(createdAt: string, today: string): boolean {
+  return jstDate(createdAt) === today
+}
+
+export const BAND_NOTE = '記録がない日も責めない。続けたぶんがここに残る。'
+
+/** 記録の帯の曜日の一文字（日付から） */
+export function weekdayChar(date: string): string {
+  return '日月火水木金土'[new Date(`${date}T00:00:00Z`).getUTCDay()]
+}

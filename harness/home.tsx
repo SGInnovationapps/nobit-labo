@@ -1,4 +1,3 @@
-import { ResumeView } from '../src/home/Resume'
 import { buildBand, shortFirst } from '../src/home/homeModel'
 import { createRoot } from 'react-dom/client'
 import '../src/styles.css'
@@ -8,7 +7,7 @@ import type { HomeData } from '../src/home/homeApi'
 const today = '2026-10-09'
 const act = [1,2,3,5,6,7,8,12,13,14,15,16,17,20,21,22,24,25,26,27,28].map((n, i) => ({ date: `2026-09-${String(n+1).padStart(2,'0')}`, count: (i % 4) + 1 }))
 const mk = (tasks: HomeData['tasks'], extra: Partial<HomeData> = {}): HomeData => ({
-  today, tasks, streak: { current: 12, longest: 21 }, activity: [...act, { date: '2026-10-07', count: 2 }, { date: '2026-10-08', count: 3 }, { date: '2026-10-09', count: tasks.filter(t => t.completedAt).length }], restDates: ['2026-10-05', '2026-10-06'], allowFreeTasks: false, tags: [], support: null, coins: 240, timer: null, timerSeconds: 600, timerSubjects: ['数学'], tickets: { balance: 1, nextGrantOn: '2026-10-12', canProtectToday: false, canProtectYesterday: false }, ...extra,
+  today, tasks, streak: { current: 12, longest: 21 }, activity: [...act, { date: '2026-10-07', count: 2 }, { date: '2026-10-08', count: 3 }, { date: '2026-10-09', count: tasks.filter(t => t.completedAt).length }], restDates: ['2026-10-05', '2026-10-06'], allowFreeTasks: false, tags: [], support: null, coins: 240, timer: null, timerSeconds: 600, timerSubjects: ['数学'], timerRecords: [], studyDaysTotal: 42, gachaDrawnToday: false, tickets: { balance: 1, nextGrantOn: '2026-10-12', canProtectToday: false, canProtectYesterday: false }, ...extra,
 })
 const T = (id: string, subject: string, title: string, completedAt: string | null, isFree = false) => ({ id, subject, title, estimatedMinutes: null, isFree, completedAt })
 const base = {
@@ -23,7 +22,17 @@ const all = mk([T('b','数学','方程式の文章題 5問', '2026-10-09T08:05:0
 const empty = mk([])
 const first = { label: '今日の最初の記録', title: '方程式の文章題 5問', completedAt: '2026-10-09T08:05:00Z', currentDays: 12, completedToday: 1, firstOfDay: true }
 const tagged = [{ id: 'g1', subject: '数学', recordedAt: '2026-10-09T08:05:00Z' }]
+const rec = mk([T('a','英語','英単語 Unit 3 の確認テスト', null), T('b','数学','方程式の文章題 5問', '2026-10-09T08:05:00Z')], { tags: [{ id: 'g1', subject: '理科', recordedAt: '2026-10-09T09:10:00Z' }], timerRecords: [{ id: 'm1', subject: '国語', content: '漢字ドリル', endedAt: '2026-10-09T10:30:00Z', seconds: 1500, taskLinked: false }], streak: { current: 4, longest: 21 }, activity: [...act, { date: '2026-10-09', count: 3 }] })
+const allDone = mk([T('b','数学','方程式の文章題 5問', '2026-10-09T08:05:00Z'), T('a','英語','英単語 Unit 3 の確認テスト', '2026-10-09T09:40:00Z')], { gachaDrawnToday: true })
 const screens: Record<string, React.ReactNode> = {
+  s_first: <HomeView {...base} data={mk([T('a','英語','英単語 Unit 3 の確認テスト', null)], { streak: { current: 0, longest: 0 }, activity: [], studyDaysTotal: 0, tickets: null })} />,
+  s_notyet: <HomeView {...base} data={{ ...none, streak: { current: 4, longest: 21 }, activity: act }} />,
+  s_notyet_support: <HomeView {...base} data={{ ...none, streak: { current: 4, longest: 21 }, activity: act, support: { body: '今週もがんばっているね。', createdAt: '2026-10-09T01:00:00Z', kind: 'comment' as const, authorName: '［管理者名］' } }} />,
+  s_recording: <HomeView {...base} data={rec} onGacha={() => undefined} />,
+  s_done: <HomeView {...base} data={allDone} />,
+  s_done_gacha: <HomeView {...base} data={{ ...allDone, gachaDrawnToday: false }} onGacha={() => undefined} />,
+  s_resume: <HomeView {...base} resume data={{ ...none, streak: { current: 0, longest: 21 }, activity: act, studyDaysTotal: 38, tasks: [T('a','英語','英単語 Unit 3 の確認テスト', null), T('d','理科','電流と電圧 要点まとめ', null), T('e','国語','漢字ドリル p.12', null), T('f','社会','年号の暗記', null)].map((t, i) => ({ ...t, estimatedMinutes: [10, 5, 15, null][i] })), tickets: { balance: 1, nextGrantOn: '2026-10-12', canProtectToday: false, canProtectYesterday: true } }} />,
+  s_resume_empty: <HomeView {...base} resume data={{ ...empty, streak: { current: 0, longest: 3 }, activity: [], studyDaysTotal: 3, tickets: null }} />,
   ticket_use: <HomeView {...base} data={{ ...partial, tickets: { balance: 2, nextGrantOn: '2026-10-12', canProtectToday: true, canProtectYesterday: true } }} />,
   ticket_zero: <HomeView {...base} data={{ ...partial, tickets: { balance: 0, nextGrantOn: '2026-10-12', canProtectToday: false, canProtectYesterday: false } }} />,
   quest_done: <HomeView {...base} data={{ ...all, timerSeconds: 1000, timerSubjects: ['理科'] }} />,
@@ -41,7 +50,5 @@ const screens: Record<string, React.ReactNode> = {
   focusRunning: <HomeView {...base} data={{ ...partial, timer: { id: 'f', subject: '数学', content: '二次関数', startedAt: new Date(Date.now() - 6 * 60000 - 20000).toISOString(), focusTargetSeconds: 900, pausedAt: null, pausedSeconds: 0 } }} />,
   focusDone: <HomeView {...base} data={partial} focusDone={{ subject: '数学', coins: 6, currentDays: 12 }} />,
   focusPaused: <HomeView {...base} data={{ ...partial, timer: { id: 'f', subject: '数学', content: null, startedAt: new Date(Date.now() - 9 * 60000).toISOString(), focusTargetSeconds: 900, pausedAt: new Date(Date.now() - 60000).toISOString(), pausedSeconds: 60 } }} />,
-  resume: <ResumeView cells={buildBand(act, '2026-10-09', 30, [])} longestDays={21} badgeCount={4} tasks={shortFirst([T('a','英語','英単語 Unit 3 の確認テスト', null), T('d','理科','電流と電圧 ワーク p.8', null), T('b','数学','方程式の文章題 5問', null)].map((t, i) => ({ ...t, estimatedMinutes: [15, 10, null][i] })))} onStart={() => undefined} />,
-  resume_empty: <ResumeView cells={buildBand([], '2026-10-09', 30, [])} longestDays={3} badgeCount={0} tasks={[]} onStart={() => undefined} />,
 }
 createRoot(document.getElementById('root')!).render(<div className="shell">{screens[location.hash.slice(1)]}</div>)
