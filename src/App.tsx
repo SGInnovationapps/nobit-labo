@@ -9,6 +9,7 @@ import { Notice } from './screens/Notice'
 import { ProfileStep } from './screens/ProfileStep'
 import { Home } from './home/Home'
 import { Collection } from './home/Collection'
+import { Missions } from './home/Missions'
 import { Reflect } from './home/Reflect'
 import type { Tab } from './home/TabBar'
 import { Shell } from './screens/Shell'
@@ -126,6 +127,8 @@ export default function App() {
       <div className="shell">
         {tab === 'コレクション' ? (
           <Collection displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} />
+        ) : tab === 'ミッション' ? (
+          <Missions onTab={setTab} />
         ) : tab === 'ふりかえり' ? (
           <Reflect onTab={setTab} />
         ) : (

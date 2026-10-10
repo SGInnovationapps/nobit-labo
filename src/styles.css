@@ -275,3 +275,23 @@ p { margin: 0; }
 .resume-subject { font-size: 13px; font-weight: 700; color: var(--mint-ink); flex: none; }
 .resume-task { flex: 1; overflow-wrap: anywhere; }
 .resume-min { flex: none; font-size: 14px; color: var(--ink-soft); }
+
+/* 07 ミッション */
+.mis-card { padding: 16px 0; border-top: 1px solid var(--line); }
+.mis-card > * + * { margin-top: 10px; }
+.mis-card h3 { margin: 0; font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; }
+.mis-time { margin: 0; font-weight: 700; font-size: 14px; }
+.mis-desc { margin: 0; overflow-wrap: anywhere; }
+.mis-metric, .mis-people { margin: 0; font-size: 14px; }
+.mis-bar-head { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 6px; font-weight: 700; font-size: 14px; }
+.mis-num { font-size: 22px; }
+.mis-done { color: #b4313d; }
+.mis-track { height: 12px; border-radius: 999px; background: #eef1f6; overflow: hidden; }
+.mis-track i { display: block; height: 100%; background: var(--coral, #ff7d86); border-radius: 999px; }
+.mis-rewards { margin: 0; padding-left: 1.2em; font-size: 14px; }
+.mis-joined { margin: 0; font-weight: 700; color: var(--mint-ink); }
+.mis-past { list-style: none; margin: 0; padding: 0; }
+.mis-past li { padding: 12px 0; border-top: 1px solid var(--line); }
+.mis-past li:first-child { border-top: 0; }
+.mis-past-title { margin: 0; font-weight: 700; }
+.mis-past-result { margin: 4px 0 0; font-size: 14px; }

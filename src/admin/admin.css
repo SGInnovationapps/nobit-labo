@@ -202,3 +202,16 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .alert-table thead th { border-top: 0; font-weight: 700; color: var(--ink-soft); }
 .alert-table th:first-child, .alert-table tbody th { text-align: left; font-weight: 700; }
 .alert-table .num { font-size: 18px; font-weight: 700; }
+
+/* クラブミッション（運営） */
+.msn-card { padding: 16px 0; border-top: 1px solid var(--line); }
+.msn-card > * + * { margin-top: 10px; }
+.msn-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.msn-head h3 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.msn-status { margin: 0; font-size: 14px; font-weight: 700; color: #b4313d; }
+.msn-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 24px; }
+.msn-students summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 700; }
+.msn-students ul { list-style: none; margin: 0; padding: 0; }
+.msn-students li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.msn-metric { grid-template-columns: repeat(2, minmax(160px, 1fr)); max-width: 420px; }
+.msn-card > .btn { width: auto; display: inline-flex; justify-content: flex-start; padding-left: 0; }

@@ -3,6 +3,7 @@ import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
 import { addDays, jstDate } from '../home/homeModel'
 import type { AlertItem } from './alertListModel'
+import type { AdminMission, ParsedDraft } from './missionAdminModel'
 import type { AlertKind, AlertRule, SendMethod } from './alertsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
 import type { StudentRow } from './studentModel'
@@ -467,4 +468,37 @@ export async function loadAlertHistory(clubId: string, now = Date.now()): Promis
     occurredOn: r.occurred_on, status: r.status, contactedAt: r.contacted_at, resolvedAt: r.resolved_at,
     resumedAfterContact: r.resumed_after_contact, template: r.template, completedAfterContact: r.completed_after_contact,
   }))
+}
+
+// ---- クラブミッション（運営のみ） ----
+
+type MissionRow = {
+  id: string; title: string; description: string | null; metric: AdminMission['metric']; starts_on: string; ends_on: string
+  club_goal: number; personal_goal: number; reward_personal_coins: number; reward_club_coins: number
+  status: AdminMission['status']; participants: number; club_progress: number; personal_reached: number
+  students: { student_id: string; display_name: string | null; progress: number }[]
+}
+
+export async function loadAdminMissions(clubId: string): Promise<AdminMission[]> {
+  const { data, error } = await supabase.rpc('admin_missions', { p_club_id: clubId })
+  if (error) throw error
+  return ((data ?? []) as MissionRow[]).map((r) => ({
+    id: r.id, title: r.title, description: r.description, metric: r.metric, startsOn: r.starts_on, endsOn: r.ends_on,
+    clubGoal: r.club_goal, personalGoal: r.personal_goal, rewardPersonalCoins: r.reward_personal_coins, rewardClubCoins: r.reward_club_coins,
+    status: r.status, participants: r.participants, clubProgress: r.club_progress, personalReached: r.personal_reached,
+    students: r.students.map((x) => ({ studentId: x.student_id, displayName: x.display_name, progress: x.progress })),
+  }))
+}
+
+export async function createClubMission(clubId: string, v: ParsedDraft): Promise<void> {
+  const { error } = await supabase.rpc('create_club_mission', {
+    p_club_id: clubId, p_title: v.title, p_description: v.description, p_metric: v.metric, p_starts_on: v.startsOn, p_ends_on: v.endsOn,
+    p_club_goal: v.clubGoal, p_personal_goal: v.personalGoal, p_reward_personal: v.rewardPersonal, p_reward_club: v.rewardClub,
+  })
+  if (error) throw error
+}
+
+export async function cancelClubMission(id: string): Promise<void> {
+  const { error } = await supabase.rpc('cancel_club_mission', { p_id: id })
+  if (error) throw error
 }

@@ -66,3 +66,12 @@ test('isSettled・historyOutcome', () => {
   assert.equal(historyOutcome(item({ status: 'resolved', resumedAfterContact: true, completedAfterContact: 2 })), '学習を再開・連絡後の完了 2 件')
   assert.equal(historyOutcome(item({ status: 'contacted', completedAfterContact: 0 })), '再開待ち・連絡後の完了 0 件')
 })
+
+import { copyText as copyT, reasonText as reasonT, CLUB_MISSION_END_TEXT } from '../src/admin/alertListModel.ts'
+test('club_mission: 開始と終了前日で文言が変わる', () => {
+  assert.equal(reasonT('club_mission', { title: 'A', phase: 'start' }), 'クラブミッション「A」が始まりました')
+  assert.match(reasonT('club_mission', { title: 'A', phase: 'end' }), /明日が最終日/)
+  assert.equal(copyT('club_mission', null, { phase: 'end' }), CLUB_MISSION_END_TEXT)
+  assert.equal(copyT('club_mission', null, { phase: 'start' }), '新しいクラブミッションが始まったよ！')
+  assert.equal(copyT('club_mission', '独自の文面', { phase: 'end' }), '独自の文面')
+})

@@ -7,6 +7,7 @@ import Approvals from './Approvals'
 import AlertList from './AlertList'
 import AlertSettings from './AlertSettings'
 import ClubEvents from './ClubEvents'
+import MissionAdmin from './MissionAdmin'
 import ClubSettings from './ClubSettings'
 import { LoginForm } from './LoginForm'
 import StudentDetailPage from './StudentDetail'
@@ -14,7 +15,7 @@ import Students from './Students'
 import Tasks from './Tasks'
 import './admin.css'
 
-type Tab = 'students' | 'approvals' | 'events' | 'alerts' | 'tasks' | 'clubs'
+type Tab = 'students' | 'approvals' | 'events' | 'missions' | 'alerts' | 'tasks' | 'clubs'
 type Ready = { me: Me; clubs: Club[] }
 
 function useSession(): Session | null | undefined {
@@ -111,6 +112,11 @@ function Signed({ userId }: { userId: string }) {
             </button>
           )}
           {isOperator && (
+            <button type="button" className="adm-tab" aria-current={activeTab === 'missions' ? 'page' : undefined} onClick={() => setTab('missions')}>
+              クラブミッション
+            </button>
+          )}
+          {isOperator && (
             <button type="button" className="adm-tab" aria-current={activeTab === 'alerts' ? 'page' : undefined} onClick={() => setTab('alerts')}>
               アラート設定
             </button>
@@ -157,6 +163,9 @@ function Signed({ userId }: { userId: string }) {
 
           {activeTab === 'events' &&
             (club ? <ClubEvents key={club.id} club={club} /> : <p className="lead">{isOperator ? 'クラブがまだありません。「クラブ設定」から追加してください。' : '担当しているクラブがありません。運営に連絡してください。'}</p>)}
+
+          {activeTab === 'missions' &&
+            (club ? <MissionAdmin key={club.id} club={club} /> : <p className="lead">クラブがまだありません。「クラブ設定」から追加してください。</p>)}
 
           {activeTab === 'alerts' &&
             (club ? <AlertSettings key={club.id} club={club} /> : <p className="lead">クラブがまだありません。「クラブ設定」から追加してください。</p>)}

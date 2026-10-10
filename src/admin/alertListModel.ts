@@ -22,6 +22,9 @@ export type AlertItem = {
   completedAfterContact: number | null
 }
 
+/** 終了前日用の既定文面 [仮] */
+export const CLUB_MISSION_END_TEXT = 'クラブミッション、あと少しで終わるよ！'
+
 const num = (v: unknown): number => (typeof v === 'number' ? v : 0)
 
 /** 何が起きたか（運営が読む一文） */
@@ -33,13 +36,17 @@ export function reasonText(kind: AlertKind, detail: Record<string, unknown>): st
     case 'task_overdue': return `期限を過ぎた未完了の配信タスクが${num(detail.overdue)}件あります`
     case 'streak_milestone': return `連続記録が${num(detail.days)}日に達しました`
     case 'badge_earned': return `バッジ「${typeof detail.item === 'string' ? detail.item : ''}」を獲得しました`
-    case 'club_mission': return '新しいクラブミッションがあります'
+    case 'club_mission': {
+      const t = typeof detail.title === 'string' ? detail.title : ''
+      return detail.phase === 'end' ? `クラブミッション「${t}」は明日が最終日です（個人目標に未達）` : `クラブミッション「${t}」が始まりました`
+    }
   }
 }
 
 /** 公式LINE に貼る文面。節目のひな型の「7日」は、実際の日数に置き換える */
 export function copyText(kind: AlertKind, template: string | null, detail: Record<string, unknown>): string {
   const base = (template ?? defOf(kind).defaultTemplate).trim()
+  if (kind === 'club_mission' && detail.phase === 'end' && base === defOf(kind).defaultTemplate.trim()) return CLUB_MISSION_END_TEXT
   if (kind === 'streak_milestone' && num(detail.days) > 0) return base.replace(/7日/g, `${num(detail.days)}日`)
   return base
 }

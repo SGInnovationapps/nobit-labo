@@ -12,6 +12,8 @@ import { ClubEventsView } from '../src/admin/ClubEvents'
 import { AlertSettingsView } from '../src/admin/AlertSettings'
 import { ALERT_DEFS } from '../src/admin/alertsModel'
 import { AlertListView } from '../src/admin/AlertList'
+import { MissionAdminView } from '../src/admin/MissionAdmin'
+import type { AdminMission } from '../src/admin/missionAdminModel'
 import { LoginForm } from '../src/admin/LoginForm'
 import type { Applicant } from '../src/admin/applicants'
 
@@ -28,7 +30,7 @@ function Frame({ children, tab }: { children: React.ReactNode; tab: string }) {
     <div className="adm-shell">
       <header className="adm-header"><div className="brand">NOBIT! 管理</div><div className="adm-user"><span>運営（運営）</span><button className="btn btn-quiet adm-logout">ログアウト</button></div></header>
       <div className="adm-body">
-        <nav className="adm-nav"><button className="adm-tab" aria-current={tab === 's' ? 'page' : undefined}>生徒一覧</button><button className="adm-tab" aria-current={tab === 'a' ? 'page' : undefined}>所属の承認</button><button className="adm-tab" aria-current={tab === 'e' ? 'page' : undefined}>大会日程</button><button className="adm-tab" aria-current={tab === 't' ? 'page' : undefined}>タスク管理</button><button className="adm-tab" aria-current={tab === 'al' ? 'page' : undefined}>アラート設定</button><button className="adm-tab" aria-current={tab === 'c' ? 'page' : undefined}>クラブ設定</button></nav>
+        <nav className="adm-nav"><button className="adm-tab" aria-current={tab === 's' ? 'page' : undefined}>生徒一覧</button><button className="adm-tab" aria-current={tab === 'a' ? 'page' : undefined}>所属の承認</button><button className="adm-tab" aria-current={tab === 'e' ? 'page' : undefined}>大会日程</button><button className="adm-tab" aria-current={tab === 'm' ? 'page' : undefined}>クラブミッション</button><button className="adm-tab" aria-current={tab === 't' ? 'page' : undefined}>タスク管理</button><button className="adm-tab" aria-current={tab === 'al' ? 'page' : undefined}>アラート設定</button><button className="adm-tab" aria-current={tab === 'c' ? 'page' : undefined}>クラブ設定</button></nav>
         <main className="adm-main">
           <div className="field adm-club-picker"><label>クラブ</label><select><option>［クラブ名］</option></select></div>
           {children}
@@ -75,7 +77,10 @@ const detail = {
 }
 const dprops = { detail, today: '2026-10-09', canComment: true, busy: false, error: null, onBack: noop, onSend: noop, onDelete: noop }
 const which = location.hash.slice(1)
+const AM = (o: Partial<AdminMission>): AdminMission => ({ id: Math.random().toString(), title: '秋の学習チャレンジ', description: null, metric: 'records', startsOn: '2026-10-05', endsOn: '2026-10-18', clubGoal: 120, personalGoal: 10, rewardPersonalCoins: 5, rewardClubCoins: 10, status: 'active', participants: 4, clubProgress: 58, personalReached: 1, students: [{ studentId: 'a', displayName: 'ノビ太', progress: 12 }, { studentId: 'b', displayName: 'しずか', progress: 7 }, { studentId: 'c', displayName: null, progress: 0 }], ...o })
 const screens: Record<string, React.ReactNode> = {
+  missions: <Frame tab="m"><MissionAdminView clubName="［クラブ名］" today="2026-10-10" busy={false} error={null} notice="ミッションを作りました。" onCreate={noop} onCancel={noop} missions={[AM({}), AM({ title: '冬のスタート', status: 'upcoming', startsOn: '2026-10-26', endsOn: '2026-11-08', participants: 0, clubProgress: 0, personalReached: 0, students: [] }), AM({ title: '9月の記録チャレンジ', status: 'ended', startsOn: '2026-09-01', endsOn: '2026-09-30', clubProgress: 130, personalReached: 3 })]} /></Frame>,
+  missions_empty: <Frame tab="m"><MissionAdminView clubName="［クラブ名］" today="2026-10-10" busy={false} error={null} notice={null} onCreate={noop} onCancel={noop} missions={[]} /></Frame>,
   approvals: <Frame tab="a"><ApprovalsView applicants={apps} latestVersion={1} busyId={null} error={null} onApprove={noop} onReject={noop} /></Frame>,
   clubs: <Frame tab="c"><ClubSettingsView club={club} liffId="2001234567-AbCdEfGh" busy={false} error={null} notice="コピーしました。" onCreate={noop} onRename={noop} onSetFreeTasks={noop} onRegenerate={noop} onCopy={noop} /></Frame>,
   tasks: <Frame tab="t"><TasksView {...tprops} notice="配信しました。" /></Frame>,
