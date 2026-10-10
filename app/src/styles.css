@@ -197,3 +197,37 @@ p { margin: 0; }
 .focus-ticks { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px; list-style: none; margin: 12px 0 0; padding: 0; }
 .focus-ticks li { height: 18px; border-radius: 3px; background: #e6ece9; }
 .focus-ticks li.on { background: var(--mint, #38cda1); }
+
+/* ふりかえり（06） */
+.tab { border: 0; background: none; font-family: inherit; color: var(--ink); cursor: pointer; }
+.mode-row { display: flex; gap: 8px; margin-top: 16px; }
+.mode-btn { flex: 1; min-height: 44px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); font: inherit; font-weight: 700; color: var(--ink); cursor: pointer; }
+.mode-btn.is-on { border-color: var(--ink); background: var(--mint-tint); }
+.period-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.period-label { margin: 0; font-size: 20px; font-weight: 700; text-align: center; }
+.period-btn { min-height: 44px; padding: 0 12px; border: 0; background: none; font: inherit; font-weight: 700; color: var(--mint-ink); cursor: pointer; }
+.cal-head, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-head span { text-align: center; font-size: 12px; color: var(--muted, #5b6785); padding-bottom: 4px; }
+.cal-day, .cal-blank { min-height: 48px; border-radius: 8px; border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; }
+.cal-num { font-size: 15px; font-weight: 700; }
+.cal-count { font-size: 11px; font-weight: 700; }
+.cal-none, .cal-future { color: #5b6785; }
+.cal-future { opacity: .55; }
+.cal-day.lv-1 { background: #c8f0e4; }
+.cal-day.lv-2 { background: #8fe3c8; }
+.cal-day.lv-3 { background: var(--mint); }
+.cal-rest { background: #e7e2ff; color: #5a45c9; }
+.cal-day.is-today { border-color: var(--ink); }
+.cal-legend { margin-top: 10px; }
+.sum-list { margin: 8px 0 0; }
+.sum-list > div { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
+.sum-list dt { color: #5b6785; }
+.sum-list dd { margin: 0; font-weight: 700; }
+.sum-list .num { font-size: 24px; }
+.sub-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.sub-list li { padding: 10px 0; border-top: 1px solid var(--line); }
+.sub-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.sub-name { font-weight: 700; }
+.sub-note { font-size: 13px; color: #5b6785; }
+.sub-bar { display: block; height: 6px; margin-top: 6px; background: #e6ece9; border-radius: 3px; overflow: hidden; }
+.sub-bar i { display: block; height: 100%; background: var(--mint); }

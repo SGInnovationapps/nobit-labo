@@ -3,6 +3,7 @@ import { CompletionSheet } from './CompletionSheet'
 import { FreeTaskSheet } from './FreeTaskSheet'
 import { RecordBand } from './RecordBand'
 import { TabBar } from './TabBar'
+import type { Tab } from './TabBar'
 import { FocusPanel } from './FocusPanel'
 import { TimerPanel } from './TimerPanel'
 import { TimerSheet } from './TimerSheet'
@@ -15,7 +16,7 @@ import {
   buildBand, cheerOf, coinNote, dateLabel, focusNote, dayState, jstDate, monthStudyDays, sortTasks, STATE_LABEL, SUBJECTS, timeLabel,
 } from './homeModel'
 
-type Props = { clubId: string; clubName: string | null; displayName: string | null }
+type Props = { clubId: string; clubName: string | null; displayName: string | null; onTab?: (tab: Tab) => void }
 
 const FREE_ERRORS: Record<string, string> = {
   daily_limit_reached: '今日の自由登録は、3件までです。',
@@ -23,7 +24,7 @@ const FREE_ERRORS: Record<string, string> = {
 }
 
 /** 01 ホーム・今日のクエスト（Phase 1：連続記録・記録の帯・今日のタスク・自由登録） */
-export function Home({ clubId, clubName, displayName }: Props) {
+export function Home({ clubId, clubName, displayName, onTab }: Props) {
   const [data, setData] = useState<HomeData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
@@ -199,6 +200,7 @@ export function Home({ clubId, clubName, displayName }: Props) {
       onSubmitFree={(t, sub) => void onFree(t, sub)}
       tagPending={tagPending}
       notice={notice}
+      onTab={onTab}
       timerOpen={timerOpen}
       focusOpen={focusOpen}
       timerBusy={timerBusy}
@@ -233,6 +235,7 @@ export type HomeViewProps = {
   onSubmitFree: (title: string, subject: string) => void
   tagPending: string | null
   notice: string | null
+  onTab?: (tab: Tab) => void
   timerOpen: boolean
   focusOpen: boolean
   timerBusy: boolean
@@ -352,7 +355,7 @@ export function HomeView(p: HomeViewProps) {
         </section>
       )}
 
-      <TabBar />
+      <TabBar current="ホーム" onSelect={p.onTab} />
 
       {done && (
         <CompletionSheet
