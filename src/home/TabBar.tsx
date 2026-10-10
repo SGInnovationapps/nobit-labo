@@ -2,7 +2,7 @@ export const TABS = ['ホーム', 'ふりかえり', 'コレクション', 'ミ�
 export type Tab = (typeof TABS)[number]
 
 /** 使える画面。まだ無い画面は、文字を薄くして押せなくする */
-const READY: ReadonlyArray<Tab> = ['ホーム', 'ふりかえり']
+const READY: ReadonlyArray<Tab> = ['ホーム', 'ふりかえり', 'コレクション']
 
 type Props = { current?: Tab; onSelect?: (tab: Tab) => void }
 

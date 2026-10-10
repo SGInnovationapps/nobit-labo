@@ -8,6 +8,7 @@ import { ConsentStep } from './screens/ConsentStep'
 import { Notice } from './screens/Notice'
 import { ProfileStep } from './screens/ProfileStep'
 import { Home } from './home/Home'
+import { Collection } from './home/Collection'
 import { Reflect } from './home/Reflect'
 import type { Tab } from './home/TabBar'
 import { Shell } from './screens/Shell'
@@ -123,7 +124,9 @@ export default function App() {
   if (step.name === 'approved' && snapshot.membership) {
     return (
       <div className="shell">
-        {tab === 'ふりかえり' ? (
+        {tab === 'コレクション' ? (
+          <Collection displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} />
+        ) : tab === 'ふりかえり' ? (
           <Reflect onTab={setTab} />
         ) : (
           <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} onTab={setTab} />

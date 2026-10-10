@@ -231,3 +231,25 @@ p { margin: 0; }
 .sub-note { font-size: 13px; color: #5b6785; }
 .sub-bar { display: block; height: 6px; margin-top: 6px; background: #e6ece9; border-radius: 3px; overflow: hidden; }
 .sub-bar i { display: block; height: 100%; background: var(--mint); }
+
+/* コレクション（04）・ガチャ（05） */
+.coll-total { margin: 0; font-weight: 700; }
+.coll-total .num { font-size: 24px; }
+.coll-count { font-size: 14px; color: #5b6785; }
+.coll-missing { margin-top: 8px; }
+.item-grid { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.item-card { border: 2px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 2px; background: var(--surface); }
+.item-card.r-rare, .gacha-card.r-rare { border-color: var(--mint); background: var(--mint-tint); }
+.item-card.r-super_rare, .gacha-card.r-super_rare { border-color: var(--purple); background: #f1eeff; }
+.item-card.is-equipped { box-shadow: inset 0 0 0 2px var(--ink); }
+.item-rarity { margin: 0; font-size: 12px; font-weight: 700; color: #5b6785; }
+.r-rare .item-rarity, .r-rare .gacha-rarity { color: #0b7a5a; }
+.r-super_rare .item-rarity, .r-super_rare .gacha-rarity { color: #5a45c9; }
+.item-name { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.item-date { margin: 0; font-size: 12px; color: #5b6785; }
+.item-set { margin-top: 8px; min-height: 44px; border: 2px solid var(--ink); border-radius: 10px; background: var(--surface); font: inherit; font-weight: 700; color: var(--ink); cursor: pointer; }
+.item-card.is-equipped .item-set { background: var(--mint-tint); }
+.gacha-card { border: 3px solid var(--line); border-radius: 16px; padding: 18px 12px; background: var(--surface); }
+.gacha-rarity { margin: 0; font-size: 13px; font-weight: 700; color: #5b6785; }
+.gacha-name { margin: 6px 0 0; font-size: 26px; line-height: 1.25; }
+.gacha-date { margin: 6px 0 0; font-size: 13px; color: #5b6785; }
