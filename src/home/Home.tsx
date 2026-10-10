@@ -5,16 +5,17 @@ import { RecordBand } from './RecordBand'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
 import { FocusDoneSheet } from './FocusDoneSheet'
+import { ResumeView } from './Resume'
 import { FocusPanel } from './FocusPanel'
 import { TimerPanel } from './TimerPanel'
 import { TimerSheet } from './TimerSheet'
 import {
-  cancelStudyTimer, completeTask, FreeTaskError, loadHome, pauseFocusSession, recordStudyTag, registerFreeTask, resumeFocusSession,
+  cancelStudyTimer, completeTask, markResumeSeen, FreeTaskError, loadHome, pauseFocusSession, recordStudyTag, registerFreeTask, resumeFocusSession,
   startFocusSession, startStudyTimer, stopStudyTimer,
 } from './homeApi'
 import type { CompleteResult, HomeData, StudyResult } from './homeApi'
 import {
-  buildBand, cheerOf, coinNote, dateLabel, focusNote, dayState, jstDate, monthStudyDays, sortTasks, STATE_LABEL, SUBJECTS, timeLabel,
+  buildBand, cheerOf, shortFirst, coinNote, dateLabel, focusNote, dayState, jstDate, monthStudyDays, sortTasks, STATE_LABEL, SUBJECTS, timeLabel,
 } from './homeModel'
 
 type Props = { clubId: string; clubName: string | null; displayName: string | null; onTab?: (tab: Tab) => void }
@@ -38,6 +39,7 @@ export function Home({ clubId, clubName, displayName, onTab }: Props) {
   const [timerOpen, setTimerOpen] = useState(false)
   const [focusOpen, setFocusOpen] = useState(false)
   const [focusDone, setFocusDone] = useState<{ subject: string; coins: number; currentDays: number } | null>(null)
+  const [resumeSeen, setResumeSeen] = useState(false)
   const [timerBusy, setTimerBusy] = useState(false)
   const [timerError, setTimerError] = useState<string | null>(null)
 
@@ -187,6 +189,15 @@ export function Home({ clubId, clubName, displayName, onTab }: Props) {
   }
 
   return (
+    data.resume && !resumeSeen ? (
+      <ResumeView
+        cells={buildBand(data.activity, data.today, 30, data.restDates)}
+        longestDays={data.resume.longestDays}
+        badgeCount={data.resume.badgeCount}
+        tasks={shortFirst(data.tasks)}
+        onStart={() => { setResumeSeen(true); void markResumeSeen() }}
+      />
+    ) : (
     <HomeView
       data={data}
       clubName={clubName}
@@ -221,6 +232,7 @@ export function Home({ clubId, clubName, displayName, onTab }: Props) {
       onStopTimer={(m) => void onStopTimer(m)}
       onCancelTimer={() => void onCancelTimer()}
     />
+    )
   )
 }
 

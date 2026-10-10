@@ -253,3 +253,25 @@ p { margin: 0; }
 .gacha-rarity { margin: 0; font-size: 13px; font-weight: 700; color: #5b6785; }
 .gacha-name { margin: 6px 0 0; font-size: 26px; line-height: 1.25; }
 .gacha-date { margin: 6px 0 0; font-size: 13px; color: #5b6785; }
+
+/* 08 再開画面 */
+.resume { padding: 32px 20px calc(32px + env(safe-area-inset-bottom)); text-align: center; }
+.resume > * + * { margin-top: 20px; }
+.resume-nobit { display: block; margin: 0 auto; width: 120px; height: 120px; }
+.resume-title { margin: 0; font-size: 24px; line-height: 1.5; }
+.resume-sub { margin: 0; color: var(--ink-soft); text-wrap: balance; }
+.resume-band { text-align: left; padding-top: 16px; border-top: 1px solid var(--line); }
+.resume-stats { display: flex; gap: 12px; margin: 0; padding-top: 16px; border-top: 1px solid var(--line); }
+.resume-stats > div { flex: 1; }
+.resume-stats dt { font-size: 14px; color: var(--ink-soft); font-weight: 700; }
+.resume-stats dd { margin: 4px 0 0; }
+.resume-stats .num { font-size: 40px; line-height: 1.1; font-weight: 700; }
+.resume-unit { font-size: 14px; margin-left: 2px; }
+.resume-tasks { text-align: left; padding-top: 16px; border-top: 1px solid var(--line); }
+.resume-tasks h2 { margin: 0 0 8px; font-size: 16px; }
+.resume-tasks ul { list-style: none; margin: 0; padding: 0; }
+.resume-tasks li { display: flex; align-items: baseline; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); min-height: 44px; }
+.resume-tasks li:first-child { border-top: 0; }
+.resume-subject { font-size: 13px; font-weight: 700; color: var(--mint-ink); flex: none; }
+.resume-task { flex: 1; overflow-wrap: anywhere; }
+.resume-min { flex: none; font-size: 14px; color: var(--ink-soft); }

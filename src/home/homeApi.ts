@@ -1,12 +1,14 @@
 import { supabase } from '../lib/supabase'
 import type { HomeTask } from './homeModel'
-import { addDays, jstDate } from './homeModel'
+import { addDays, jstDate, needsResume } from './homeModel'
 
 export type HomeData = {
   today: string
   tasks: HomeTask[]
   streak: { current: number; longest: number }
   activity: { date: string; count: number }[]
+  /** 連続記録が途切れたあとの再開画面（08）。出さないときは null */
+  resume: { longestDays: number; badgeCount: number } | null
   /** クラブの大会・遠征・合宿日（休息日） */
   restDates: string[]
   allowFreeTasks: boolean
@@ -49,13 +51,13 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const monthStart = `${today.slice(0, 7)}-01`
   const activityFrom = monthStart < addDays(today, -29) ? monthStart : addDays(today, -29)
 
-  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes] = await Promise.all([
+  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes] = await Promise.all([
     supabase
       .from('user_tasks')
       .select('id, completed_at, tasks(title, subject, estimated_minutes, kind)')
       .eq('task_date', today)
       .order('created_at', { ascending: true }),
-    supabase.from('streak_status').select('current_days, longest_days').maybeSingle(),
+    supabase.from('streak_status').select('current_days, longest_days, last_achieved_date, resume_seen_for').maybeSingle(),
     supabase
       .from('daily_activity')
       .select('activity_date, completed_count')
@@ -66,6 +68,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     supabase.from('coin_balances').select('balance').maybeSingle(),
     supabase.from('study_records').select('id, subject, content, started_at, focus_target_seconds, paused_at, paused_seconds').is('ended_at', null).maybeSingle(),
     supabase.from('club_events').select('event_date').gte('event_date', activityFrom).lte('event_date', today),
+    supabase.from('user_items').select('id', { count: 'exact', head: true }).eq('category', 'badge'),
   ])
   if (eventRes.error) throw eventRes.error
   if (tasksRes.error) throw tasksRes.error
@@ -92,6 +95,9 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     tasks,
     streak: { current: streakRes.data?.current_days ?? 0, longest: streakRes.data?.longest_days ?? 0 },
     activity: (activityRes.data ?? []).map((a) => ({ date: a.activity_date as string, count: a.completed_count as number })),
+    resume: needsResume(streakRes.data?.current_days ?? 0, (streakRes.data?.last_achieved_date as string | null) ?? null, (streakRes.data?.resume_seen_for as string | null) ?? null)
+      ? { longestDays: streakRes.data?.longest_days ?? 0, badgeCount: badgeRes.count ?? 0 }
+      : null,
     restDates: (eventRes.data ?? []).map((e) => e.event_date as string),
     coins: coinRes.data?.balance ?? 0,
     timer: timerRes.data
@@ -195,4 +201,10 @@ export async function pauseFocusSession(): Promise<void> {
 export async function resumeFocusSession(): Promise<void> {
   const { error } = await supabase.rpc('resume_focus_session')
   if (error) throw error
+}
+
+/** 再開画面を見たことを残す（途切れごとに 1 回）。失敗しても画面は進める */
+export async function markResumeSeen(): Promise<void> {
+  const { error } = await supabase.rpc('mark_resume_seen')
+  if (error) console.error(error)
 }

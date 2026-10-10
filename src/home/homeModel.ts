@@ -64,6 +64,21 @@ export function buildBand(
   return cells
 }
 
+/** 連続記録が途切れたあとの再開画面（08）を出すか。途切れごとに 1 回（最後の達成日で区別する） */
+export function needsResume(currentDays: number, lastDate: string | null, seenFor: string | null): boolean {
+  return currentDays === 0 && lastDate !== null && seenFor !== lastDate
+}
+
+/** 再開画面に出す今日のタスク：未完了を、短い見込み時間から（見込みなしは後ろ） */
+export function shortFirst(tasks: ReadonlyArray<HomeTask>, limit = 3): HomeTask[] {
+  return tasks
+    .filter((t) => !t.completedAt)
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => (a.t.estimatedMinutes ?? Infinity) - (b.t.estimatedMinutes ?? Infinity) || a.i - b.i)
+    .slice(0, limit)
+    .map((x) => x.t)
+}
+
 /** 未完了を上、完了は下（完了が早い順）。同じ状態の中では配信タスクを先に */
 export function sortTasks(tasks: ReadonlyArray<HomeTask>): HomeTask[] {
   return [...tasks].sort((a, b) => {

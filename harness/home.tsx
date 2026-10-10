@@ -1,3 +1,5 @@
+import { ResumeView } from '../src/home/Resume'
+import { buildBand, shortFirst } from '../src/home/homeModel'
 import { createRoot } from 'react-dom/client'
 import '../src/styles.css'
 import { HomeView } from '../src/home/Home'
@@ -34,6 +36,8 @@ const screens: Record<string, React.ReactNode> = {
   focusRunning: <HomeView {...base} data={{ ...partial, timer: { id: 'f', subject: '数学', content: '二次関数', startedAt: new Date(Date.now() - 6 * 60000 - 20000).toISOString(), focusTargetSeconds: 900, pausedAt: null, pausedSeconds: 0 } }} />,
   focusDone: <HomeView {...base} data={partial} focusDone={{ subject: '数学', coins: 6, currentDays: 12 }} />,
   focusPaused: <HomeView {...base} data={{ ...partial, timer: { id: 'f', subject: '数学', content: null, startedAt: new Date(Date.now() - 9 * 60000).toISOString(), focusTargetSeconds: 900, pausedAt: new Date(Date.now() - 60000).toISOString(), pausedSeconds: 60 } }} />,
+  resume: <ResumeView cells={buildBand(act, '2026-10-09', 30, [])} longestDays={21} badgeCount={4} tasks={shortFirst([T('a','英語','英単語 Unit 3 の確認テスト', null), T('d','理科','電流と電圧 ワーク p.8', null), T('b','数学','方程式の文章題 5問', null)].map((t, i) => ({ ...t, estimatedMinutes: [15, 10, null][i] })))} onStart={() => undefined} />,
+  resume_empty: <ResumeView cells={buildBand([], '2026-10-09', 30, [])} longestDays={3} badgeCount={0} tasks={[]} onStart={() => undefined} />,
   free: <HomeView {...base} data={partial} freeOpen freeError="今日の自由登録は、3件までです。" />,
 }
 createRoot(document.getElementById('root')!).render(<div className="shell">{screens[location.hash.slice(1)]}</div>)
