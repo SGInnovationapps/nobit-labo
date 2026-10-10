@@ -85,3 +85,20 @@ export function acquiredLabel(iso: string): string {
 export function duplicateNote(coins: number): string {
   return `もっているので、＋${coins}コインにかえました`
 }
+
+/** ［仮］v1.7：無料の1回のあと、コインで追加の1回（1日1回まで、学習記録がある日だけ） */
+export const EXTRA_GACHA_COST = 30
+export type ExtraState = 'locked' | 'ready' | 'poor' | 'drawn'
+
+export function extraGachaState(freeDrawn: boolean, extraDrawn: boolean, coins: number): ExtraState {
+  if (!freeDrawn) return 'locked'
+  if (extraDrawn) return 'drawn'
+  return coins >= EXTRA_GACHA_COST ? 'ready' : 'poor'
+}
+
+export const EXTRA_NOTE: Record<ExtraState, string> = {
+  locked: `無料ガチャを引くと、${EXTRA_GACHA_COST}コインで、もう1回引けます（1日1回まで）。`,
+  ready: `${EXTRA_GACHA_COST}コインで、もう1回引けます（1日1回まで）。`,
+  poor: `追加ガチャは${EXTRA_GACHA_COST}コインです。コインを集めると引けます。`,
+  drawn: '今日の追加ガチャは引きました。',
+}

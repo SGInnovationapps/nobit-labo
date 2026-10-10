@@ -15,9 +15,9 @@ set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000d1"}', true); end $$;
 
 select lives_ok($$select public.register_free_task('英単語 20個', '英語')$$, '自由登録できる');
-select is((select reward_coins from public.tasks where kind = 'free'), 3, '自由登録のタスクは 3 コイン');
-select is((public.complete_task((select id from public.user_tasks limit 1)) ->> 'coins_granted')::int, 3, '自由登録を完了すると 3 コイン');
-select is((select balance from public.coin_balances), 3, '残高は 3');
+select is((select reward_coins from public.tasks where kind = 'free'), 3, '（旧）自由登録のタスクの reward_coins は残るが、v1.7 では付与に使わない');
+select is((public.complete_task((select id from public.user_tasks limit 1)) ->> 'coins_granted')::int, 1, 'v1.7：自分のタスクの完了は、学習した日の 1 コインだけ');
+select is((select balance from public.coin_balances), 1, '残高は 1');
 
 select * from finish();
 rollback;

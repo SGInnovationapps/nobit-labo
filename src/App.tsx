@@ -27,6 +27,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('ホーム')
+  // ホームの「今日のガチャを引く」から来たとき、ガチャを開いた状態でコレクションを出す
+  const [gachaRequest, setGachaRequest] = useState(false)
   const started = useRef(false)
 
   useEffect(() => {
@@ -126,13 +128,13 @@ export default function App() {
     return (
       <div className="shell">
         {tab === 'コレクション' ? (
-          <Collection displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} />
+          <Collection displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} autoGacha={gachaRequest} onAutoGacha={() => setGachaRequest(false)} />
         ) : tab === 'ミッション' ? (
           <Missions onTab={setTab} />
         ) : tab === 'ふりかえり' ? (
           <Reflect onTab={setTab} />
         ) : (
-          <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} onTab={setTab} />
+          <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} onTab={setTab} onGacha={() => { setGachaRequest(true); setTab('コレクション') }} />
         )}
       </div>
     )

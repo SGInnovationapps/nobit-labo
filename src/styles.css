@@ -295,3 +295,23 @@ p { margin: 0; }
 .mis-past li:first-child { border-top: 0; }
 .mis-past-title { margin: 0; font-weight: 700; }
 .mis-past-result { margin: 4px 0 0; font-size: 14px; }
+
+/* v1.7：ホーム（連続日数・今日のタスク・教科ボタン）と教科の記録の操作欄 */
+.btn-quiet { background: none; border-color: transparent; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+.task-actions { display: flex; flex-direction: column; gap: 8px; flex: none; }
+.task-btn-sub { background: var(--surface); }
+.tag-row { grid-template-columns: repeat(5, 1fr); }
+.tag-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; padding: 6px 2px; }
+.tag-btn-time { font-size: 12px; font-weight: 700; color: var(--mint-ink); }
+.tag-btn.is-recorded { background: #e6f7f1; border-color: #0b7a5a; }
+.subjects.is-primary .tag-btn { min-height: 72px; font-size: 17px; }
+.tag-panel { margin-top: 14px; padding: 12px 0 0; border-top: 1px solid var(--line); }
+.tag-panel > * + * { margin-top: 10px; }
+.tag-panel-head { margin: 0; font-size: 15px; }
+.tag-panel-subject { font-weight: 700; }
+.actions-inline { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions-inline .btn { width: auto; min-width: 0; padding-left: 16px; padding-right: 16px; }
+.support-line { margin: 0; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.support-from { font-weight: 700; margin-right: 10px; color: var(--ink-soft); }
+.coin-line { margin: 0; font-size: 14px; color: var(--ink-soft); }
+.coin-line .num { font-size: 18px; color: var(--ink); }

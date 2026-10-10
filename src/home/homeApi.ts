@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { HomeTask } from './homeModel'
+import type { HomeTask, TagRecord } from './homeModel'
 import { addDays, jstDate, needsResume } from './homeModel'
 
 export type HomeData = {
@@ -20,6 +20,8 @@ export type HomeData = {
     /** 集中モードのときの目標秒数。通常のタイマーは null */
     focusTargetSeconds: number | null; pausedAt: string | null; pausedSeconds: number
   } | null
+  /** 今日、教科ボタンで記録したもの（同じ教科は1日1回） */
+  tags: TagRecord[]
   /** クラブの管理者からの、最新の応援コメント */
   support: { body: string; createdAt: string } | null
 }
@@ -31,6 +33,10 @@ export type CompleteResult = {
   completedToday: number
   currentDays: number
   longestDays: number
+  /** その日の最初の記録か／連続記録の節目か（全面のシートを出すかの判断） */
+  firstOfDay: boolean
+  milestone: boolean
+  coinsGranted: number
 }
 
 type TaskRow = {
@@ -51,7 +57,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const monthStart = `${today.slice(0, 7)}-01`
   const activityFrom = monthStart < addDays(today, -29) ? monthStart : addDays(today, -29)
 
-  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes] = await Promise.all([
+  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes] = await Promise.all([
     supabase
       .from('user_tasks')
       .select('id, completed_at, tasks(title, subject, estimated_minutes, kind)')
@@ -69,6 +75,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     supabase.from('study_records').select('id, subject, content, started_at, focus_target_seconds, paused_at, paused_seconds').is('ended_at', null).maybeSingle(),
     supabase.from('club_events').select('event_date').gte('event_date', activityFrom).lte('event_date', today),
     supabase.from('user_items').select('id', { count: 'exact', head: true }).eq('category', 'badge'),
+    supabase.from('study_records').select('id, subject, started_at').eq('kind', 'tag').eq('record_date', today).order('started_at', { ascending: true }),
   ])
   if (eventRes.error) throw eventRes.error
   if (tasksRes.error) throw tasksRes.error
@@ -76,6 +83,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   if (activityRes.error) throw activityRes.error
   if (coinRes.error) throw coinRes.error
   if (timerRes.error) throw timerRes.error
+  if (tagRes.error) throw tagRes.error
 
   const tasks: HomeTask[] = ((tasksRes.data ?? []) as unknown as TaskRow[]).flatMap((r) => {
     const t = Array.isArray(r.tasks) ? r.tasks[0] : r.tasks
@@ -112,6 +120,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
         }
       : null,
     allowFreeTasks: clubRes.data?.allow_free_tasks ?? false,
+    tags: (tagRes.data ?? []).map((t) => ({ id: t.id as string, subject: t.subject as string, recordedAt: t.started_at as string })),
     support: supportRes.data?.[0] ? { body: supportRes.data[0].body as string, createdAt: supportRes.data[0].created_at as string } : null,
   }
 }
@@ -127,6 +136,9 @@ export async function completeTask(userTaskId: string): Promise<CompleteResult> 
     completedToday: d.completed_today as number,
     currentDays: d.current_days as number,
     longestDays: d.longest_days as number,
+    firstOfDay: (d.first_of_day as boolean | undefined) ?? false,
+    milestone: (d.milestone as boolean | undefined) ?? false,
+    coinsGranted: (d.coins_granted as number | undefined) ?? 0,
   }
 }
 
@@ -150,6 +162,8 @@ export async function registerFreeTask(title: string, subject: string, minutes: 
 export type StudyResult = {
   coinsGranted: number; currentDays: number; durationSeconds: number | null
   focusAchieved: boolean; focusBonus: number
+  firstOfDay: boolean; milestone: boolean; completedToday: number
+  recordId: string | null; alreadyRecorded: boolean; recordedAt: string | null
 }
 
 function toStudyResult(d: Record<string, unknown>): StudyResult {
@@ -159,6 +173,12 @@ function toStudyResult(d: Record<string, unknown>): StudyResult {
     durationSeconds: (d.duration_seconds as number | undefined) ?? null,
     focusAchieved: (d.focus_achieved as boolean | undefined) ?? false,
     focusBonus: (d.focus_bonus as number | undefined) ?? 0,
+    firstOfDay: (d.first_of_day as boolean | undefined) ?? false,
+    milestone: (d.milestone as boolean | undefined) ?? false,
+    completedToday: (d.completed_today as number | undefined) ?? 0,
+    recordId: (d.record_id as string | undefined) ?? null,
+    alreadyRecorded: (d.already_recorded as boolean | undefined) ?? false,
+    recordedAt: (d.recorded_at as string | undefined) ?? null,
   }
 }
 
@@ -170,8 +190,14 @@ export async function recordStudyTag(subject: string): Promise<StudyResult> {
 }
 
 /** 内容（任意）を書いてから、タイマーを始める */
-export async function startStudyTimer(subject: string, content: string | null): Promise<void> {
-  const { error } = await supabase.rpc('start_study_timer', { p_subject: subject, p_content: content })
+export async function startStudyTimer(subject: string, content: string | null, userTaskId: string | null = null): Promise<void> {
+  const { error } = await supabase.rpc('start_study_timer', { p_subject: subject, p_content: content, p_user_task_id: userTaskId })
+  if (error) throw error
+}
+
+/** 内容を事後に書く・直す（クラブ管理者には見えない。空にすると消える） */
+export async function setStudyContent(recordId: string, content: string | null): Promise<void> {
+  const { error } = await supabase.rpc('set_study_content', { p_record_id: recordId, p_content: content })
   if (error) throw error
 }
 

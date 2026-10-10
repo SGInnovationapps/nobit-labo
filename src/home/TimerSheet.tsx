@@ -43,8 +43,7 @@ export function TimerSheet({ focus = false, busy, error, onStart, onClose }: Pro
           <label htmlFor="timer-content">やる内容（書かなくても始められます）</label>
           <input id="timer-content" type="text" maxLength={60} value={content} placeholder="例：英単語 20個" onChange={(e) => setContent(e.target.value)} />
         </div>
-        <p className="muted">内容を書いて終えると3コイン、書かないときは1日1コインまでです。</p>
-        {focus && <p className="muted">15分間、残り時間を数えます。一時停止もできます。最後まで続けると、1日1回、5コインがもらえます。</p>}
+                {focus && <p className="muted">15分間、残り時間を数えます。一時停止もできます。最後まで続けると、1日1回、5コインがもらえます。</p>}
         {!check.ok && <p className="error" role="alert">{check.message}</p>}
         {error && <p className="error" role="alert">{error}</p>}
         <div className="actions">

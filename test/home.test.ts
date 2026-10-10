@@ -135,3 +135,27 @@ test('focusNote: 達成と途中終了で文面を分ける', () => {
   assert.equal(focusNote({ focusAchieved: true, focusBonus: 5, coinsGranted: 1, durationSeconds: 900 }), '15分集中を達成しました　＋6コイン')
   assert.equal(focusNote({ focusAchieved: false, focusBonus: 0, coinsGranted: 0, durationSeconds: 420 }), '7分の集中を記録しました')
 })
+
+import { recordedTime, shouldShowSheet, sheetLabel } from '../src/home/homeModel.ts'
+import { EXTRA_GACHA_COST, extraGachaState } from '../src/home/collectionModel.ts'
+
+test('v1.7：全面のシートは、最初の記録と節目のときだけ', () => {
+  assert.equal(shouldShowSheet({ firstOfDay: true, milestone: false }), true)
+  assert.equal(shouldShowSheet({ firstOfDay: false, milestone: true }), true)
+  assert.equal(shouldShowSheet({ firstOfDay: false, milestone: false }), false)
+  assert.equal(sheetLabel({ firstOfDay: true, milestone: false, currentDays: 3 }), '今日の最初の記録')
+  assert.equal(sheetLabel({ firstOfDay: true, milestone: true, currentDays: 7 }), '連続記録 7日')
+})
+
+test('v1.7：教科ボタンに、記録した時刻を出す', () => {
+  const tags = [{ id: 'a', subject: '数学', recordedAt: '2026-10-09T08:05:00Z' }]
+  assert.equal(recordedTime(tags, '数学'), '17:05')
+  assert.equal(recordedTime(tags, '英語'), null)
+})
+
+test('v1.7：追加ガチャの状態', () => {
+  assert.equal(extraGachaState(false, false, 100), 'locked')
+  assert.equal(extraGachaState(true, false, EXTRA_GACHA_COST), 'ready')
+  assert.equal(extraGachaState(true, false, EXTRA_GACHA_COST - 1), 'poor')
+  assert.equal(extraGachaState(true, true, 100), 'drawn')
+})

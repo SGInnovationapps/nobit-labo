@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { Nobit } from './Nobit'
 import { gachaMood } from './nobitModel'
-import { acquiredLabel, categoryLabel, duplicateNote, RARITY_LABEL, setLabel } from './collectionModel'
+import { acquiredLabel, categoryLabel, duplicateNote, EXTRA_GACHA_COST, RARITY_LABEL, setLabel } from './collectionModel'
+import type { ExtraState } from './collectionModel'
 import type { GachaResult } from './collectionApi'
 
 type Props = {
@@ -11,12 +12,15 @@ type Props = {
   busy: boolean
   error: string | null
   onDraw: () => void
+  /** 結果のあとに、追加で引けるか（コインの足りない・引き済みなら押せない） */
+  extra: ExtraState
+  onDrawExtra: () => void
   onEquip: () => void
   onClose: () => void
 }
 
 /** 05 無料ガチャ。ホームではなくコレクションの上に重ねるシート。ノビットはここに出る */
-export function GachaSheet({ result, equipped, busy, error, onDraw, onEquip, onClose }: Props) {
+export function GachaSheet({ result, equipped, busy, error, onDraw, extra, onDrawExtra, onEquip, onClose }: Props) {
   const first = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     first.current?.focus()
@@ -55,7 +59,13 @@ export function GachaSheet({ result, equipped, busy, error, onDraw, onEquip, onC
               </button>
             ) : null}
             {error && <p className="error" role="alert">{error}</p>}
-            <p className="muted">次に引けるのは、あすの0:00です。</p>
+            {extra === 'ready' && (
+              <button type="button" className="btn btn-secondary" disabled={busy} onClick={onDrawExtra}>
+                {busy ? '引いています…' : `もう1回引く（${EXTRA_GACHA_COST}コイン）`}
+              </button>
+            )}
+            {extra === 'poor' && <p className="muted">追加ガチャは{EXTRA_GACHA_COST}コインです。コインを集めると、もう1回引けます。</p>}
+            <p className="muted">{result.extra ? '追加ガチャは1日1回までです。' : '無料ガチャは、あすの0:00にまた引けます。'}</p>
             <button type="button" className="btn btn-primary" onClick={onClose}>閉じる</button>
           </>
         )}

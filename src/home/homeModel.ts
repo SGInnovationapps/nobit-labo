@@ -223,3 +223,22 @@ export function focusNote(r: { focusAchieved: boolean; focusBonus: number; coins
   const min = Math.floor((r.durationSeconds ?? 0) / 60)
   return `${min}分の集中を記録しました　${coinNote(r.coinsGranted)}`.trim()
 }
+
+/** v1.7［仮］：全面のシート（02）を出すのは、その日の最初の記録・連続記録の節目のときだけ。2件目以降は行に時刻が入るだけ */
+export function shouldShowSheet(r: { firstOfDay: boolean; milestone: boolean }): boolean {
+  return r.firstOfDay || r.milestone
+}
+
+/** 全面のシートの見出し */
+export function sheetLabel(r: { firstOfDay: boolean; milestone: boolean; currentDays: number }): string {
+  if (r.milestone) return `連続記録 ${r.currentDays}日`
+  return r.firstOfDay ? '今日の最初の記録' : '記録しました'
+}
+
+export type TagRecord = { id: string; subject: string; recordedAt: string }
+
+/** 教科ボタンに出す、今日すでに記録した時刻（同じ教科は1日1回） */
+export function recordedTime(tags: ReadonlyArray<TagRecord>, subject: string): string | null {
+  const t = tags.find((x) => x.subject === subject)
+  return t ? timeLabel(t.recordedAt) : null
+}

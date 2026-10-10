@@ -25,7 +25,7 @@ set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000c1"}', true); end $$;
 
 select is((public.record_study_tag('数学') ->> 'coins_granted')::int, 1, '教科タグ 1 回目：1 コイン');
-select is((public.record_study_tag('英語') ->> 'coins_granted')::int, 0, '教科タグ 2 回目：その日は付かない（1 日 1 コインまで）');
+select is((public.record_study_tag('英語') ->> 'coins_granted')::int, 0, '教科タグ 2 回目（別の教科）：学習した日の 1 コインは 1 日 1 回');
 select is((select completed_count::int from public.daily_activity), 2, '教科タグ 2 件で記録の帯の数は 2');
 select is((select current_days::int from public.streaks), 1, '教科タグだけで連続記録が 1 日になる');
 select throws_ok($$select public.record_study_tag('体育')$$, '23514', null, '教科以外は記録できない');
@@ -46,13 +46,13 @@ select is((select completed_count::int from public.daily_activity), 4, 'タイ�
 
 -- ===== c1：タイマー（内容つき）：1 件 3 コイン、1 日 3 件まで =====
 select is((public.start_study_timer('理科', '  光の屈折の復習  ') ->> 'record_id') is not null, true, '内容つきで開始（前後の空白は除く）');
-select is((public.stop_study_timer() ->> 'coins_granted')::int, 3, '内容つき 1 件目：3 コイン');
+select is((public.stop_study_timer() ->> 'coins_granted')::int, 0, 'v1.7：内容つきでも内容の報酬は付かない（学習した日の 1 コインは付与済み）');
 select is((select content from public.study_records where content is not null limit 1), '光の屈折の復習', '内容は保存される');
 select lives_ok($$select public.start_study_timer('社会', '年表'); select public.stop_study_timer()$$, '内容つき 2 件目');
 select lives_ok($$select public.start_study_timer('社会', '地図'); select public.stop_study_timer()$$, '内容つき 3 件目');
 select lives_ok($$select public.start_study_timer('社会', '用語')$$, '内容つき 4 件目を開始');
-select is((public.stop_study_timer() ->> 'coins_granted')::int, 0, '内容つき 4 件目：その日の上限（3 件）を超えると付かない');
-select is((select balance from public.coin_balances), 20, '残高：1 + 10 + 3 × 3');
+select is((public.stop_study_timer() ->> 'coins_granted')::int, 0, '内容つき 4 件目：コインは付かない');
+select is((select balance from public.coin_balances), 11, '残高：学習した日 1 + 配信タスク 10（内容の報酬はなし）');
 select is((select current_days::int from public.streaks), 1, '何件記録しても連続記録は 1 日');
 
 -- 取り消し
