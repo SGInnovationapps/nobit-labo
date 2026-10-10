@@ -178,3 +178,16 @@ p { margin: 0; }
 .support h2 { margin: 0 0 4px; font-size: 14px; color: var(--ink-soft); font-weight: 700; }
 .support-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
 .support-date { margin: 4px 0 0; font-size: 13px; color: var(--ink-soft); }
+
+/* 教科で記録する・タイマー・コイン */
+.coin-num { color: #7f5a00; font-size: 20px; }
+.tag-help { margin: 0 0 10px; }
+.tag-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.tag-btn { min-height: 48px; border: 1px solid var(--line, #d9dee3); border-radius: 12px; background: var(--surface, #fff); color: var(--ink, #1f2b45); font: inherit; font-weight: 700; font-size: 15px; }
+.tag-btn:disabled { opacity: .6; }
+.record-notice { margin: 12px 0 0; font-size: 14px; font-weight: 700; color: #0b7a5a; }
+.timer-panel { border-top: 2px solid var(--mint, #38cda1); padding-top: 14px; }
+.timer-subject { color: #0b7a5a; }
+.timer-content { margin: 6px 0 0; overflow-wrap: anywhere; }
+.timer-panel .timer-time { margin: 8px 0 0; font-size: 48px; font-weight: 700; line-height: 1.1; }
+.timer-panel .actions { margin-top: 14px; }

@@ -3,9 +3,15 @@ import { CompletionSheet } from './CompletionSheet'
 import { FreeTaskSheet } from './FreeTaskSheet'
 import { RecordBand } from './RecordBand'
 import { TabBar } from './TabBar'
-import { completeTask, FreeTaskError, loadHome, registerFreeTask } from './homeApi'
-import type { CompleteResult, HomeData } from './homeApi'
-import { buildBand, cheerOf, dateLabel, dayState, jstDate, sortTasks, STATE_LABEL, timeLabel } from './homeModel'
+import { TimerPanel } from './TimerPanel'
+import { TimerSheet } from './TimerSheet'
+import {
+  cancelStudyTimer, completeTask, FreeTaskError, loadHome, recordStudyTag, registerFreeTask, startStudyTimer, stopStudyTimer,
+} from './homeApi'
+import type { CompleteResult, HomeData, StudyResult } from './homeApi'
+import {
+  buildBand, cheerOf, coinNote, dateLabel, dayState, jstDate, monthStudyDays, sortTasks, STATE_LABEL, SUBJECTS, timeLabel,
+} from './homeModel'
 
 type Props = { clubId: string; clubName: string | null; displayName: string | null }
 
@@ -23,6 +29,11 @@ export function Home({ clubId, clubName, displayName }: Props) {
   const [freeOpen, setFreeOpen] = useState(false)
   const [freeBusy, setFreeBusy] = useState(false)
   const [freeError, setFreeError] = useState<string | null>(null)
+  const [tagPending, setTagPending] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [timerOpen, setTimerOpen] = useState(false)
+  const [timerBusy, setTimerBusy] = useState(false)
+  const [timerError, setTimerError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -71,6 +82,70 @@ export function Home({ clubId, clubName, displayName }: Props) {
     }
   }
 
+  const SAVE_FAIL = '保存できませんでした。通信を確認して、もう一度お試しください。'
+  const noticeOf = (r: StudyResult) => `記録しました　${coinNote(r.coinsGranted)}`.trim()
+
+  async function onTag(subject: string) {
+    setTagPending(subject)
+    setNotice(null)
+    try {
+      const r = await recordStudyTag(subject)
+      await load()
+      setNotice(`${subject}を${noticeOf(r)}`)
+    } catch (e) {
+      console.error(e)
+      setError(SAVE_FAIL)
+    } finally {
+      setTagPending(null)
+    }
+  }
+
+  async function onStartTimer(subject: string, content: string | null) {
+    setTimerBusy(true)
+    setTimerError(null)
+    try {
+      await startStudyTimer(subject, content)
+      await load()
+      setTimerOpen(false)
+    } catch (e) {
+      console.error(e)
+      const m = e instanceof Error ? e.message : ''
+      setTimerError(m.includes('timer_already_running') ? 'すでにタイマーが動いています。' : SAVE_FAIL)
+    } finally {
+      setTimerBusy(false)
+    }
+  }
+
+  async function onStopTimer(minutes: number | null) {
+    setTimerBusy(true)
+    setTimerError(null)
+    setNotice(null)
+    try {
+      const r = await stopStudyTimer(minutes)
+      await load()
+      setNotice(noticeOf(r))
+    } catch (e) {
+      console.error(e)
+      setTimerError(SAVE_FAIL)
+    } finally {
+      setTimerBusy(false)
+    }
+  }
+
+  async function onCancelTimer() {
+    setTimerBusy(true)
+    setTimerError(null)
+    try {
+      await cancelStudyTimer()
+      await load()
+    } catch (e) {
+      console.error(e)
+      setTimerError(SAVE_FAIL)
+    } finally {
+      setTimerBusy(false)
+    }
+  }
+
   if (!data) {
     return (
       <div className="home">
@@ -102,6 +177,17 @@ export function Home({ clubId, clubName, displayName }: Props) {
       onOpenFree={() => { setFreeError(null); setFreeOpen(true) }}
       onCloseFree={() => setFreeOpen(false)}
       onSubmitFree={(t, sub) => void onFree(t, sub)}
+      tagPending={tagPending}
+      notice={notice}
+      timerOpen={timerOpen}
+      timerBusy={timerBusy}
+      timerError={timerError}
+      onTag={(sub) => void onTag(sub)}
+      onOpenTimer={() => { setTimerError(null); setTimerOpen(true) }}
+      onCloseTimer={() => setTimerOpen(false)}
+      onStartTimer={(sub, c) => void onStartTimer(sub, c)}
+      onStopTimer={(m) => void onStopTimer(m)}
+      onCancelTimer={() => void onCancelTimer()}
     />
   )
 }
@@ -121,6 +207,17 @@ export type HomeViewProps = {
   onOpenFree: () => void
   onCloseFree: () => void
   onSubmitFree: (title: string, subject: string) => void
+  tagPending: string | null
+  notice: string | null
+  timerOpen: boolean
+  timerBusy: boolean
+  timerError: string | null
+  onTag: (subject: string) => void
+  onOpenTimer: () => void
+  onCloseTimer: () => void
+  onStartTimer: (subject: string, content: string | null) => void
+  onStopTimer: (minutes: number | null) => void
+  onCancelTimer: () => void
 }
 
 export function HomeView(p: HomeViewProps) {
@@ -138,7 +235,10 @@ export function HomeView(p: HomeViewProps) {
 
       <section className="streak" aria-label="連続記録">
         <p className="streak-main"><span className="num streak-num">{data.streak.current}</span><span className="streak-unit">日連続</span></p>
-        <p className="streak-sub">最長記録 <span className="num">{data.streak.longest}</span> 日</p>
+        <p className="streak-sub">
+          最長記録 <span className="num">{data.streak.longest}</span> 日　今月の学習 <span className="num">{monthStudyDays(data.activity, data.today)}</span> 日
+        </p>
+        <p className="streak-sub">コイン <span className="num coin-num">{data.coins}</span></p>
       </section>
 
       <section className="section" aria-label="記録の帯">
@@ -185,10 +285,31 @@ export function HomeView(p: HomeViewProps) {
         )}
         {data.allowFreeTasks && (
           <button type="button" className="btn btn-secondary free-open" onClick={p.onOpenFree}>
-            やった勉強を記録する
+            自分のタスクを追加する
           </button>
         )}
       </section>
+
+      <section className="section" aria-labelledby="tag-h">
+        <h2 id="tag-h">教科で記録する</h2>
+        <p className="muted tag-help">タスク以外の勉強も、終わったあとにワンタップで。</p>
+        <div className="tag-row">
+          {SUBJECTS.map((s) => (
+            <button key={s} type="button" className="tag-btn" disabled={p.tagPending !== null} onClick={() => p.onTag(s)}>
+              {p.tagPending === s ? '…' : s}
+            </button>
+          ))}
+        </div>
+        {p.notice && <p className="record-notice" role="status">{p.notice}</p>}
+      </section>
+
+      {data.timer ? (
+        <TimerPanel timer={data.timer} busy={p.timerBusy} error={p.timerError} onStop={p.onStopTimer} onCancel={p.onCancelTimer} />
+      ) : (
+        <section className="section" aria-label="タイマー">
+          <button type="button" className="btn btn-secondary" onClick={p.onOpenTimer}>タイマーで記録する</button>
+        </section>
+      )}
 
       <TabBar />
 
@@ -202,6 +323,7 @@ export function HomeView(p: HomeViewProps) {
           onClose={p.onCloseDone}
         />
       )}
+      {p.timerOpen && !data.timer && <TimerSheet busy={p.timerBusy} error={p.timerError} onStart={p.onStartTimer} onClose={p.onCloseTimer} />}
       {freeOpen && <FreeTaskSheet busy={freeBusy} error={freeError} onSubmit={p.onSubmitFree} onClose={p.onCloseFree} />}
     </div>
   )
