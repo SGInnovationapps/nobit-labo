@@ -91,7 +91,12 @@ const screens: Record<string, React.ReactNode> = {
     { id: 'e4', date: '2026-09-20', kind: 'tournament', note: '地区大会' },
   ]} /></Frame>,
   events_empty: <Frame tab="e"><ClubEventsView clubName="［クラブ名］" today="2026-10-09" busy={false} error={null} notice={null} onAdd={noop} onRemove={noop} events={[]} /></Frame>,
-  alerts: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice="「記録が空いた」の設定を保存しました。" onSave={noop} rules={ALERT_DEFS.map((d, i) => ({ kind: d.kind, enabled: i !== 5, thresholdDays: d.kind === 'gap' ? 3 : null, sendMethod: 'manual' as const, template: d.defaultTemplate }))} /></Frame>,
+  alerts: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice="「記録が空いた」の設定を保存しました。" history={[
+    { id: 'h1', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: {}, occurredOn: '2026-10-01', status: 'resolved', contactedAt: '2026-10-01T08:05:00Z', resolvedAt: '2026-10-02T03:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 5 },
+    { id: 'h2', studentId: 's2', displayName: 'しずか', grade: 9, kind: 'gap', detail: {}, occurredOn: '2026-09-28', status: 'resolved', contactedAt: '2026-09-28T08:05:00Z', resolvedAt: null, resumedAfterContact: false, template: null, completedAfterContact: 0 },
+    { id: 'h3', studentId: 's3', displayName: 'スネ夫', grade: 10, kind: 'streak_broken', detail: {}, occurredOn: '2026-10-08', status: 'contacted', contactedAt: '2026-10-08T08:05:00Z', resolvedAt: null, resumedAfterContact: null, template: null, completedAfterContact: 1 },
+    { id: 'h4', studentId: 's4', displayName: 'ジャイ子', grade: 7, kind: 'not_started', detail: {}, occurredOn: '2026-10-09', status: 'resolved', contactedAt: '2026-10-09T09:00:00Z', resolvedAt: '2026-10-09T11:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 2 },
+  ]} now={Date.parse('2026-10-10T00:00:00Z')} onSave={noop} rules={ALERT_DEFS.map((d, i) => ({ kind: d.kind, enabled: i !== 5, thresholdDays: d.kind === 'gap' ? 3 : null, sendMethod: 'manual' as const, template: d.defaultTemplate }))} /></Frame>,
   alertlist: <Frame tab="s"><AlertListView busy={false} error={null} notice="連絡済みに記録しました。" onCopy={noop} onContacted={noop} onDismiss={noop} items={[
     { id: '1', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: { missing_days: 4 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '今日も、ひとつ育てよう。短いタスクからで大丈夫。', completedAfterContact: null },
     { id: '2', studentId: 's2', displayName: 'しずか', grade: 9, kind: 'streak_milestone', detail: { days: 30 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '7日連続記録達成！おめでとう！', completedAfterContact: null },
@@ -99,6 +104,7 @@ const screens: Record<string, React.ReactNode> = {
     { id: '4', studentId: 's4', displayName: 'ジャイ子', grade: 7, kind: 'gap', detail: { missing_days: 5 }, occurredOn: '2026-10-05', status: 'resolved', contactedAt: '2026-10-07T08:05:00Z', resolvedAt: '2026-10-08T03:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 3 },
   ]} /></Frame>,
   alertlist_empty: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onCopy={noop} onContacted={noop} onDismiss={noop} items={[]} /></Frame>,
+  alerts_empty: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice={null} history={[]} now={0} onSave={noop} rules={[]} /></Frame>,
   login: <LoginForm />,
 }
 createRoot(document.getElementById('root')!).render(screens[which] ?? <p>unknown</p>)

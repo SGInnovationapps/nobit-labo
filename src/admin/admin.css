@@ -194,3 +194,11 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .alert-outcome { margin: 0; font-size: 14px; color: #0b7a5a; font-weight: 700; }
 .alert-template { margin: 0; padding: 10px 14px; background: var(--mint-tint); border-radius: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .alert-sub { margin: 20px 0 0; font-size: 16px; }
+
+.alert-history { margin-top: 8px; }
+.alert-table-wrap { overflow-x: auto; }
+.alert-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.alert-table th, .alert-table td { padding: 10px 12px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.alert-table thead th { border-top: 0; font-weight: 700; color: var(--ink-soft); }
+.alert-table th:first-child, .alert-table tbody th { text-align: left; font-weight: 700; }
+.alert-table .num { font-size: 18px; font-weight: 700; }

@@ -449,3 +449,22 @@ export async function dismissAlert(id: string): Promise<void> {
   const { error } = await supabase.rpc('dismiss_alert', { p_id: id })
   if (error) throw error
 }
+
+/** 連絡済みの履歴（直近90日、新しい順）。画面13で使う */
+export async function loadAlertHistory(clubId: string, now = Date.now()): Promise<AlertItem[]> {
+  const since = new Date(now - 90 * 86_400_000).toISOString()
+  const { data, error } = await supabase
+    .from('alert_list')
+    .select('id, student_id, display_name, grade, kind, detail, occurred_on, status, contacted_at, resolved_at, resumed_after_contact, template, completed_after_contact')
+    .eq('club_id', clubId)
+    .not('contacted_at', 'is', null)
+    .gte('contacted_at', since)
+    .order('contacted_at', { ascending: false })
+    .limit(500)
+  if (error) throw error
+  return (data as AlertRow[]).map((r) => ({
+    id: r.id, studentId: r.student_id, displayName: r.display_name, grade: r.grade, kind: r.kind, detail: r.detail ?? {},
+    occurredOn: r.occurred_on, status: r.status, contactedAt: r.contacted_at, resolvedAt: r.resolved_at,
+    resumedAfterContact: r.resumed_after_contact, template: r.template, completedAfterContact: r.completed_after_contact,
+  }))
+}

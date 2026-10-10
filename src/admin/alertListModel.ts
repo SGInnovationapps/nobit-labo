@@ -72,3 +72,43 @@ export function alertErrorMessage(e: unknown): string {
   if (text.includes('forbidden')) return 'アラートを扱えるのは運営だけです。'
   return '処理できませんでした。通信を確認して、もう一度お試しください。'
 }
+
+export type KindSummary = {
+  kind: AlertKind
+  /** 連絡した件数 */
+  contacted: number
+  /** 連絡のあとに学習を再開して解消した件数 */
+  resumed: number
+  /** 連絡後7日間に、タスクを1件以上完了した件数 */
+  completedAny: number
+  /** 連絡後7日間の完了タスクの合計 */
+  completedTotal: number
+}
+
+/** 連絡の履歴を、アラートの種類ごとにまとめる。連絡していないものは数えない。表の順に並べる */
+export function summarizeHistory(items: ReadonlyArray<AlertItem>, order: ReadonlyArray<AlertKind>): KindSummary[] {
+  const map = new Map<AlertKind, KindSummary>()
+  for (const i of items) {
+    if (!i.contactedAt) continue
+    const s = map.get(i.kind) ?? { kind: i.kind, contacted: 0, resumed: 0, completedAny: 0, completedTotal: 0 }
+    s.contacted += 1
+    if (i.resumedAfterContact) s.resumed += 1
+    const c = i.completedAfterContact ?? 0
+    if (c > 0) s.completedAny += 1
+    s.completedTotal += c
+    map.set(i.kind, s)
+  }
+  return order.flatMap((k) => (map.has(k) ? [map.get(k) as KindSummary] : []))
+}
+
+/** 連絡後7日が経っていないものは、結果がまだ増える */
+export function isSettled(contactedAt: string, now: number): boolean {
+  return now - new Date(contactedAt).getTime() >= 7 * 86_400_000
+}
+
+/** 履歴1件の結果の文 */
+export function historyOutcome(i: AlertItem): string {
+  const c = i.completedAfterContact ?? 0
+  const head = i.resumedAfterContact ? '学習を再開' : i.status === 'resolved' ? '解消' : '再開待ち'
+  return `${head}・連絡後の完了 ${c} 件`
+}

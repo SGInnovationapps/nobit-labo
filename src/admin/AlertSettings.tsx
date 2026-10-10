@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Club } from './adminApi'
-import { loadAlertRules, saveAlertRule } from './adminApi'
-import { conditionText, defOf, isDirty, ruleProblem, saveErrorMessage, sortRules, TEMPLATE_MAX, THRESHOLD_MAX, THRESHOLD_MIN } from './alertsModel'
+import { loadAlertHistory, loadAlertRules, saveAlertRule } from './adminApi'
+import { historyOutcome, isSettled, summarizeHistory } from './alertListModel'
+import type { AlertItem } from './alertListModel'
+import { dateLabel, jstDate, timeLabel } from '../home/homeModel'
+import { gradeLabel } from '../lib/steps'
+import { ALERT_DEFS, conditionText, defOf, isDirty, ruleProblem, saveErrorMessage, sortRules, TEMPLATE_MAX, THRESHOLD_MAX, THRESHOLD_MIN } from './alertsModel'
 import type { AlertRule } from './alertsModel'
 
 type RowProps = {
@@ -86,10 +90,61 @@ type ViewProps = {
   busy: boolean
   error: string | null
   notice: string | null
+  history: AlertItem[]
+  now: number
   onSave: (r: AlertRule) => void
 }
 
-export function AlertSettingsView({ clubName, rules, busy, error, notice, onSave }: ViewProps) {
+function History({ history, now }: { history: AlertItem[]; now: number }) {
+  const summary = summarizeHistory(history, ALERT_DEFS.map((d) => d.kind))
+  const recent = history.slice(0, 20)
+  return (
+    <section className="adm-section alert-history" aria-labelledby="alert-history-h">
+      <h2 id="alert-history-h">連絡の履歴<span className="adm-grade">直近90日</span></h2>
+      {history.length === 0 ? (
+        <p className="muted">まだ「連絡済み」の記録がありません。生徒一覧の「対応アラート」から記録すると、ここに出ます。</p>
+      ) : (
+        <>
+          <p className="muted">効果は、「連絡済み」を記録したあとの完了タスク数で見ます。連絡から7日たっていないものは、数字がこれから増えます。</p>
+          <div className="alert-table-wrap">
+            <table className="alert-table">
+              <caption className="adm-sr">アラートの種類ごとの連絡の結果</caption>
+              <thead>
+                <tr><th scope="col">種類</th><th scope="col">連絡した</th><th scope="col">学習を再開</th><th scope="col">連絡後に1件以上完了</th><th scope="col">連絡後の完了（合計）</th></tr>
+              </thead>
+              <tbody>
+                {summary.map((x) => (
+                  <tr key={x.kind}>
+                    <th scope="row">{defOf(x.kind).label}</th>
+                    <td><span className="num">{x.contacted}</span> 件</td>
+                    <td><span className="num">{x.resumed}</span> 件</td>
+                    <td><span className="num">{x.completedAny}</span> 件</td>
+                    <td><span className="num">{x.completedTotal}</span> 件</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <h3 className="alert-sub">最近の連絡（新しい順、最大20件）</h3>
+          <ul className="alert-items">
+            {recent.map((i) => (
+              <li key={i.id} className="alert-item">
+                <div className="alert-item-head">
+                  <p className="adm-name">{i.displayName ?? '（表示名が未入力）'}<span className="adm-grade">{i.grade !== null ? gradeLabel(i.grade) : ''}</span></p>
+                  <p className="alert-kind">{defOf(i.kind).label}</p>
+                </div>
+                <p className="alert-status">連絡済み　{dateLabel(jstDate(i.contactedAt as string))} {timeLabel(i.contactedAt as string)}</p>
+                <p className="alert-outcome">{historyOutcome(i)}{!isSettled(i.contactedAt as string, now) && <span className="muted">　（集計中）</span>}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  )
+}
+
+export function AlertSettingsView({ clubName, rules, busy, error, notice, history, now, onSave }: ViewProps) {
   return (
     <>
       <div className="adm-title-row">
@@ -101,17 +156,23 @@ export function AlertSettingsView({ clubName, rules, busy, error, notice, onSave
       {rules.map((r) => (
         <RuleRow key={r.kind} rule={r} busy={busy} onSave={onSave} />
       ))}
+      <History history={history} now={now} />
     </>
   )
 }
 
 export default function AlertSettings({ club }: { club: Club }) {
   const [rules, setRules] = useState<AlertRule[] | null>(null)
+  const [history, setHistory] = useState<AlertItem[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
-  const reload = useCallback(async () => setRules(sortRules(await loadAlertRules(club.id))), [club.id])
+  const reload = useCallback(async () => {
+    const [r, h] = await Promise.all([loadAlertRules(club.id), loadAlertHistory(club.id)])
+    setRules(sortRules(r))
+    setHistory(h)
+  }, [club.id])
 
   useEffect(() => {
     setRules(null)
@@ -138,5 +199,5 @@ export default function AlertSettings({ club }: { club: Club }) {
   }
 
   if (!rules) return error ? <p className="error" role="alert">{error}</p> : <p className="lead">読み込み中です…</p>
-  return <AlertSettingsView clubName={club.name} rules={rules} busy={busy} error={error} notice={notice} onSave={(r) => void save(r)} />
+  return <AlertSettingsView clubName={club.name} rules={rules} busy={busy} error={error} notice={notice} history={history} now={Date.now()} onSave={(r) => void save(r)} />
 }

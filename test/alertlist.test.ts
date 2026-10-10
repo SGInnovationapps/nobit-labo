@@ -43,3 +43,26 @@ test('outcomeText・alertErrorMessage', () => {
   assert.ok(alertErrorMessage(new Error('not_open')).includes('対応済み'))
   assert.ok(alertErrorMessage({ message: 'forbidden' }).includes('運営'))
 })
+
+import { historyOutcome, isSettled, summarizeHistory } from '../src/admin/alertListModel.ts'
+
+test('summarizeHistory: 種類ごとの連絡数・再開・連絡後の完了。連絡していないものは数えない', () => {
+  const h = [
+    item({ id: '1', kind: 'gap', status: 'resolved', contactedAt: '2026-10-01T01:00:00Z', resumedAfterContact: true, completedAfterContact: 3 }),
+    item({ id: '2', kind: 'gap', status: 'contacted', contactedAt: '2026-10-09T01:00:00Z', completedAfterContact: 0 }),
+    item({ id: '3', kind: 'streak_broken', status: 'resolved', contactedAt: '2026-10-02T01:00:00Z', resumedAfterContact: true, completedAfterContact: 1 }),
+    item({ id: '4', kind: 'gap', status: 'open' }),
+  ]
+  const s = summarizeHistory(h, ['not_started', 'gap', 'streak_broken'])
+  assert.deepEqual(s.map((x) => x.kind), ['gap', 'streak_broken'])
+  assert.deepEqual(s[0], { kind: 'gap', contacted: 2, resumed: 1, completedAny: 1, completedTotal: 3 })
+  assert.deepEqual(s[1], { kind: 'streak_broken', contacted: 1, resumed: 1, completedAny: 1, completedTotal: 1 })
+})
+
+test('isSettled・historyOutcome', () => {
+  const now = Date.parse('2026-10-10T00:00:00Z')
+  assert.equal(isSettled('2026-10-02T00:00:00Z', now), true)
+  assert.equal(isSettled('2026-10-05T00:00:00Z', now), false)
+  assert.equal(historyOutcome(item({ status: 'resolved', resumedAfterContact: true, completedAfterContact: 2 })), '学習を再開・連絡後の完了 2 件')
+  assert.equal(historyOutcome(item({ status: 'contacted', completedAfterContact: 0 })), '再開待ち・連絡後の完了 0 件')
+})
