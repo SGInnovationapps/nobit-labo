@@ -168,3 +168,16 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .ev-row .adm-actions-row { margin-left: auto; }
 .ev-row .adm-actions-row .btn { min-width: 110px; }
 .field input[type='date'] { max-width: 220px; }
+
+/* アラートの設定 */
+.alert-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.alert-head h2 { flex: 1 1 auto; }
+.alert-prov { margin-left: 6px; font-size: 14px; color: #7f5a00; font-weight: 400; }
+.alert-onoff { grid-template-columns: repeat(2, 96px); }
+.alert-method { grid-template-columns: repeat(2, 140px); }
+.alert-cond { margin: 0; font-weight: 700; font-size: 14px; }
+.alert-note { font-size: 13px; margin: 0; }
+.alert-days input { max-width: 120px; }
+.field input[type='number'] { width: 100%; min-height: 52px; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 12px; background: var(--surface); }
+.alert-rule .field textarea { width: 100%; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 12px; background: var(--surface); line-height: 1.7; resize: vertical; }
+.choice.is-disabled .choice-face { opacity: .5; }

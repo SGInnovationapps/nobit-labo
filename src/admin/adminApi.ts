@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
 import { addDays, jstDate } from '../home/homeModel'
+import type { AlertKind, AlertRule, SendMethod } from './alertsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
 import type { StudentRow } from './studentModel'
 import type { AdminTask, Draft, Recurrence } from './taskModel'
@@ -384,5 +385,30 @@ export async function addClubEvent(clubId: string, date: string, kind: EventKind
 
 export async function removeClubEvent(id: string): Promise<void> {
   const { error } = await supabase.rpc('remove_club_event', { p_id: id })
+  if (error) throw error
+}
+
+// ---- アラートの設定（運営のみ。RLS で運営以外は読めない） ----
+
+type RuleRow = { kind: AlertKind; enabled: boolean; threshold_days: number | null; send_method: SendMethod; template: string }
+
+export async function loadAlertRules(clubId: string): Promise<AlertRule[]> {
+  const { data, error } = await supabase
+    .from('alert_rules')
+    .select('kind, enabled, threshold_days, send_method, template')
+    .eq('club_id', clubId)
+  if (error) throw error
+  return (data as RuleRow[]).map((r) => ({ kind: r.kind, enabled: r.enabled, thresholdDays: r.threshold_days, sendMethod: r.send_method, template: r.template }))
+}
+
+export async function saveAlertRule(clubId: string, r: AlertRule): Promise<void> {
+  const { error } = await supabase.rpc('save_alert_rule', {
+    p_club_id: clubId,
+    p_kind: r.kind,
+    p_enabled: r.enabled,
+    p_threshold_days: r.kind === 'gap' ? r.thresholdDays : null,
+    p_send_method: r.sendMethod,
+    p_template: r.template.trim(),
+  })
   if (error) throw error
 }

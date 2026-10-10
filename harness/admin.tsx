@@ -9,6 +9,8 @@ import { StudentsView } from '../src/admin/Students'
 import { StudentDetailView } from '../src/admin/StudentDetail'
 import type { StudentRow } from '../src/admin/studentModel'
 import { ClubEventsView } from '../src/admin/ClubEvents'
+import { AlertSettingsView } from '../src/admin/AlertSettings'
+import { ALERT_DEFS } from '../src/admin/alertsModel'
 import { LoginForm } from '../src/admin/LoginForm'
 import type { Applicant } from '../src/admin/applicants'
 
@@ -25,7 +27,7 @@ function Frame({ children, tab }: { children: React.ReactNode; tab: string }) {
     <div className="adm-shell">
       <header className="adm-header"><div className="brand">NOBIT! 管理</div><div className="adm-user"><span>運営（運営）</span><button className="btn btn-quiet adm-logout">ログアウト</button></div></header>
       <div className="adm-body">
-        <nav className="adm-nav"><button className="adm-tab" aria-current={tab === 's' ? 'page' : undefined}>生徒一覧</button><button className="adm-tab" aria-current={tab === 'a' ? 'page' : undefined}>所属の承認</button><button className="adm-tab" aria-current={tab === 'e' ? 'page' : undefined}>大会日程</button><button className="adm-tab" aria-current={tab === 't' ? 'page' : undefined}>タスク管理</button><button className="adm-tab" aria-current={tab === 'c' ? 'page' : undefined}>クラブ設定</button></nav>
+        <nav className="adm-nav"><button className="adm-tab" aria-current={tab === 's' ? 'page' : undefined}>生徒一覧</button><button className="adm-tab" aria-current={tab === 'a' ? 'page' : undefined}>所属の承認</button><button className="adm-tab" aria-current={tab === 'e' ? 'page' : undefined}>大会日程</button><button className="adm-tab" aria-current={tab === 't' ? 'page' : undefined}>タスク管理</button><button className="adm-tab" aria-current={tab === 'al' ? 'page' : undefined}>アラート設定</button><button className="adm-tab" aria-current={tab === 'c' ? 'page' : undefined}>クラブ設定</button></nav>
         <main className="adm-main">
           <div className="field adm-club-picker"><label>クラブ</label><select><option>［クラブ名］</option></select></div>
           {children}
@@ -88,6 +90,7 @@ const screens: Record<string, React.ReactNode> = {
     { id: 'e4', date: '2026-09-20', kind: 'tournament', note: '地区大会' },
   ]} /></Frame>,
   events_empty: <Frame tab="e"><ClubEventsView clubName="［クラブ名］" today="2026-10-09" busy={false} error={null} notice={null} onAdd={noop} onRemove={noop} events={[]} /></Frame>,
+  alerts: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice="「記録が空いた」の設定を保存しました。" onSave={noop} rules={ALERT_DEFS.map((d, i) => ({ kind: d.kind, enabled: i !== 5, thresholdDays: d.kind === 'gap' ? 3 : null, sendMethod: 'manual' as const, template: d.defaultTemplate }))} /></Frame>,
   login: <LoginForm />,
 }
 createRoot(document.getElementById('root')!).render(screens[which] ?? <p>unknown</p>)
