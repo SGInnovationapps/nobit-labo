@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { loadClubs, loadMe } from './adminApi'
 import type { Club, Me } from './adminApi'
 import Approvals from './Approvals'
+import ClubEvents from './ClubEvents'
 import ClubSettings from './ClubSettings'
 import { LoginForm } from './LoginForm'
 import StudentDetailPage from './StudentDetail'
@@ -11,7 +12,7 @@ import Students from './Students'
 import Tasks from './Tasks'
 import './admin.css'
 
-type Tab = 'students' | 'approvals' | 'tasks' | 'clubs'
+type Tab = 'students' | 'approvals' | 'events' | 'tasks' | 'clubs'
 type Ready = { me: Me; clubs: Club[] }
 
 function useSession(): Session | null | undefined {
@@ -79,7 +80,7 @@ function Signed({ userId }: { userId: string }) {
 
   const isOperator = me.role === 'operator'
   const club = clubs.find((c) => c.id === clubId) ?? null
-  const activeTab: Tab = isOperator || tab === 'students' || tab === 'approvals' ? tab : 'students'
+  const activeTab: Tab = isOperator || tab === 'students' || tab === 'approvals' || tab === 'events' ? tab : 'students'
 
   return (
     <div className="adm-shell">
@@ -98,6 +99,9 @@ function Signed({ userId }: { userId: string }) {
           </button>
           <button type="button" className="adm-tab" aria-current={activeTab === 'approvals' ? 'page' : undefined} onClick={() => setTab('approvals')}>
             所属の承認
+          </button>
+          <button type="button" className="adm-tab" aria-current={activeTab === 'events' ? 'page' : undefined} onClick={() => setTab('events')}>
+            大会日程
           </button>
           {isOperator && (
             <button type="button" className="adm-tab" aria-current={activeTab === 'tasks' ? 'page' : undefined} onClick={() => setTab('tasks')}>
@@ -140,6 +144,9 @@ function Signed({ userId }: { userId: string }) {
             ) : (
               <p className="lead">{isOperator ? 'クラブがまだありません。「クラブ設定」から追加してください。' : '担当しているクラブがありません。運営に連絡してください。'}</p>
             ))}
+
+          {activeTab === 'events' &&
+            (club ? <ClubEvents key={club.id} club={club} /> : <p className="lead">{isOperator ? 'クラブがまだありません。「クラブ設定」から追加してください。' : '担当しているクラブがありません。運営に連絡してください。'}</p>)}
 
           {activeTab === 'tasks' && (club ? <Tasks club={club} clubs={clubs} userId={me.userId} /> : <p className="lead">クラブがまだありません。「クラブ設定」から追加してください。</p>)}
 

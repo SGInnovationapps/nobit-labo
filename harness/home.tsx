@@ -6,7 +6,7 @@ import type { HomeData } from '../src/home/homeApi'
 const today = '2026-10-09'
 const act = [1,2,3,5,6,7,8,12,13,14,15,16,17,20,21,22,24,25,26,27,28].map((n, i) => ({ date: `2026-09-${String(n+1).padStart(2,'0')}`, count: (i % 4) + 1 }))
 const mk = (tasks: HomeData['tasks'], extra: Partial<HomeData> = {}): HomeData => ({
-  today, tasks, streak: { current: 12, longest: 21 }, activity: [...act, { date: '2026-10-07', count: 2 }, { date: '2026-10-08', count: 3 }, { date: '2026-10-09', count: tasks.filter(t => t.completedAt).length }], allowFreeTasks: true, support: null, coins: 240, timer: null, ...extra,
+  today, tasks, streak: { current: 12, longest: 21 }, activity: [...act, { date: '2026-10-07', count: 2 }, { date: '2026-10-08', count: 3 }, { date: '2026-10-09', count: tasks.filter(t => t.completedAt).length }], restDates: ['2026-10-05', '2026-10-06'], allowFreeTasks: true, support: null, coins: 240, timer: null, ...extra,
 })
 const T = (id: string, subject: string, title: string, completedAt: string | null, isFree = false) => ({ id, subject, title, estimatedMinutes: null, isFree, completedAt })
 const base = {

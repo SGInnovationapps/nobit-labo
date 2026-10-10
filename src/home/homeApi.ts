@@ -7,6 +7,8 @@ export type HomeData = {
   tasks: HomeTask[]
   streak: { current: number; longest: number }
   activity: { date: string; count: number }[]
+  /** クラブの大会・遠征・合宿日（休息日） */
+  restDates: string[]
   allowFreeTasks: boolean
   /** コイン残高（台帳の合計） */
   coins: number
@@ -47,7 +49,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const monthStart = `${today.slice(0, 7)}-01`
   const activityFrom = monthStart < addDays(today, -29) ? monthStart : addDays(today, -29)
 
-  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes] = await Promise.all([
+  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes] = await Promise.all([
     supabase
       .from('user_tasks')
       .select('id, completed_at, tasks(title, subject, estimated_minutes, kind)')
@@ -63,7 +65,9 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     supabase.from('support_comments').select('body, created_at').order('created_at', { ascending: false }).limit(1),
     supabase.from('coin_balances').select('balance').maybeSingle(),
     supabase.from('study_records').select('id, subject, content, started_at, focus_target_seconds, paused_at, paused_seconds').is('ended_at', null).maybeSingle(),
+    supabase.from('club_events').select('event_date').gte('event_date', activityFrom).lte('event_date', today),
   ])
+  if (eventRes.error) throw eventRes.error
   if (tasksRes.error) throw tasksRes.error
   if (streakRes.error) throw streakRes.error
   if (activityRes.error) throw activityRes.error
@@ -88,6 +92,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     tasks,
     streak: { current: streakRes.data?.current_days ?? 0, longest: streakRes.data?.longest_days ?? 0 },
     activity: (activityRes.data ?? []).map((a) => ({ date: a.activity_date as string, count: a.completed_count as number })),
+    restDates: (eventRes.data ?? []).map((e) => e.event_date as string),
     coins: coinRes.data?.balance ?? 0,
     timer: timerRes.data
       ? {

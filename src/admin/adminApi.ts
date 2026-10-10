@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
 import { addDays, jstDate } from '../home/homeModel'
+import type { ClubEvent, EventKind } from './eventsModel'
 import type { StudentRow } from './studentModel'
 import type { AdminTask, Draft, Recurrence } from './taskModel'
 
@@ -221,6 +222,8 @@ export type StudentBoard = {
   students: StudentRow[]
   /** クラブ全体の、直近14日の日別の完了数 */
   clubActivity: { date: string; count: number }[]
+  /** 直近14日のうち、大会・遠征・合宿の日（記録の帯で休息日として出す） */
+  restDates: string[]
 }
 
 type MemberRow = {
@@ -230,7 +233,7 @@ type MemberRow = {
 
 export async function loadStudentBoard(clubId: string, today: string): Promise<StudentBoard> {
   const since = addDays(today, -13)
-  const [memberRes, streakRes, activityRes, tasksRes] = await Promise.all([
+  const [memberRes, streakRes, activityRes, tasksRes, eventRes] = await Promise.all([
     supabase
       .from('club_members')
       .select('user_id, users!club_members_user_id_fkey(display_name, grade)')
@@ -241,7 +244,9 @@ export async function loadStudentBoard(clubId: string, today: string): Promise<S
     supabase.from('daily_activity').select('student_id, activity_date, completed_count').eq('club_id', clubId).gte('activity_date', since).lte('activity_date', today),
     // 配信されたタスクだけ。自由登録の中身（と有無）は、クラブ管理者には見せない
     supabase.from('user_tasks').select('student_id, completed_at').eq('club_id', clubId).eq('is_free', false).eq('task_date', today),
+    supabase.from('club_events').select('event_date').eq('club_id', clubId).gte('event_date', since).lte('event_date', today),
   ])
+  if (eventRes.error) throw eventRes.error
   if (memberRes.error) throw memberRes.error
   if (streakRes.error) throw streakRes.error
   if (activityRes.error) throw activityRes.error
@@ -284,7 +289,11 @@ export async function loadStudentBoard(clubId: string, today: string): Promise<S
       activity: a,
     }
   })
-  return { students, clubActivity: [...club.entries()].map(([date, count]) => ({ date, count })) }
+  return {
+    students,
+    clubActivity: [...club.entries()].map(([date, count]) => ({ date, count })),
+    restDates: eventRes.data.map((e) => e.event_date as string),
+  }
 }
 
 export type SupportComment = { id: string; body: string; createdAt: string; mine: boolean }
@@ -297,6 +306,7 @@ export type StudentDetail = {
   /** 直近30日の、完了したタスクの教科 */
   subjects: string[]
   comments: SupportComment[]
+  restDates: string[]
 }
 
 type HistoryRow = {
@@ -337,6 +347,7 @@ export async function loadStudentDetail(clubId: string, studentId: string, today
     studyDates: activityRes.data.map((r) => r.activity_date as string),
     history,
     subjects: history.filter((h) => jstDate(h.completedAt) >= from).map((h) => h.subject),
+    restDates: board.restDates,
     comments: commentRes.data.map((c) => ({ id: c.id as string, body: c.body as string, createdAt: c.created_at as string, mine: c.author_id === myId })),
   }
 }
@@ -348,5 +359,30 @@ export async function addSupportComment(clubId: string, studentId: string, autho
 
 export async function deleteSupportComment(id: string): Promise<void> {
   const { error } = await supabase.from('support_comments').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ---- 大会・遠征・合宿日（クラブ管理者は自クラブ、運営は全クラブ） ----
+
+type EventRow = { id: string; event_date: string; kind: EventKind; note: string | null }
+
+export async function loadClubEvents(clubId: string, from: string): Promise<ClubEvent[]> {
+  const { data, error } = await supabase
+    .from('club_events')
+    .select('id, event_date, kind, note')
+    .eq('club_id', clubId)
+    .gte('event_date', from)
+    .order('event_date', { ascending: true })
+  if (error) throw error
+  return (data as EventRow[]).map((r) => ({ id: r.id, date: r.event_date, kind: r.kind, note: r.note }))
+}
+
+export async function addClubEvent(clubId: string, date: string, kind: EventKind, note: string): Promise<void> {
+  const { error } = await supabase.rpc('add_club_event', { p_club_id: clubId, p_date: date, p_kind: kind, p_note: note.trim() === '' ? null : note.trim() })
+  if (error) throw error
+}
+
+export async function removeClubEvent(id: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_club_event', { p_id: id })
   if (error) throw error
 }

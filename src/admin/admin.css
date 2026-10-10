@@ -153,3 +153,18 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   .adm-week-d { font-size: 11px; }
 }
 @media (max-width: 720px) { .adm-nav { overflow-x: auto; } .adm-tab { white-space: nowrap; } }
+
+/* 大会日程 */
+.ev-list { list-style: none; margin: 0; padding: 0; }
+.ev-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); min-height: 52px; flex-wrap: wrap; }
+.ev-row:first-child { border-top: 0; }
+.ev-main { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ev-date { font-weight: 700; }
+.ev-kind { color: #5a45c9; font-weight: 700; font-size: 14px; }
+.ev-note { color: var(--muted, #5b6478); font-size: 14px; }
+.ev-today { color: #5a45c9; font-size: 13px; border: 1px solid #9b8afb; border-radius: 999px; padding: 0 8px; }
+.ev-row-past { opacity: .8; }
+.ev-row .btn-quiet { width: auto; min-width: 64px; min-height: 44px; margin-left: auto; }
+.ev-row .adm-actions-row { margin-left: auto; }
+.ev-row .adm-actions-row .btn { min-width: 110px; }
+.field input[type='date'] { max-width: 220px; }

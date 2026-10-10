@@ -59,7 +59,7 @@ type ViewProps = {
 export function ReflectView(p: ViewProps) {
   const { period, data } = p
   const summary = data ? summarize(data.activity, data.tasks, data.records) : null
-  const cells = data ? calendarCells(period, data.activity, data.today) : []
+  const cells = data ? calendarCells(period, data.activity, data.today, data.restDates) : []
   const maxCount = summary ? Math.max(1, ...summary.subjects.map((s) => s.tasks + s.records)) : 1
   const unit = period.mode === 'month' ? '月' : '週'
 

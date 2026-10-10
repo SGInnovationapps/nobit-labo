@@ -263,7 +263,7 @@ export function HomeView(p: HomeViewProps) {
   const { data, clubName, displayName, error, pending, done, freeOpen, freeBusy, freeError } = p
   const tasks = sortTasks(data.tasks)
   const state = dayState(tasks)
-  const cells = buildBand(data.activity, data.today)
+  const cells = buildBand(data.activity, data.today, 30, data.restDates)
 
   return (
     <div className="home">

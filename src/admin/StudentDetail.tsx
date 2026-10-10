@@ -28,7 +28,7 @@ export function StudentDetailView({ detail, today, canComment, busy, error, onBa
   const state = stateOf(s)
   const weeks = weeklyDays(detail.studyDates, today, 12)
   const subjects = subjectBreakdown(detail.subjects)
-  const cells = buildBand(s.activity, today, 14)
+  const cells = buildBand(s.activity, today, 14, detail.restDates)
 
   return (
     <>

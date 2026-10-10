@@ -108,7 +108,7 @@ export function StudentsView({ board, today, onOpen }: ViewProps) {
                   </dl>
                 </div>
                 <div className="adm-student-band">
-                  <RecordBand cells={buildBand(s.activity, today, 14)} />
+                  <RecordBand cells={buildBand(s.activity, today, 14, board.restDates)} />
                 </div>
                 <div className="adm-row-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => onOpen(s)}>

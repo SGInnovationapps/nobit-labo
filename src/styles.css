@@ -83,7 +83,7 @@ p { margin: 0; }
 
 /* 入力 */
 .field label, .field .label { display: block; font-weight: 700; margin-bottom: 6px; }
-.field input[type='text'] {
+.field input[type='text'], .field input[type='date'] {
   width: 100%; min-height: 52px; padding: 10px 14px;
   border: 2px solid var(--ink); border-radius: 12px; background: var(--surface);
 }
