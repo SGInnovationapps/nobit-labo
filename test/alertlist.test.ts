@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { alertErrorMessage, copyText, groupAlerts, outcomeText, reasonText } from '../src/admin/alertListModel.ts'
+import type { AlertItem } from '../src/admin/alertListModel.ts'
+
+const item = (o: Partial<AlertItem> = {}): AlertItem => ({
+  id: 'a', studentId: 's', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: { missing_days: 4 }, occurredOn: '2026-10-10',
+  status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: null, completedAfterContact: null, ...o,
+})
+
+test('reasonText: 種類ごとに数字を入れた一文', () => {
+  assert.equal(reasonText('gap', { missing_days: 4 }), '記録が4日空いています（休息日は数えません）')
+  assert.equal(reasonText('streak_broken', { streak_days: 12 }), '12日続いた連続記録が途切れました')
+  assert.equal(reasonText('not_started', { assigned: 2 }), '今日は配信タスク2件が未着手です')
+  assert.equal(reasonText('task_overdue', { overdue: 1 }), '期限を過ぎた未完了の配信タスクが1件あります')
+  assert.equal(reasonText('streak_milestone', { days: 30 }), '連続記録が30日に達しました')
+  assert.equal(reasonText('badge_earned', { item: 'ガチャ初引き' }), 'バッジ「ガチャ初引き」を獲得しました')
+})
+
+test('copyText: 設定の文面を使い、なければ初期の文面。節目は日数を置き換える', () => {
+  assert.equal(copyText('gap', '  また始めよう  ', {}), 'また始めよう')
+  assert.ok(copyText('gap', null, {}).includes('短いタスク'))
+  assert.equal(copyText('streak_milestone', '7日連続記録達成！おめでとう！', { days: 30 }), '30日連続記録達成！おめでとう！')
+  assert.equal(copyText('streak_milestone', '7日連続記録達成！おめでとう！', { days: 7 }), '7日連続記録達成！おめでとう！')
+})
+
+test('groupAlerts: 対応待ちは古い順、連絡済みは連絡の新しい順、解消は新しい順', () => {
+  const g = groupAlerts([
+    item({ id: '1', occurredOn: '2026-10-10' }), item({ id: '2', occurredOn: '2026-10-08' }),
+    item({ id: '3', status: 'contacted', contactedAt: '2026-10-09T01:00:00Z' }), item({ id: '4', status: 'contacted', contactedAt: '2026-10-10T01:00:00Z' }),
+    item({ id: '5', status: 'resolved', resolvedAt: '2026-10-09T01:00:00Z' }), item({ id: '6', status: 'resolved', resolvedAt: '2026-10-10T01:00:00Z' }),
+  ])
+  assert.deepEqual(g.open.map((i) => i.id), ['2', '1'])
+  assert.deepEqual(g.contacted.map((i) => i.id), ['4', '3'])
+  assert.deepEqual(g.resolved.map((i) => i.id), ['6', '5'])
+})
+
+test('outcomeText・alertErrorMessage', () => {
+  assert.equal(outcomeText(item()), null)
+  assert.equal(outcomeText(item({ status: 'contacted', completedAfterContact: 2 })), '連絡後の完了タスク 2 件')
+  assert.ok(outcomeText(item({ status: 'resolved', resumedAfterContact: true, completedAfterContact: 3 }))?.includes('再開'))
+  assert.equal(outcomeText(item({ status: 'resolved', resumedAfterContact: false })), null)
+  assert.ok(alertErrorMessage(new Error('not_open')).includes('対応済み'))
+  assert.ok(alertErrorMessage({ message: 'forbidden' }).includes('運営'))
+})

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { loadClubs, loadMe } from './adminApi'
 import type { Club, Me } from './adminApi'
 import Approvals from './Approvals'
+import AlertList from './AlertList'
 import AlertSettings from './AlertSettings'
 import ClubEvents from './ClubEvents'
 import ClubSettings from './ClubSettings'
@@ -138,7 +139,10 @@ function Signed({ userId }: { userId: string }) {
               studentId ? (
                 <StudentDetailPage clubId={club.id} studentId={studentId} myId={me.userId} canComment={me.role === 'club_admin'} onBack={() => setStudentId(null)} />
               ) : (
-                <Students clubId={club.id} onOpen={(st) => setStudentId(st.userId)} />
+                <>
+                  {isOperator && <AlertList key={club.id} clubId={club.id} />}
+                  <Students clubId={club.id} onOpen={(st) => setStudentId(st.userId)} />
+                </>
               )
             ) : (
               <p className="lead">{isOperator ? 'クラブがまだありません。「クラブ設定」から追加してください。' : '担当しているクラブがありません。運営に連絡してください。'}</p>

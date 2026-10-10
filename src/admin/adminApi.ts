@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
 import { addDays, jstDate } from '../home/homeModel'
+import type { AlertItem } from './alertListModel'
 import type { AlertKind, AlertRule, SendMethod } from './alertsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
 import type { StudentRow } from './studentModel'
@@ -410,5 +411,41 @@ export async function saveAlertRule(clubId: string, r: AlertRule): Promise<void>
     p_send_method: r.sendMethod,
     p_template: r.template.trim(),
   })
+  if (error) throw error
+}
+
+// ---- 対応アラート（運営のみ） ----
+
+type AlertRow = {
+  id: string; student_id: string; display_name: string | null; grade: number | null; kind: AlertKind; detail: Record<string, unknown> | null
+  occurred_on: string; status: AlertItem['status']; contacted_at: string | null; resolved_at: string | null
+  resumed_after_contact: boolean | null; template: string | null; completed_after_contact: number | null
+}
+
+/** 生成と解消を行ってから、対応待ち・連絡済み・直近7日に解消したものを読む */
+export async function loadAlerts(clubId: string, now = Date.now()): Promise<AlertItem[]> {
+  const { error: refreshError } = await supabase.rpc('refresh_alerts')
+  if (refreshError) throw refreshError
+  const since = new Date(now - 7 * 86_400_000).toISOString()
+  const { data, error } = await supabase
+    .from('alert_list')
+    .select('id, student_id, display_name, grade, kind, detail, occurred_on, status, contacted_at, resolved_at, resumed_after_contact, template, completed_after_contact')
+    .eq('club_id', clubId)
+    .or(`status.in.(open,contacted),and(status.eq.resolved,resolved_at.gte.${since})`)
+  if (error) throw error
+  return (data as AlertRow[]).map((r) => ({
+    id: r.id, studentId: r.student_id, displayName: r.display_name, grade: r.grade, kind: r.kind, detail: r.detail ?? {},
+    occurredOn: r.occurred_on, status: r.status, contactedAt: r.contacted_at, resolvedAt: r.resolved_at,
+    resumedAfterContact: r.resumed_after_contact, template: r.template, completedAfterContact: r.completed_after_contact,
+  }))
+}
+
+export async function markAlertContacted(id: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_alert_contacted', { p_id: id })
+  if (error) throw error
+}
+
+export async function dismissAlert(id: string): Promise<void> {
+  const { error } = await supabase.rpc('dismiss_alert', { p_id: id })
   if (error) throw error
 }

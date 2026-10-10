@@ -11,6 +11,7 @@ import type { StudentRow } from '../src/admin/studentModel'
 import { ClubEventsView } from '../src/admin/ClubEvents'
 import { AlertSettingsView } from '../src/admin/AlertSettings'
 import { ALERT_DEFS } from '../src/admin/alertsModel'
+import { AlertListView } from '../src/admin/AlertList'
 import { LoginForm } from '../src/admin/LoginForm'
 import type { Applicant } from '../src/admin/applicants'
 
@@ -91,6 +92,13 @@ const screens: Record<string, React.ReactNode> = {
   ]} /></Frame>,
   events_empty: <Frame tab="e"><ClubEventsView clubName="［クラブ名］" today="2026-10-09" busy={false} error={null} notice={null} onAdd={noop} onRemove={noop} events={[]} /></Frame>,
   alerts: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice="「記録が空いた」の設定を保存しました。" onSave={noop} rules={ALERT_DEFS.map((d, i) => ({ kind: d.kind, enabled: i !== 5, thresholdDays: d.kind === 'gap' ? 3 : null, sendMethod: 'manual' as const, template: d.defaultTemplate }))} /></Frame>,
+  alertlist: <Frame tab="s"><AlertListView busy={false} error={null} notice="連絡済みに記録しました。" onCopy={noop} onContacted={noop} onDismiss={noop} items={[
+    { id: '1', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: { missing_days: 4 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '今日も、ひとつ育てよう。短いタスクからで大丈夫。', completedAfterContact: null },
+    { id: '2', studentId: 's2', displayName: 'しずか', grade: 9, kind: 'streak_milestone', detail: { days: 30 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '7日連続記録達成！おめでとう！', completedAfterContact: null },
+    { id: '3', studentId: 's3', displayName: 'スネ夫', grade: 10, kind: 'streak_broken', detail: { streak_days: 12 }, occurredOn: '2026-10-09', status: 'contacted', contactedAt: '2026-10-10T08:05:00Z', resolvedAt: null, resumedAfterContact: null, template: '今日から、また始めよう。短いタスクからで大丈夫。', completedAfterContact: 0 },
+    { id: '4', studentId: 's4', displayName: 'ジャイ子', grade: 7, kind: 'gap', detail: { missing_days: 5 }, occurredOn: '2026-10-05', status: 'resolved', contactedAt: '2026-10-07T08:05:00Z', resolvedAt: '2026-10-08T03:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 3 },
+  ]} /></Frame>,
+  alertlist_empty: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onCopy={noop} onContacted={noop} onDismiss={noop} items={[]} /></Frame>,
   login: <LoginForm />,
 }
 createRoot(document.getElementById('root')!).render(screens[which] ?? <p>unknown</p>)
