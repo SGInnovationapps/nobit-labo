@@ -391,3 +391,69 @@ export const BAND_NOTE = '記録がない日も責めない。続けたぶんが
 export function weekdayChar(date: string): string {
   return '日月火水木金土'[new Date(`${date}T00:00:00Z`).getUTCDay()]
 }
+
+
+// ---- v1.7 ホーム（10/11 改訂）：2つのボタン・今日の記録の2件表示・この7日間 ----
+
+export type WeekCell =
+  | { kind: 'none'; date: string; today: boolean; weekday: string }
+  | { kind: 'rest'; date: string; today: boolean; weekday: string }
+  | { kind: 'done'; date: string; today: boolean; weekday: string; level: 1 | 2 | 3 | 4; count: number }
+
+/** この7日間の棒の高さ。1 / 2 / 3 / 4件以上の4段階 */
+export function weekLevelOf(count: number): 1 | 2 | 3 | 4 | null {
+  if (count <= 0) return null
+  return count >= 4 ? 4 : (count as 1 | 2 | 3)
+}
+
+/** この7日間：今日を右端にした直近7日。記録がある日は棒、休息日は紫、記録なしは線だけ */
+export function buildWeek(
+  activity: ReadonlyArray<{ date: string; count: number }>,
+  today: string,
+  restDates: ReadonlyArray<string> = [],
+): WeekCell[] {
+  const counts = new Map(activity.map((a) => [a.date, a.count]))
+  const rests = new Set(restDates)
+  const out: WeekCell[] = []
+  for (let i = 6; i >= 0; i--) {
+    const date = addDays(today, -i)
+    const base = { date, today: date === today, weekday: date === today ? '今日' : weekdayChar(date) }
+    const count = counts.get(date) ?? 0
+    const level = weekLevelOf(count)
+    if (level) out.push({ ...base, kind: 'done', level, count })
+    else if (rests.has(date)) out.push({ ...base, kind: 'rest' })
+    else out.push({ ...base, kind: 'none' })
+  }
+  return out
+}
+
+/** グラフの見出しの右に出す「記録した日 ◯日」 */
+export function weekStudyDays(cells: ReadonlyArray<WeekCell>): number {
+  return cells.filter((c) => c.kind === 'done').length
+}
+
+/** グラフの読み上げ */
+export function weekSummary(cells: ReadonlyArray<WeekCell>): string {
+  const parts = cells.map((c) => `${c.weekday}${c.kind === 'done' ? `${c.count}件` : c.kind === 'rest' ? '休息日' : 'なし'}`)
+  return `この7日間の記録の数。${parts.join('、')}`
+}
+
+/** 今日の記録は、新しい順に2件だけ出し、残りはトグルで開く */
+export const RECORD_PREVIEW = 2
+
+export function visibleRecords<T>(records: ReadonlyArray<T>, open: boolean): { shown: T[]; hidden: number } {
+  if (open || records.length <= RECORD_PREVIEW) return { shown: [...records], hidden: 0 }
+  return { shown: records.slice(0, RECORD_PREVIEW), hidden: records.length - RECORD_PREVIEW }
+}
+
+/** 「タスクを見る」の右上の表示。未完了があれば残りの数、配信がすべて完了なら「完了」、タスクがなければ出さない */
+export function taskBadge(tasks: ReadonlyArray<HomeTask>): { kind: 'left'; text: string } | { kind: 'done'; text: string } | null {
+  if (tasks.length === 0) return null
+  const left = tasks.filter((t) => !t.completedAt).length
+  return left > 0 ? { kind: 'left', text: `残り${left}` } : { kind: 'done', text: '完了' }
+}
+
+/** 今日の記録のトグルの開閉は、その日のあいだだけ覚えておく（日付が変わったら閉じる） */
+export function recordsOpenFor(saved: string | null, today: string): boolean {
+  return saved === today
+}

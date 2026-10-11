@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CompletionSheet } from './CompletionSheet'
-import { RecordBand } from './RecordBand'
+import { HomeActions } from './HomeActions'
+import { IconChevron, IconNext, IconSprout, IconStar, IconTimer } from './HomeIcons'
+import { SubjectSheet } from './SubjectSheet'
+import { TaskSheet } from './TaskSheet'
+import { WeekChart } from './WeekChart'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
 import { FocusDoneSheet } from './FocusDoneSheet'
@@ -18,8 +22,8 @@ import {
 import type { HomeData, StudyResult } from './homeApi'
 import type { HomeTask } from './homeModel'
 import {
-  addDays, BAND_NOTE, buildBand, homeStateOf, isNewSupport, nextMilestone, questsOf, shortFirst, stateCheer, ticketErrorMessage, todayRecords, coinNote, dateLabel, focusNote, recordedTime, shouldShowSheet, sheetLabel, sortTasks,
-  SUBJECTS, timeLabel,
+  addDays, BAND_NOTE, buildBand, buildWeek, homeStateOf, isNewSupport, nextMilestone, questsOf, RECORD_PREVIEW, recordsOpenFor, shortFirst, stateCheer, ticketErrorMessage,
+  todayRecords, coinNote, dateLabel, focusNote, shouldShowSheet, sheetLabel, sortTasks, timeLabel, visibleRecords,
 } from './homeModel'
 
 type Props = { clubId: string; clubName: string | null; displayName: string | null; onTab?: (tab: Tab) => void; onGacha?: () => void }
@@ -39,7 +43,7 @@ export type TagPanelState = { subject: string; recordId: string; recordedAt: str
 
 const SAVE_FAIL = '保存できませんでした。通信を確認して、もう一度お試しください。'
 
-/** 01 ホーム・今日のクエスト（v1.7：連続日数・今日のタスク・教科ボタンを最初の画面に置き、残りは下に） */
+/** 01 ホーム・今日のクエスト（v1.7：状態ごとの面、その下に「教科を記録する」「タスクを見る」、今日の記録、この7日間。残りは下に） */
 export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
   const [data, setData] = useState<HomeData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -297,6 +301,7 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
       onCloseTagPanel={() => setTagPanel(null)}
       onTaskTimer={(t) => void onQuickTimer(t.subject, t.title, t.id)}
       onTagTimer={(sub) => void onQuickTimer(sub, null, null)}
+      onStartTimer={(sub, c) => void onQuickTimer(sub, c, null)}
       onOpenFocus={() => { setTimerError(null); setFocusOpen(true) }}
       onPauseFocus={() => void onPauseResume(true)}
       onResumeFocus={() => void onPauseResume(false)}
@@ -339,6 +344,8 @@ export type HomeViewProps = {
   onCloseTagPanel: () => void
   onTaskTimer: (task: { id: string; subject: string; title: string }) => void
   onTagTimer: (subject: string) => void
+  /** 教科のシートの「タイマーで記録する」から、教科と内容を選んで始める */
+  onStartTimer?: (subject: string, content: string | null) => void
   onOpenFocus: () => void
   onPauseFocus: () => void
   onResumeFocus: () => void
@@ -348,69 +355,70 @@ export type HomeViewProps = {
   onCancelTimer: () => void
 }
 
+const RECORDS_OPEN_KEY = 'nobit.home.recordsOpen'
+
+function readRecordsOpen(today: string): boolean {
+  try {
+    return recordsOpenFor(localStorage.getItem(RECORDS_OPEN_KEY), today)
+  } catch {
+    return false
+  }
+}
+
+function writeRecordsOpen(today: string, open: boolean) {
+  try {
+    if (open) localStorage.setItem(RECORDS_OPEN_KEY, today)
+    else localStorage.removeItem(RECORDS_OPEN_KEY)
+  } catch {
+    // 保存できなくても、開閉そのものは画面の中で続ける
+  }
+}
+
 export function HomeView(p: HomeViewProps) {
   const { data, clubName, displayName, error, pending, done } = p
   const tasks = sortTasks(data.tasks)
   const cells = buildBand(data.activity, data.today, 14, data.restDates)
+  const week = buildWeek(data.activity, data.today, data.restDates)
   const timerRunning = data.timer !== null
   const todayCount = data.activity.find((a) => a.date === data.today)?.count ?? 0
   const state = homeStateOf({ todayCount, studyDaysTotal: data.studyDaysTotal, tasks, resume: p.resume ?? false })
   const cheer = stateCheer(state, todayCount)
   const records = todayRecords({ tasks, tags: data.tags, timers: data.timerRecords })
-  const remaining = tasks.filter((t) => !t.completedAt)
   const milestone = nextMilestone(data.streak.current)
   const newSupport = data.support && isNewSupport(data.support.createdAt, data.today)
-  const [showSubjects, setShowSubjects] = useState(false)
   const supportText = data.support ? (data.support.kind === 'seen' ? '見たよ' : data.support.body) : ''
   const supportFrom = data.support ? `${data.support.authorName ?? 'クラブの管理者'}さんから` : ''
 
-  const subjects = (
-    <section className={state === 'first' ? 'section subjects is-primary' : 'section subjects'} aria-labelledby="tag-h">
-      <h2 id="tag-h">{state === 'first' ? '今日の勉強を記録する' : '教科で記録する'}</h2>
-      <div className="tag-row">
-        {SUBJECTS.map((s) => {
-          const time = recordedTime(data.tags, s)
-          return (
-            <button key={s} type="button" className={time ? 'tag-btn is-recorded' : 'tag-btn'} disabled={p.tagPending !== null} onClick={() => p.onTag(s)}>
-              <span className="tag-btn-name">{p.tagPending === s ? '…' : s}</span>
-              {time && <span className="tag-btn-time num">{time}</span>}
-            </button>
-          )
-        })}
-      </div>
-      {p.tagPanel && (
-        <TagPanel
-          subject={p.tagPanel.subject}
-          recordedAt={p.tagPanel.recordedAt}
-          hasContent={p.tagPanel.hasContent}
-          busy={p.panelBusy || p.timerBusy || timerRunning}
-          error={p.panelError}
-          onSaveContent={p.onSaveContent}
-          onTimer={() => p.onTagTimer(p.tagPanel!.subject)}
-          onClose={p.onCloseTagPanel}
-        />
-      )}
-      {p.notice && <p className="record-notice" role="status">{p.notice}</p>}
-    </section>
-  )
+  const [pickOpen, setPickOpen] = useState(false)
+  const [tasksOpen, setTasksOpen] = useState(false)
+  const [timerPick, setTimerPick] = useState(false)
+  const [recordsOpen, setRecordsOpen] = useState(() => readRecordsOpen(data.today))
+  const shownRecords = visibleRecords(records, recordsOpen)
+  const toggleRecords = () => {
+    const next = !recordsOpen
+    setRecordsOpen(next)
+    writeRecordsOpen(data.today, next)
+  }
+
+  const cheerLine = cheer && <p className="cheer"><span className="cheer-name">ノビット</span>{cheer}</p>
 
   const taskRows = (list: ReadonlyArray<HomeTask>) => (
     <ul className="tasks">
       {list.map((t) => (
         <li key={t.id} className={t.completedAt ? 'task is-done' : 'task'}>
           <div className="task-body">
-            <span className="task-subject">{t.subject}</span>
+            <span className="task-subject">{t.subject}{t.estimatedMinutes != null && <>　見込み<span className="num">{t.estimatedMinutes}</span>分</>}</span>
             <span className="task-title">{t.title}</span>
           </div>
           {t.completedAt ? (
             <span className="task-time num">{timeLabel(t.completedAt)}</span>
           ) : (
             <div className="task-actions">
-              <button type="button" className="task-btn" disabled={pending !== null} onClick={() => p.onComplete(t.id, t.title)}>
-                {pending === t.id ? '記録中…' : '完了'}
-              </button>
               <button type="button" className="task-btn task-btn-sub" disabled={pending !== null || timerRunning || p.timerBusy} onClick={() => p.onTaskTimer({ id: t.id, subject: t.subject, title: t.title })}>
                 タイマー
+              </button>
+              <button type="button" className="task-btn" disabled={pending !== null} onClick={() => p.onComplete(t.id, t.title)}>
+                {pending === t.id ? '記録中…' : '完了'}
               </button>
             </div>
           )}
@@ -419,10 +427,11 @@ export function HomeView(p: HomeViewProps) {
     </ul>
   )
 
-  const todayTasks = (title: string, list: ReadonlyArray<HomeTask>, emptyText: string) => (
+  const todayTasks = (title: string, list: ReadonlyArray<HomeTask>, emptyText: string, side?: string) => (
     <section className="section" aria-labelledby="today-h">
       <div className="today-head">
         <h2 id="today-h">{title}</h2>
+        <span className="rec-count">{side ?? <><span className="num">{list.length}</span> 件</>}</span>
       </div>
       {list.length === 0 ? <p className="muted">{emptyText}</p> : taskRows(list)}
     </section>
@@ -432,10 +441,10 @@ export function HomeView(p: HomeViewProps) {
     <section className="section" aria-labelledby="rec-h">
       <div className="today-head">
         <h2 id="rec-h">今日の記録</h2>
-        <span className="rec-count"><span className="num">{todayCount}</span> 件</span>
+        <span className="rec-count"><span className="num">{records.length}</span> 件</span>
       </div>
-      <ul className="rec-list">
-        {records.map((r) => (
+      <ul className="rec-list" id="rec-list">
+        {shownRecords.shown.map((r) => (
           <li key={r.key} className="rec-row">
             <span className="rec-time num">{timeLabel(r.at)}</span>
             <span className="rec-name">{r.name}{r.minutes !== null && <span className="rec-min"> <span className="num">{r.minutes}</span>分</span>}</span>
@@ -443,14 +452,21 @@ export function HomeView(p: HomeViewProps) {
           </li>
         ))}
       </ul>
+      {records.length > RECORD_PREVIEW && (
+        <button type="button" className="rec-toggle" aria-expanded={recordsOpen} aria-controls="rec-list" onClick={toggleRecords}>
+          {recordsOpen ? 'たたむ' : `ほか${shownRecords.hidden}件を表示`}
+          <span className={recordsOpen ? 'rec-chevron is-open' : 'rec-chevron'}><IconChevron /></span>
+        </button>
+      )}
     </section>
   )
 
   const gachaLine = todayCount > 0 && !data.gachaDrawnToday && p.onGacha && (
-    <p className="gacha-line">
-      <span>今日のガチャを引けます</span>
-      <button type="button" className="btn-link" onClick={p.onGacha}>引く</button>
-    </p>
+    <button type="button" className={state === 'done' ? 'gacha-row is-filled' : 'gacha-row'} onClick={p.onGacha}>
+      <span>{state === 'done' ? '今日のガチャを引く' : '今日のガチャを引ける'}</span>
+      <small>無料 1回</small>
+      <IconNext />
+    </button>
   )
 
   return (
@@ -460,22 +476,47 @@ export function HomeView(p: HomeViewProps) {
       </header>
 
       {state === 'resume' ? (
-        <section className="resume-head" aria-label="おかえり">
-          <Nobit mood="wave" className="resume-nobit" />
-          <h1 className="resume-title">おかえり。また今日から。</h1>
+        <section className="face face-art" aria-label="おかえり">
+          <div className="face-text">
+            <h1 className="face-title">おかえり。</h1>
+            <p className="face-lead">また、ここから<br />始めよう。</p>
+            <p className="face-note">これまでのがんばりは、<br />ちゃんと残ってる。</p>
+          </div>
+          <Nobit mood="wave" className="face-nobit" />
         </section>
-      ) : state === 'first' ? (
-        <section className="streak" aria-label="1日目">
-          <p className="streak-main"><span className="streak-first">今日が1日目</span></p>
+      ) : state === 'done' ? (
+        <section className="face face-art" aria-label="今日のタスク">
+          <div className="face-text">
+            <p className="face-label">すべて完了</p>
+            <h1 className="face-title is-small">今日のタスクは<br />完了！</h1>
+            {cheerLine}
+            <p className="face-streak">連続 <span className="num">{data.streak.current}</span><span className="face-streak-unit">日</span></p>
+          </div>
+          <Nobit mood="joy" className="face-nobit" />
         </section>
       ) : (
-        <section className="streak" aria-label="連続記録">
-          <p className="streak-main"><span className="num streak-num">{data.streak.current}</span><span className="streak-unit">日連続</span></p>
-          {state === 'notyet' && milestone && <p className="streak-sub">あと<span className="num">{milestone.remaining}</span>日で連続{milestone.target}日</p>}
+        <section className="face" aria-label={state === 'first' ? 'はじめての記録' : '連続記録'}>
+          <div className="face-top">
+            <p className="face-label">{state === 'first' ? 'はじめての記録' : '連続日数'}</p>
+            <span className="face-mark"><IconSprout /></span>
+          </div>
+          {state === 'first' ? (
+            <h1 className="face-first">今日を <span className="num">1</span>日目に<br />しよう。</h1>
+          ) : (
+            <p className="streak-main"><span className="num streak-num">{data.streak.current}</span><span className="streak-unit">日</span></p>
+          )}
+          {cheerLine}
+          {state !== 'first' && milestone && (
+            <div className="face-next">
+              <span>連続{milestone.target}日まで あと<span className="num">{milestone.remaining}</span>日</span>
+              <div className="next-bar" role="progressbar" aria-valuemin={0} aria-valuemax={milestone.target} aria-valuenow={data.streak.current} aria-label="次の節目までの進み">
+                <i style={{ width: `${Math.round(milestone.ratio * 100)}%` }} />
+              </div>
+            </div>
+          )}
         </section>
       )}
 
-      {cheer && <p className="cheer"><span className="cheer-name">ノビット</span>{cheer}</p>}
       {newSupport && state !== 'resume' && (
         <p className="support-line"><span className="support-from">{supportFrom}</span>{supportText}</p>
       )}
@@ -506,79 +547,77 @@ export function HomeView(p: HomeViewProps) {
               <dd><span className="num">{data.streak.longest}</span><span className="resume-unit">日</span></dd>
             </div>
             <div>
-              <dt>これまでの学習日数</dt>
+              <dt>これまでの学習</dt>
               <dd><span className="num">{data.studyDaysTotal}</span><span className="resume-unit">日</span></dd>
             </div>
           </dl>
           {data.tickets && data.tickets.balance > 0 && data.tickets.canProtectYesterday && (
             <TicketPanel info={data.tickets} busy={p.ticketBusy ?? false} error={p.ticketError ?? null} onUse={(w) => p.onUseTicket?.(w)} />
           )}
-          {subjects}
-          {todayTasks('今日、短く始められるタスク', shortFirst(tasks), '今日のタスクはまだありません。教科の記録やタイマーからも始められます。')}
         </>
       )}
 
-      {state === 'first' && (
-        <>
-          {subjects}
-          {todayTasks('今日のタスク', tasks, '配信されたタスクは、まだありません。')}
-        </>
-      )}
+      <HomeActions
+        tasks={tasks}
+        quiet={state === 'done'}
+        disabled={p.tagPending !== null}
+        onSubjects={() => setPickOpen(true)}
+        onTasks={() => setTasksOpen(true)}
+      />
 
-      {state === 'notyet' && (
-        <>
-          {subjects}
-          {todayTasks('今日のタスク', tasks, '配信されたタスクは、まだありません。')}
-        </>
+      {p.tagPanel && (
+        <TagPanel
+          subject={p.tagPanel.subject}
+          recordedAt={p.tagPanel.recordedAt}
+          hasContent={p.tagPanel.hasContent}
+          busy={p.panelBusy || p.timerBusy || timerRunning}
+          error={p.panelError}
+          onSaveContent={p.onSaveContent}
+          onTimer={() => p.onTagTimer(p.tagPanel!.subject)}
+          onClose={p.onCloseTagPanel}
+        />
       )}
+      {p.notice && <p className="record-notice" role="status">{p.notice}</p>}
 
-      {state === 'recording' && (
-        <>
-          {recordList}
-          {gachaLine}
-          {remaining.length > 0 && todayTasks('残りのタスク', remaining, '')}
-          {subjects}
-        </>
-      )}
+      {(state === 'first' || state === 'notyet') && todayTasks('今日やること', tasks, '配信されたタスクは、まだありません。教科の記録からも始められます。')}
+      {state === 'resume' && todayTasks('まずは短いものから', shortFirst(tasks, 1), '今日のタスクはまだありません。教科の記録やタイマーからも始められます。', '見込み時間の短い順')}
 
-      {state === 'done' && (
-        <>
-          <p className="done-line">今日のタスクは完了</p>
-          {recordList}
-          {gachaLine}
-          <p className="quiet-entry">
-            <button type="button" className="btn-link" onClick={() => setShowSubjects((v) => !v)}>教科を記録する</button>
-            {!timerRunning && <button type="button" className="btn-link" onClick={p.onOpenFocus}>15分集中</button>}
-          </p>
-          {(showSubjects || p.tagPanel) && subjects}
-        </>
-      )}
+      {(state === 'recording' || state === 'done') && recordList}
+      {gachaLine}
+
+      <WeekChart
+        cells={week}
+        note={state === 'first' ? '記録すると、ここに毎日の棒が伸びていく。' : state === 'resume' ? BAND_NOTE : undefined}
+      />
 
       <section className="section below" aria-label="続けるために">
-        {milestone && (
-          <div className="next-title">
-            <p className="next-title-text">連続{milestone.target}日まで　あと<span className="num">{milestone.remaining}</span>日</p>
-            <div className="next-bar" role="progressbar" aria-valuemin={0} aria-valuemax={milestone.target} aria-valuenow={data.streak.current} aria-label="次の節目までの進み">
-              <i style={{ width: `${Math.round(milestone.ratio * 100)}%` }} />
+        {(state === 'first' || state === 'done' || state === 'resume') && milestone && (
+          <div className="next-goal">
+            <span className="next-goal-mark"><IconStar /></span>
+            <div className="next-goal-main">
+              <p className="next-title-text">連続{milestone.target}日</p>
+              <div className="next-bar" role="progressbar" aria-valuemin={0} aria-valuemax={milestone.target} aria-valuenow={data.streak.current} aria-label="次の節目までの進み">
+                <i style={{ width: `${Math.round(milestone.ratio * 100)}%` }} />
+              </div>
             </div>
+            <span className="next-goal-left">あと<span className="num">{milestone.remaining}</span>日</span>
           </div>
         )}
-        <RecordBand cells={cells} weekdays />
-        <p className="band-note">{BAND_NOTE}</p>
+        <QuestPanel quests={questsOf({ tasks, tags: data.tags, timerSeconds: data.timerSeconds, timerSubjects: data.timerSubjects })} />
       </section>
 
-      <QuestPanel quests={questsOf({ tasks, tags: data.tags, timerSeconds: data.timerSeconds, timerSubjects: data.timerSubjects })} />
-
-      <p className="coin-line">コイン <span className="num coin-num">{data.coins}</span></p>
+      <p className="coin-line"><span className="coin-dot" aria-hidden="true" />コイン <span className="num coin-num">{data.coins}</span></p>
 
       {data.tickets && state !== 'resume' && (
         <TicketPanel info={data.tickets} busy={p.ticketBusy ?? false} error={p.ticketError ?? null} onUse={(w) => p.onUseTicket?.(w)} />
       )}
 
-      {!timerRunning && state !== 'done' && (
-        <section className="section" aria-label="15分集中">
-          <button type="button" className="btn btn-secondary" onClick={p.onOpenFocus}>15分集中する</button>
-        </section>
+      {!timerRunning && (
+        <button type="button" className="focus-entry" onClick={p.onOpenFocus}>
+          <IconTimer />
+          <span className="focus-entry-label">15分集中モード</span>
+          <span className="focus-entry-note">達成で5コイン</span>
+        </button>
       )}
 
       {data.support && (
@@ -588,6 +627,25 @@ export function HomeView(p: HomeViewProps) {
       )}
 
       <TabBar current="ホーム" onSelect={p.onTab} />
+
+      {pickOpen && (
+        <SubjectSheet
+          tags={data.tags}
+          pending={p.tagPending}
+          timerDisabled={timerRunning || p.timerBusy || !p.onStartTimer}
+          onPick={(s) => { setPickOpen(false); p.onTag(s) }}
+          onTimer={() => { setPickOpen(false); setTimerPick(true) }}
+          onClose={() => setPickOpen(false)}
+        />
+      )}
+      {tasksOpen && (
+        <TaskSheet count={tasks.length} onClose={() => setTasksOpen(false)}>
+          {tasks.length === 0 ? <p className="muted">配信されたタスクは、まだありません。</p> : taskRows(tasks)}
+        </TaskSheet>
+      )}
+      {timerPick && !data.timer && p.onStartTimer && (
+        <TimerSheet busy={p.timerBusy} error={p.timerError} onStart={(s, c) => { setTimerPick(false); p.onStartTimer?.(s, c) }} onClose={() => setTimerPick(false)} />
+      )}
 
       {done && (
         <CompletionSheet

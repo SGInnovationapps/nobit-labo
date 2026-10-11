@@ -14,7 +14,7 @@ const base = {
   clubName: '［クラブ名］', displayName: '表示名', error: null, pending: null, done: null, tagPending: null, tagPanel: null, panelBusy: false, panelError: null, notice: null,
   focusOpen: false, focusDone: null, timerBusy: false, timerError: null,
   onCloseFocusDone() {}, onComplete() {}, onCloseDone() {}, onGacha() {}, onTag() {}, onSaveContent() {}, onCloseTagPanel() {}, onTaskTimer() {}, onTagTimer() {},
-  onOpenFocus() {}, onPauseFocus() {}, onResumeFocus() {}, onCloseFocus() {}, onStartFocus() {}, onStopTimer() {}, onCancelTimer() {},
+  onStartTimer() {}, onOpenFocus() {}, onPauseFocus() {}, onResumeFocus() {}, onCloseFocus() {}, onStartFocus() {}, onStopTimer() {}, onCancelTimer() {},
 }
 const partial = mk([T('a','英語','英単語 Unit 3 の確認テスト', null), T('b','数学','方程式の文章題 5問', '2026-10-09T08:05:00Z'), T('c','国語','漢字ドリル p.12', null, true)])
 const none = mk([T('a','英語','英単語 Unit 3 の確認テスト', null), T('b','数学','方程式の文章題 5問', null)], { streak: { current: 0, longest: 21 }, activity: [] })
@@ -23,12 +23,14 @@ const empty = mk([])
 const first = { label: '今日の最初の記録', title: '方程式の文章題 5問', completedAt: '2026-10-09T08:05:00Z', currentDays: 12, completedToday: 1, firstOfDay: true }
 const tagged = [{ id: 'g1', subject: '数学', recordedAt: '2026-10-09T08:05:00Z' }]
 const rec = mk([T('a','英語','英単語 Unit 3 の確認テスト', null), T('b','数学','方程式の文章題 5問', '2026-10-09T08:05:00Z')], { tags: [{ id: 'g1', subject: '理科', recordedAt: '2026-10-09T09:10:00Z' }], timerRecords: [{ id: 'm1', subject: '国語', content: '漢字ドリル', endedAt: '2026-10-09T10:30:00Z', seconds: 1500, taskLinked: false }], streak: { current: 4, longest: 21 }, activity: [...act, { date: '2026-10-09', count: 3 }] })
+const rec4 = { ...rec, tags: [{ id: 'g1', subject: '理科', recordedAt: '2026-10-09T09:10:00Z' }, { id: 'g2', subject: '社会', recordedAt: '2026-10-09T05:32:00Z' }], activity: [...act, { date: '2026-10-09', count: 4 }] }
 const allDone = mk([T('b','数学','方程式の文章題 5問', '2026-10-09T08:05:00Z'), T('a','英語','英単語 Unit 3 の確認テスト', '2026-10-09T09:40:00Z')], { gachaDrawnToday: true })
 const screens: Record<string, React.ReactNode> = {
   s_first: <HomeView {...base} data={mk([T('a','英語','英単語 Unit 3 の確認テスト', null)], { streak: { current: 0, longest: 0 }, activity: [], studyDaysTotal: 0, tickets: null })} />,
   s_notyet: <HomeView {...base} data={{ ...none, streak: { current: 4, longest: 21 }, activity: act }} />,
   s_notyet_support: <HomeView {...base} data={{ ...none, streak: { current: 4, longest: 21 }, activity: act, support: { body: '今週もがんばっているね。', createdAt: '2026-10-09T01:00:00Z', kind: 'comment' as const, authorName: '［管理者名］' } }} />,
   s_recording: <HomeView {...base} data={rec} onGacha={() => undefined} />,
+  s_recording4: <HomeView {...base} data={rec4} onGacha={() => undefined} />,
   s_done: <HomeView {...base} data={allDone} />,
   s_done_gacha: <HomeView {...base} data={{ ...allDone, gachaDrawnToday: false }} onGacha={() => undefined} />,
   s_resume: <HomeView {...base} resume data={{ ...none, streak: { current: 0, longest: 21 }, activity: act, studyDaysTotal: 38, tasks: [T('a','英語','英単語 Unit 3 の確認テスト', null), T('d','理科','電流と電圧 要点まとめ', null), T('e','国語','漢字ドリル p.12', null), T('f','社会','年号の暗記', null)].map((t, i) => ({ ...t, estimatedMinutes: [10, 5, 15, null][i] })), tickets: { balance: 1, nextGrantOn: '2026-10-12', canProtectToday: false, canProtectYesterday: true } }} />,
