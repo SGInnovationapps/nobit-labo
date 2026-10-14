@@ -172,7 +172,7 @@ function ticketOf(d: unknown): TicketInfo | null {
 }
 
 /** 休息チケットを使う。which は「今日」か「昨日」 */
-export async function useRestTicket(date: string): Promise<{ balance: number; currentDays: number }> {
+export async function applyRestTicket(date: string): Promise<{ balance: number; currentDays: number }> {
   const { data, error } = await supabase.rpc('use_rest_ticket', { p_date: date })
   if (error) throw error
   const d = data as Record<string, unknown>

@@ -64,7 +64,6 @@ test('reachedRate / splitAdmin / エラー文', () => {
 })
 
 import { bulkResultText, draftFromMission } from '../src/admin/missionAdminModel.ts'
-import type { AdminMission } from '../src/admin/missionAdminModel.ts'
 
 const src: AdminMission = {
   id: 'm1', title: '秋の学習チャレンジ', description: '週に5日', metric: 'study_days', startsOn: '2026-09-01', endsOn: '2026-09-14',

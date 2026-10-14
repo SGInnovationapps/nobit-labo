@@ -5,7 +5,9 @@ import {
   alertErrorMessage, canUndo, contactedToday, guidelineNote, lastRunNote, outcomeText, reasonText, sectionsOf,
 } from './alertListModel'
 import type { AlertItem, LastRun, StudentAlertRow } from './alertListModel'
-import { dismissAlerts, loadAlertLastRun, loadAlerts, markAlertsContacted, undoAlertsContacted } from './adminApi'
+import { dismissAlerts, loadAlertLastRun, loadAlerts, loadClientErrors, markAlertsContacted, undoAlertsContacted } from './adminApi'
+import { clientErrorMeta, clientErrorNote } from './clientErrorsModel'
+import type { ClientErrorItem } from './clientErrorsModel'
 import { defOf } from './alertsModel'
 
 type RowProps = {
@@ -78,10 +80,12 @@ type ViewProps = {
   onDismiss: (row: StudentAlertRow) => void
   onUndo: (row: StudentAlertRow) => void
   lastRun?: LastRun
+  /** 画面のエラーの記録（直近7日）。読めなかったときは undefined で、何も出さない */
+  clientErrors?: ClientErrorItem[]
   now?: number
 }
 
-export function AlertListView({ items, busy, error, notice, undoRow, onContacted, onDismiss, onUndo, lastRun, now }: ViewProps) {
+export function AlertListView({ items, busy, error, notice, undoRow, onContacted, onDismiss, onUndo, lastRun, clientErrors, now }: ViewProps) {
   const nowMs = now ?? Date.now()
   const run = lastRun === undefined ? null : lastRunNote(lastRun, nowMs)
   const s = sectionsOf(items)
@@ -95,6 +99,7 @@ export function AlertListView({ items, busy, error, notice, undoRow, onContacted
       <p className="muted">「コピーして連絡済み」で文面をコピーし、その場で連絡済みに記録します。公式LINE のチャットから1人ずつ送ってください。</p>
       <p className={guide.warn ? 'alert-run alert-run-warn' : 'alert-run muted'}>{guide.text}</p>
       {run && <p className={run.warn ? 'alert-run alert-run-warn' : 'alert-run muted'}>{run.text}</p>}
+      {clientErrors && <ClientErrors items={clientErrors} now={nowMs} />}
       {error && <p className="error" role="alert">{error}</p>}
       {notice && (
         <p className="adm-notice" role="status">
@@ -146,6 +151,31 @@ export function AlertListView({ items, busy, error, notice, undoRow, onContacted
   )
 }
 
+/** 画面のエラー（直近7日）。ふだんは閉じておき、一文だけ見せる */
+function ClientErrors({ items, now }: { items: ClientErrorItem[]; now: number }) {
+  const note = clientErrorNote(items, now)
+  if (items.length === 0) return <p className="alert-run muted">{note.text}</p>
+  return (
+    <details className="client-errors">
+      <summary className={note.warn ? 'alert-run alert-run-warn' : 'alert-run muted'}>{note.text}</summary>
+      <ul className="client-error-items" aria-label="画面のエラー">
+        {items.map((i) => (
+          <li key={i.id}>
+            <p className="client-error-msg">{i.message}</p>
+            <p className="muted">{clientErrorMeta(i)}</p>
+            {i.stack && (
+              <details>
+                <summary className="muted">詳しく</summary>
+                <pre className="client-error-stack">{[i.path ? `場所：${i.path}` : null, i.stack].filter(Boolean).join('\n')}</pre>
+              </details>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
 export default function AlertList({ clubId }: { clubId: string }) {
   const [items, setItems] = useState<AlertItem[] | null>(null)
   const [busy, setBusy] = useState(false)
@@ -153,11 +183,13 @@ export default function AlertList({ clubId }: { clubId: string }) {
   const [notice, setNotice] = useState<string | null>(null)
   const [undoRow, setUndoRow] = useState<StudentAlertRow | null>(null)
   const [lastRun, setLastRun] = useState<LastRun | undefined>(undefined)
+  const [clientErrors, setClientErrors] = useState<ClientErrorItem[] | undefined>(undefined)
 
   const load = useCallback(async () => {
     try {
       setItems(await loadAlerts(clubId))
       setLastRun(await loadAlertLastRun())
+      setClientErrors(await loadClientErrors())
     } catch (e) {
       console.error(e)
       setError('アラートを読み込めませんでした。')
@@ -215,6 +247,7 @@ export default function AlertList({ clubId }: { clubId: string }) {
       onDismiss={(r) => void act(() => dismissAlerts(r.ids), '見送りました。')}
       onUndo={(r) => void act(() => undoAlertsContacted(r.ids), '連絡済みを取り消しました。')}
       lastRun={lastRun}
+      clientErrors={clientErrors}
     />
   )
 }

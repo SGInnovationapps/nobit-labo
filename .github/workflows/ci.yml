@@ -23,6 +23,8 @@ jobs:
       - run: npm ci
       - name: 型の検査
         run: npx tsc -p tsconfig.app.json --noEmit
+      - name: lint
+        run: npx oxlint src test supabase/functions
       - name: テスト
         run: node --experimental-strip-types --test test/*.test.ts
       - name: Edge Function のテスト

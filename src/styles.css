@@ -368,3 +368,8 @@ p { margin: 0; }
 .trend-col:not(.is-now) .trend-bar i { opacity: 0.55; }
 .trend-d { height: 16px; font-size: 11px; color: #5b6785; white-space: nowrap; }
 .trend-note { margin-top: 6px; }
+
+/* 描画が失敗したときの画面（ErrorBoundary）。生徒・管理の両方で使う */
+.crash { max-width: 480px; margin: 0 auto; padding: 48px 20px 40px; }
+.crash > * + * { margin-top: 16px; }
+.crash .actions { margin-top: 28px; }

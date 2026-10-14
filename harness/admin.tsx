@@ -134,6 +134,13 @@ const screens: Record<string, React.ReactNode> = {
   ]} /></Frame>,
   alertlist_run_ok: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[]} lastRun={{ ranAt: '2026-10-10T14:05:00Z', ok: true }} now={Date.parse('2026-10-10T14:20:00Z')} /></Frame>,
   alertlist_run_stale: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[]} lastRun={{ ranAt: '2026-10-10T05:05:00Z', ok: true }} now={Date.parse('2026-10-10T14:20:00Z')} /></Frame>,
+  alertlist_errors: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[]}
+    lastRun={{ ranAt: '2026-10-14T13:05:00Z', ok: true }} now={Date.parse('2026-10-14T14:00:00Z')} clientErrors={[
+      { id: 3, occurredAt: '2026-10-14T13:30:00Z', lastAt: '2026-10-14T13:41:00Z', repeats: 3, app: 'student', kind: 'handled', message: '[PGRST301] JWT expired', stack: null, path: '/', device: 'iOS 18.1 · LINE 15.2.0', appVersion: 'a1b2c3d', displayName: 'ノビ太', clubName: '［クラブ名］' },
+      { id: 2, occurredAt: '2026-10-14T09:00:00Z', lastAt: '2026-10-14T09:00:00Z', repeats: 1, app: 'student', kind: 'render', message: "TypeError: Cannot read properties of undefined (reading 'today')", stack: "TypeError: Cannot read properties of undefined (reading 'today')\n    at Home (index-DvWgIRai.js:12:3456)\n    at App", path: '/', device: 'Android 14 · LINE 15.1.0', appVersion: 'a1b2c3d', displayName: 'しずか', clubName: '［クラブ名］' },
+      { id: 1, occurredAt: '2026-10-12T00:00:00Z', lastAt: '2026-10-12T00:00:00Z', repeats: 1, app: 'student', kind: 'handled', message: 'LINE の ID トークンを取得できませんでした', stack: null, path: '/', device: 'Android 13 · Chrome', appVersion: '9f8e7d6', displayName: null, clubName: null },
+    ]} /></Frame>,
+  alertlist_noerrors: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[]} clientErrors={[]} /></Frame>,
   alertlist_empty: <Frame tab="s"><AlertListView busy={false} error={null} notice={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[]} /></Frame>,
   alerts_empty: <Frame tab="al"><AlertSettingsView clubName="［クラブ名］" busy={false} error={null} notice={null} history={[]} now={0} onSave={noop} rules={[]} /></Frame>,
   login: <LoginForm />,

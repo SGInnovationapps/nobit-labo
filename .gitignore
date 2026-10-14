@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .wrangler/
+
+# Supabase CLI が手元で作るファイル（リンク先の情報など。リポジトリには入れない）
+supabase/.temp/
+supabase/.branches/

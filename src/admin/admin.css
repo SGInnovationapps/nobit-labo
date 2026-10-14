@@ -275,3 +275,12 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .alert-blocked { margin: 4px 0 0; font-size: 14px; font-weight: 700; color: #B4313D; }
 .adm-warn { color: #B4313D; }
 .adm-line-status dd { text-align: right; }
+
+/* 画面のエラー（運営のみ、対応アラートの上） */
+.client-errors { margin: 0 0 12px; }
+.client-errors > summary { cursor: pointer; margin: 0; padding: 10px 0; }
+.client-error-items { list-style: none; margin: 4px 0 0; padding: 0; }
+.client-error-items > li { padding: 10px 0; border-top: 1px solid #e1e5ed; }
+.client-error-msg { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.client-error-items details > summary { cursor: pointer; padding: 10px 0; }
+.client-error-stack { margin: 4px 0 0; padding: 8px; background: #f3f5f6; border-radius: 8px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; }

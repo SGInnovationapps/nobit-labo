@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { ClientErrorItem } from './clientErrorsModel'
 import type { ClubAdmin } from './clubAdminsModel'
 import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
@@ -533,6 +534,22 @@ export async function loadAlertLastRun(): Promise<{ ranAt: string; ok: boolean }
   if (error) return null
   const row = ((data ?? []) as { ran_at: string; ok: boolean }[])[0]
   return row ? { ranAt: row.ran_at, ok: row.ok } : null
+}
+
+/** 画面のエラーの記録（運営のみ、直近7日・新しい順・最大100件）。読めなくても画面は止めない */
+export async function loadClientErrors(days = 7): Promise<ClientErrorItem[]> {
+  const { data, error } = await supabase.rpc('recent_client_errors', { p_days: days })
+  if (error) return []
+  type Row = {
+    id: number; occurred_at: string; last_at: string; repeats: number; app: ClientErrorItem['app']; kind: ClientErrorItem['kind']
+    message: string; stack: string | null; path: string | null; device: string | null; app_version: string | null
+    display_name: string | null; club_name: string | null
+  }
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: r.id, occurredAt: r.occurred_at, lastAt: r.last_at, repeats: r.repeats, app: r.app, kind: r.kind,
+    message: r.message, stack: r.stack, path: r.path, device: r.device, appVersion: r.app_version,
+    displayName: r.display_name, clubName: r.club_name,
+  }))
 }
 
 /** 生成と解消を行ってから、対応待ち・連絡済み・直近7日に解消したものを読む */

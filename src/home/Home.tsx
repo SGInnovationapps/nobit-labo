@@ -13,7 +13,7 @@ import { TimerPanel } from './TimerPanel'
 import { TimerSheet } from './TimerSheet'
 import {
   cancelStudyTimer, completeTask, markResumeSeen, loadHome, pauseFocusSession, recordStudyTag, resumeFocusSession,
-  setStudyContent, startFocusSession, startStudyTimer, stopStudyTimer, useRestTicket,
+  setStudyContent, startFocusSession, startStudyTimer, stopStudyTimer, applyRestTicket,
 } from './homeApi'
 import type { HomeData, StudyResult } from './homeApi'
 import type { HomeTask } from './homeModel'
@@ -85,7 +85,7 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
     setTicketBusy(true)
     setTicketError(null)
     try {
-      await useRestTicket(which === 'today' ? data.today : addDays(data.today, -1))
+      await applyRestTicket(which === 'today' ? data.today : addDays(data.today, -1))
       setResumeActive(false)
       await load()
     } catch (e) {
