@@ -1,6 +1,6 @@
--- 自由登録は 3 コイン／閲覧範囲の版 2
+-- 自由登録は 3 コイン／閲覧範囲の版 3（β版の運営・連絡を止められること）
 begin;
-select plan(6);
+select plan(8);
 
 insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000d1', 'd1@example.test');
 insert into public.users (id, role, display_name, grade) values ('00000000-0000-0000-0000-0000000000d1', 'student', 'd1', 9);
@@ -8,7 +8,9 @@ insert into public.clubs (id, name, allow_free_tasks) values ('11111111-1111-111
 insert into public.club_members (club_id, user_id, member_role, status) values
   ('11111111-1111-1111-1111-1111111111d1', '00000000-0000-0000-0000-0000000000d1', 'student', 'approved');
 
-select is((select max(version) from public.consent_scope_versions), 2, '閲覧範囲の最新の版は 2');
+select is((select max(version) from public.consent_scope_versions), 3, '閲覧範囲の最新の版は 3');
+select ok((select summary from public.consent_scope_versions where version = 3) like '%ACE LABO%', '版 3 の要約に運営（ACE LABO）が入る');
+select ok((select summary from public.consent_scope_versions where version = 3) like '%受け取らない設定%', '版 3 の要約に連絡を止められることが入る');
 select ok((select summary from public.consent_scope_versions where version = 2) like '%教科タグ・タイマー%', '版 2 の要約に教科タグ・タイマーが入る');
 
 set local role authenticated;

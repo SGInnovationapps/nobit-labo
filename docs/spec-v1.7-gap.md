@@ -144,3 +144,11 @@
 - ◎ 運営の画面：アラートの行に「ブロック中」、生徒の詳細に「公式LINE」（友だち状態・連絡の受け取り）。クラブ管理者には見せない（DB でも読めない）
 - 設定：LINE Developers の Messaging API チャネルで、Webhook URL を https://［プロジェクトREF］.supabase.co/functions/v1/line-webhook にして「Webhookの利用」をオン、検証（Verify）が成功することを確かめる。チャネルシークレットを LINE_MESSAGING_CHANNEL_SECRET として設定。ミニアプリと公式LINE が同じプロバイダーであること（ユーザー ID が一致する前提）
 - 未対応：保護者同意の文面に「連絡を止められる」ことの一文（同意の取り直しになるため、文面を決めてから）
+
+
+## β配布の準備（2026-10-14）
+
+- 提供・契約の主体：β版の間は「ACE LABO」。同意の版 3（`20261014200000_consent_scope_v3.sql`、`src/consentText.ts`）に運営名、預かる情報、使いみち、連絡を止められること、預け先、記録の削除の依頼先を明記。版が上がるため、すでに同意した端末にも次回、取り直しの画面が出る。
+- 記録の削除：`scripts/delete-student.sql`（運営が SQL Editor で実行）。画面からの削除は未実装。
+- 案内文・保護者向けの説明文：`docs/beta-guide.md`。
+- 要確認：運営の者が変わるとき（2027年3月の ACE LABO の閉鎖を含む）は、版 4 で同意を取り直す。

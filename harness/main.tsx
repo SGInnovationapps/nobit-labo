@@ -5,7 +5,7 @@ import { Notice } from '../src/screens/Notice'
 import { ConsentStep } from '../src/screens/ConsentStep'
 import { ProfileStep } from '../src/screens/ProfileStep'
 
-const scope = { version: 1, summary: 's' }
+const scope = { version: 3, summary: 's' }
 const noop = () => undefined
 const which = location.hash.slice(1)
 const screens: Record<string, React.ReactNode> = {

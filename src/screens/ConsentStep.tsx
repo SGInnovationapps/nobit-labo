@@ -29,7 +29,9 @@ export function ConsentStep({ clubName, scope, reconsent, busy, error, onSubmit 
         sections.map((s) => (
           <section className="section" key={s.heading}>
             <h2>{s.heading}</h2>
-            <p>{s.body}</p>
+            {s.body.split('\n').map((line) => (
+              <p key={line}>{line}</p>
+            ))}
           </section>
         ))
       ) : (
