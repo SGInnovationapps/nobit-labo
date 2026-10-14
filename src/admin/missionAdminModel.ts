@@ -72,6 +72,34 @@ export function checkDraft(d: MissionDraft, today: string, existing: ReadonlyArr
   return { problem: null, value: { title, description: d.description.trim() || null, metric: d.metric, startsOn: d.startsOn, endsOn: d.endsOn, clubGoal, personalGoal, rewardPersonal, rewardClub } }
 }
 
+/**
+ * ［仮］v1.7：ミッションの複製。タイトル・説明・数えるもの・目標・報酬を引き継ぎ、
+ * 期間は元と同じ長さで、今日から始める（ほかのミッションと重なるときは、画面で日付を直す）
+ */
+export function draftFromMission(m: AdminMission, today: string): MissionDraft {
+  const days = Math.max(1, Math.round((Date.parse(`${m.endsOn}T00:00:00Z`) - Date.parse(`${m.startsOn}T00:00:00Z`)) / 86_400_000) + 1)
+  return {
+    title: m.title, description: m.description ?? '', metric: m.metric,
+    startsOn: today, endsOn: addDays(today, days - 1),
+    clubGoal: String(m.clubGoal), personalGoal: String(m.personalGoal),
+    rewardPersonal: String(m.rewardPersonalCoins), rewardClub: String(m.rewardClubCoins),
+  }
+}
+
+export type BulkResult = { clubName: string; error: string | null }
+
+/** 複数クラブへの一括作成の結果の文。1クラブずつ作り、作れなかったクラブはその理由を添える */
+export function bulkResultText(results: ReadonlyArray<BulkResult>): { text: string; allFailed: boolean } {
+  const ok = results.filter((r) => r.error === null)
+  const ng = results.filter((r) => r.error !== null)
+  if (results.length === 1) {
+    return ng.length === 0 ? { text: 'ミッションを作りました。', allFailed: false } : { text: ng[0].error as string, allFailed: true }
+  }
+  const head = ok.length > 0 ? `${ok.length}クラブにミッションを作りました。` : ''
+  const tail = ng.map((r) => `${r.clubName}：${r.error}`).join('\n')
+  return { text: [head, tail].filter((x) => x !== '').join('\n'), allFailed: ok.length === 0 }
+}
+
 /** 個人目標に届いた生徒の割合（参加者が0なら null） */
 export function reachedRate(m: Pick<AdminMission, 'participants' | 'personalReached'>): number | null {
   return m.participants === 0 ? null : Math.round((m.personalReached / m.participants) * 100)

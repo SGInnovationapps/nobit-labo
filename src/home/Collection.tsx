@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { gradeLabel } from '../lib/steps'
 import { drawGacha, drawGachaExtra, equipItem, GachaError, loadCollection } from './collectionApi'
 import type { CollectionData, GachaResult } from './collectionApi'
-import { acquiredLabel, equippedTitle, EXTRA_NOTE, extraGachaState, GACHA_NOTE, gachaState, groupCollection, RARITY_LABEL } from './collectionModel'
+import { acquiredLabel, badgeProgressLabel, BADGE_CATEGORY_LABEL, earnedOnLabel, equippedTitle, EXTRA_NOTE, extraGachaState, GACHA_NOTE, gachaState, groupCollection, RARITY_LABEL, splitBadges } from './collectionModel'
 import { GachaSheet } from './GachaSheet'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
@@ -129,6 +129,7 @@ export function CollectionView(p: ViewProps) {
   const state = data ? gachaState(data.recordsToday, data.drawnToday) : 'drawn'
   const extra = data ? extraGachaState(data.drawnToday, data.extraDrawnToday, data.coins) : 'locked'
   const title = data ? equippedTitle(data.items, data.owned) : null
+  const badges = data ? splitBadges(data.badges) : { earned: [], upcoming: [] }
   const ownedTotal = groups.reduce((n, g) => n + g.owned.length, 0)
   const total = groups.reduce((n, g) => n + g.total, 0)
 
@@ -170,6 +171,39 @@ export function CollectionView(p: ViewProps) {
 
           <section className="section" aria-label="集めた数">
             <p className="coll-total">集めた数 <span className="num">{ownedTotal}</span> / <span className="num">{total}</span></p>
+          </section>
+
+          <section className="section" aria-labelledby="earned-badge-h">
+            <h2 id="earned-badge-h">バッジ　<span className="coll-count num">{badges.earned.length} / {data.badges.length}</span></h2>
+            {badges.earned.length === 0 ? (
+              <p className="muted">まだありません。学習を記録すると、もらえます。</p>
+            ) : (
+              <ul className="item-grid">
+                {badges.earned.map((b) => (
+                  <li key={b.code} className={`item-card r-${b.rarity}`}>
+                    <p className="item-rarity">{RARITY_LABEL[b.rarity]}</p>
+                    <p className="item-name">{b.name}</p>
+                    <p className="item-date num">{b.earnedOn ? earnedOnLabel(b.earnedOn) : ''}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {badges.upcoming.length > 0 && (
+              <ul className="badge-next" aria-label="これからもらえるバッジ">
+                {badges.upcoming.map((b) => (
+                  <li key={b.code}>
+                    <div className="badge-next-head">
+                      <p className="badge-next-name">{b.name}</p>
+                      <p className="badge-next-n num">{badgeProgressLabel(b)}</p>
+                    </div>
+                    <p className="muted badge-next-cond">{BADGE_CATEGORY_LABEL[b.category]}　{b.condition}</p>
+                    <div className="next-bar" role="progressbar" aria-valuemin={0} aria-valuemax={b.goal} aria-valuenow={b.progress} aria-label={`${b.name}の進み`}>
+                      <i style={{ width: `${Math.round((b.progress / b.goal) * 100)}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           {groups.map((g) => (

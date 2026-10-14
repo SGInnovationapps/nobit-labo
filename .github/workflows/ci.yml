@@ -1,0 +1,51 @@
+# main への PR（と main への push）で、アプリのテスト・ビルドと、DB のマイグレーションの適用・lint・pgTAP を検査する
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: 型の検査
+        run: npx tsc -p tsconfig.app.json --noEmit
+      - name: テスト
+        run: node --experimental-strip-types --test test/*.test.ts
+      - name: Edge Function のテスト
+        run: |
+          for t in supabase/functions/*/handler.test.ts; do
+            echo "== $t"
+            node --experimental-strip-types "$t"
+          done
+      - name: ビルド
+        run: npm run build
+
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: 設定がなければ作る
+        run: test -f supabase/config.toml || supabase init
+      - name: ローカルの Supabase を起動（全マイグレーションを順に適用）
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,mailpit
+      - name: lint
+        run: supabase db lint --level warning --fail-on error
+      - name: pgTAP
+        run: supabase test db

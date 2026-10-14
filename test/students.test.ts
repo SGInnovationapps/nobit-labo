@@ -159,3 +159,14 @@ test('休息チケットの日は、空いた日に数えない（生徒ごと�
   assert.equal(attentionOf(s, today, { restByStudent: { x: ['2026-10-08'] } }).rank, 1, '3日 → 2日になり、しきい値(3日)を下回る')
   assert.equal(attentionOf(s, today, { restByStudent: { y: ['2026-10-08'] } }).rank, 0, '他の生徒のチケットは影響しない')
 })
+
+import { coinAmountLabel, coinReasonLabel } from '../src/admin/studentModel.ts'
+
+test('coinReasonLabel / coinAmountLabel: 台帳の理由と増減を文字で示す', () => {
+  assert.equal(coinReasonLabel('task_complete'), '配信タスク')
+  assert.equal(coinReasonLabel('study_day'), '学習した日')
+  assert.equal(coinReasonLabel('focus_complete'), '15分集中')
+  assert.equal(coinReasonLabel('unknown_reason'), 'unknown_reason')
+  assert.equal(coinAmountLabel(10), '+10')
+  assert.equal(coinAmountLabel(-30), '−30')
+})

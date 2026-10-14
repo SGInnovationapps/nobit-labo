@@ -4,7 +4,8 @@ import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
 import { loadReflect } from './reflectApi'
 import type { ReflectData } from './reflectApi'
-import { calendarCells, minutesLabel, periodOf, shiftAnchor, summarize } from './reflectModel'
+import { calendarCells, minutesLabel, periodOf, shiftAnchor, summarize, ticketLine } from './reflectModel'
+import type { TrendPoint } from './reflectModel'
 import type { CalendarCell, Period, ReflectMode } from './reflectModel'
 
 const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日']
@@ -108,6 +109,20 @@ export function ReflectView(p: ViewProps) {
             </dl>
           </section>
 
+          <section className="section" aria-labelledby="trend-h">
+            <h2 id="trend-h">連続記録の推移</h2>
+            <Trend points={data.trend} />
+            <p className="muted trend-note">各週の終わりの連続日数です（直近12週）。休息日は日数を変えません。</p>
+          </section>
+
+          {data.tickets && (
+            <section className="section" aria-labelledby="tk-h">
+              <h2 id="tk-h">休息チケット</h2>
+              <p>{ticketLine(data.tickets.balance, data.tickets.usedInPeriod, unit)}</p>
+              <p className="muted">使った日は休息日（紫）になり、学習日には数えません。</p>
+            </section>
+          )}
+
           <section className="section" aria-labelledby="sub-h">
             <h2 id="sub-h">教科別</h2>
             {summary.subjects.length === 0 ? (
@@ -133,6 +148,26 @@ export function ReflectView(p: ViewProps) {
 
       <TabBar current="ふりかえり" onSelect={p.onTab} />
     </div>
+  )
+}
+
+/** 週ごとの連続日数の棒。数字を主役にし、棒は高さの目安 */
+function Trend({ points }: { points: TrendPoint[] }) {
+  const max = Math.max(1, ...points.map((p) => p.days))
+  return (
+    <ol className="trend" aria-label="週ごとの連続日数">
+      {points.map((p, i) => {
+        const last = i === points.length - 1
+        const md = `${Number(p.weekStart.slice(5, 7))}/${Number(p.weekStart.slice(8, 10))}`
+        return (
+          <li key={p.weekStart} className={`trend-col${last ? ' is-now' : ''}`} aria-label={`${md}の週 ${p.days}日${last ? '（今週）' : ''}`}>
+            <span className="trend-n num">{p.days}</span>
+            <span className="trend-bar" aria-hidden="true"><i style={{ height: `${Math.max(p.days > 0 ? 6 : 2, (p.days / max) * 64)}px` }} /></span>
+            <span className="trend-d num" aria-hidden="true">{i % 3 === 0 || last ? md : ''}</span>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 

@@ -3,6 +3,7 @@ import '../src/styles.css'
 import '../src/admin/admin.css'
 import { ApprovalsView } from '../src/admin/Approvals'
 import { ClubSettingsView } from '../src/admin/ClubSettings'
+import { ClubAdminsView } from '../src/admin/ClubAdmins'
 import { TasksView } from '../src/admin/Tasks'
 import type { AdminTask } from '../src/admin/taskModel'
 import { StudentsView } from '../src/admin/Students'
@@ -43,17 +44,18 @@ function Frame({ children, tab }: { children: React.ReactNode; tab: string }) {
 const T = (o: Partial<AdminTask>): AdminTask => ({ id: Math.random().toString(), clubId: 'c1', title: '', subject: '英語', startsOn: '2026-10-09', dueOn: null, recurrence: 'daily', estimatedMinutes: null, archivedAt: null, ...o })
 const board = {
   students: 12,
+  studentGrades: [7,7,8,8,9,9,10,10,11,11,12,12] as Array<number | null>,
   doneToday: {} as Record<string, number>,
   tasks: [
     T({ id: 'a', title: '英単語 Unit 3 の確認テスト', subject: '英語', startsOn: '2026-10-01', estimatedMinutes: 15 }),
-    T({ id: 'b', title: '方程式の文章題 5問', subject: '数学', startsOn: '2026-10-05', dueOn: '2026-10-31', recurrence: 'weekdays', estimatedMinutes: 20 }),
+    T({ id: 'b', title: '方程式の文章題 5問', subject: '数学', startsOn: '2026-10-05', dueOn: '2026-10-31', recurrence: 'weekdays', estimatedMinutes: 20, targetGrades: [7, 8], rewardCoins: 10 }),
     T({ id: 'c', title: '漢字ドリル p.12', subject: '国語', startsOn: '2026-10-02', recurrence: 'weekly' }),
     T({ id: 'd', title: '理科 第3回 まとめ', subject: '理科', startsOn: '2026-10-14', recurrence: 'none' }),
     T({ id: 'e', title: '社会 年表づくり', subject: '社会', startsOn: '2026-09-20', dueOn: '2026-10-03' }),
   ],
 }
 board.doneToday = { a: 9, b: 4, c: 0 }
-const tprops = { clubName: '［クラブ名］', board, today: '2026-10-09', error: null, notice: null, busy: false, busyId: null, canAllClubs: true, creating: false, onOpenCreate: noop, onCloseCreate: noop, onCreate: noop, onArchive: noop }
+const tprops = { clubName: '［クラブ名］', board, today: '2026-10-09', error: null, notice: null, busy: false, busyId: null, clubs: [{ id: 'c1', name: '［クラブ名］' }, { id: 'c2', name: '［クラブ名］B' }, { id: 'c3', name: '［クラブ名］C' }], creating: false, onOpenCreate: noop, onCloseCreate: noop, onCreate: noop, onDuplicate: noop, onArchive: noop }
 const D = (n: number) => { const d = new Date(Date.UTC(2026, 9, 9) - n * 86400000); return d.toISOString().slice(0, 10) }
 const act14 = (pattern: number[]) => pattern.map((c, i) => ({ date: D(13 - i), count: c })).filter((a) => a.count > 0)
 const stu = (o: Partial<StudentRow>): StudentRow => ({ userId: Math.random().toString(), displayName: 'ノビ太', grade: 8, assignedTotal: 2, assignedDone: 0, activityToday: 0, currentDays: 0, longestDays: 0, lastAchievedDate: null, activity: [], ...o })
@@ -77,22 +79,38 @@ const detail = {
   comments: [{ id: 'c1', body: '今週も続けているね。\n数学の文章題、がんばっていました。', createdAt: '2026-10-08T09:00:00Z', mine: true, kind: 'comment' as const }, { id: 'c3', body: '見たよ', createdAt: '2026-10-08T12:00:00Z', mine: true, kind: 'seen' as const }, { id: 'c2', body: '期末テスト、応援しています。', createdAt: '2026-10-01T09:00:00Z', mine: false, kind: 'comment' as const }],
   restDates: [] as string[],
   seenToday: false,
+  badges: [
+    { code: 'streak_7', name: '7日連続', rarity: 'rare' as const, earnedOn: '2026-10-08' },
+    { code: 'subject_math', name: '数学のはじめて', rarity: 'normal' as const, earnedOn: '2026-10-02' },
+  ],
+  coinBalance: 148 as number | null,
+  coins: [
+    { id: 'k1', amount: 10, reason: 'task_complete', grantedOn: '2026-10-09', createdAt: '2026-10-09T08:05:00Z' },
+    { id: 'k2', amount: 1, reason: 'study_day', grantedOn: '2026-10-09', createdAt: '2026-10-09T08:05:00Z' },
+    { id: 'k3', amount: 5, reason: 'focus_complete', grantedOn: '2026-10-08', createdAt: '2026-10-08T10:20:00Z' },
+    { id: 'k4', amount: -30, reason: 'gacha_extra', grantedOn: '2026-10-07', createdAt: '2026-10-07T11:00:00Z' },
+  ],
 }
-const dprops = { detail, today: '2026-10-09', canComment: true, busy: false, error: null, onBack: noop, onSend: noop, onDelete: noop }
+// クラブ管理者に渡すデータ：教科・コインを持たない
+const adminDetail = { ...detail, history: detail.history.map((h) => ({ ...h, subject: null as string | null })), subjects: [] as string[], coinBalance: null, coins: [], badges: [] }
+const dprops = { detail: adminDetail, today: '2026-10-09', canComment: true, busy: false, error: null, onBack: noop, onSend: noop, onDelete: noop }
 const which = location.hash.slice(1)
 const AM = (o: Partial<AdminMission>): AdminMission => ({ id: Math.random().toString(), title: '秋の学習チャレンジ', description: null, metric: 'records', startsOn: '2026-10-05', endsOn: '2026-10-18', clubGoal: 120, personalGoal: 10, rewardPersonalCoins: 5, rewardClubCoins: 10, status: 'active', participants: 4, clubProgress: 58, personalReached: 1, students: [{ studentId: 'a', displayName: 'ノビ太', progress: 12 }, { studentId: 'b', displayName: 'しずか', progress: 7 }, { studentId: 'c', displayName: null, progress: 0 }], ...o })
 const screens: Record<string, React.ReactNode> = {
-  missions: <Frame tab="m"><MissionAdminView clubName="［クラブ名］" today="2026-10-10" busy={false} error={null} notice="ミッションを作りました。" onCreate={noop} onCancel={noop} missions={[AM({}), AM({ title: '冬のスタート', status: 'upcoming', startsOn: '2026-10-26', endsOn: '2026-11-08', participants: 0, clubProgress: 0, personalReached: 0, students: [] }), AM({ title: '9月の記録チャレンジ', status: 'ended', startsOn: '2026-09-01', endsOn: '2026-09-30', clubProgress: 130, personalReached: 3 })]} /></Frame>,
+  missions: <Frame tab="m"><MissionAdminView clubName="［クラブ名］" clubId="c1" clubs={[{ id: "c1", name: "［クラブ名］" }, { id: "c2", name: "［クラブ名］B" }, { id: "c3", name: "［クラブ名］C" }]} today="2026-10-10" busy={false} error={null} notice="ミッションを作りました。" onCreate={noop} onCancel={noop} missions={[AM({}), AM({ title: '冬のスタート', status: 'upcoming', startsOn: '2026-10-26', endsOn: '2026-11-08', participants: 0, clubProgress: 0, personalReached: 0, students: [] }), AM({ title: '9月の記録チャレンジ', status: 'ended', startsOn: '2026-09-01', endsOn: '2026-09-30', clubProgress: 130, personalReached: 3 })]} /></Frame>,
   missions_empty: <Frame tab="m"><MissionAdminView clubName="［クラブ名］" today="2026-10-10" busy={false} error={null} notice={null} onCreate={noop} onCancel={noop} missions={[]} /></Frame>,
   approvals: <Frame tab="a"><ApprovalsView applicants={apps} latestVersion={1} busyId={null} error={null} onApprove={noop} onReject={noop} onBulkApprove={noop} bulkBusy={false} /></Frame>,
+  clubadmins: <Frame tab="c"><ClubAdminsView clubName="［クラブ名］" admins={[{ userId: 'u1', email: 'kanri@example.com', displayName: '［管理者名］' }, { userId: 'u2', email: 'sub-admin@example.com', displayName: null }]} busy={false} error={null} notice="追加しました。本人が管理画面で、このメールアドレスにログインリンクを送ると入れます。" onAdd={noop} onRemove={noop} /></Frame>,
+  clubadmins_empty: <Frame tab="c"><ClubAdminsView clubName="［クラブ名］" admins={[]} busy={false} error="このメールアドレスは、ほかのクラブに所属しています（1人が同時に所属できるクラブは1つです）。先にそのクラブから解除してください。" notice={null} onAdd={noop} onRemove={noop} /></Frame>,
   clubs: <Frame tab="c"><ClubSettingsView club={club} liffId="2001234567-AbCdEfGh" busy={false} error={null} notice="コピーしました。" onCreate={noop} onRename={noop} onSetFreeTasks={noop} onRegenerate={noop} onCopy={noop} /></Frame>,
   tasks: <Frame tab="t"><TasksView {...tprops} notice="配信しました。" /></Frame>,
   tasks_form: <Frame tab="t"><TasksView {...tprops} creating /></Frame>,
-  tasks_empty: <Frame tab="t"><TasksView {...tprops} board={{ tasks: [], doneToday: {}, students: 0 }} /></Frame>,
+  tasks_dup: <Frame tab="t"><TasksView {...tprops} creating duplicating initialDraft={{ title: '方程式の文章題 5問', subject: '数学', startsOn: '2026-10-09', dueOn: '', recurrence: 'weekdays', minutes: '20', clubIds: ['c1'], grades: [7, 8], coins: '10' }} onDuplicate={noop} /></Frame>,
+  tasks_empty: <Frame tab="t"><TasksView {...tprops} board={{ tasks: [], doneToday: {}, students: 0, studentGrades: [] }} /></Frame>,
   students: <Frame tab="s"><StudentsView board={sboard} today="2026-10-09" onOpen={noop} /></Frame>,
   students_admin: <Frame tab="s"><StudentsView board={{ ...sboard, eventDates: ['2026-10-10'], seenToday: [students[0].userId] }} today="2026-10-09" onOpen={noop} canSeen /></Frame>,
   student_detail: <Frame tab="s"><StudentDetailView {...dprops} /></Frame>,
-  student_detail_op: <Frame tab="s"><StudentDetailView {...dprops} canComment={false} detail={{ ...detail, comments: [] }} /></Frame>,
+  student_detail_op: <Frame tab="s"><StudentDetailView {...dprops} canComment={false} isOperator detail={{ ...detail, comments: [] }} /></Frame>,
   events: <Frame tab="e"><ClubEventsView clubName="［クラブ名］" today="2026-10-09" busy={false} error={null} notice="日程を追加しました。" onAdd={noop} onAddRange={noop} onRemove={noop} events={[
     { id: 'e1', date: '2026-10-09', kind: 'camp', note: '秋合宿 2日目' },
     { id: 'e2', date: '2026-10-25', kind: 'tournament', note: '県大会' },

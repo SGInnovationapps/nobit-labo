@@ -5,7 +5,7 @@ import { historyOutcome, isSettled, summarizeHistory } from './alertListModel'
 import type { AlertItem } from './alertListModel'
 import { dateLabel, jstDate, timeLabel } from '../home/homeModel'
 import { gradeLabel } from '../lib/steps'
-import { ALERT_DEFS, conditionText, defOf, isDirty, ruleProblem, saveErrorMessage, sortRules, TEMPLATE_MAX, THRESHOLD_MAX, THRESHOLD_MIN } from './alertsModel'
+import { ALERT_DEFS, conditionText, defOf, isDirty, PLACEHOLDERS, ruleProblem, saveErrorMessage, sortRules, TEMPLATE_MAX, THRESHOLD_MAX, THRESHOLD_MIN } from './alertsModel'
 import type { AlertRule } from './alertsModel'
 
 type RowProps = {
@@ -69,6 +69,7 @@ function RuleRow({ rule, busy, onSave }: RowProps) {
       <div className="field">
         <label htmlFor={`${id}-t`}>送る文面のひな型（{TEMPLATE_MAX}文字まで）</label>
         <textarea id={`${id}-t`} rows={3} value={draft.template} disabled={busy} onChange={(e) => setDraft({ ...draft, template: e.target.value })} />
+        <p className="hint">差し込み：{PLACEHOLDERS[def.kind].map((n) => `{${n}}`).join(' ')}（コピーするとき、生徒の名前・数に置き換わります）</p>
       </div>
       {problem && <p className="error" role="alert">{problem}</p>}
 

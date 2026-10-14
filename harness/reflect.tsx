@@ -7,6 +7,7 @@ import type { ReflectData } from '../src/home/reflectApi'
 const today = '2026-10-10'
 const days = [1, 2, 3, 5, 6, 7, 8, 9]
 const data: ReflectData = {
+  trend: [], tickets: null,
   today,
   streak: { current: 12, longest: 21 },
   activity: days.map((d, i) => ({ date: `2026-10-${String(d).padStart(2, '0')}`, count: (i % 3) + 1 })),
@@ -17,6 +18,8 @@ const data: ReflectData = {
     { subject: '理科', kind: 'tag', durationSeconds: null },
   ],
 }
+data.trend = [0, 1, 3, 5, 0, 2, 4, 7, 8, 9, 12, 12].map((days, i) => { const d = new Date(Date.UTC(2026, 6, 20 + i * 7)); return { weekStart: d.toISOString().slice(0, 10), days } })
+data.tickets = { balance: 2, usedInPeriod: 1 }
 const base = { error: null, onMode() {}, onShift() {}, onThis() {}, onTab() {} }
 const screens: Record<string, JSX.Element> = {
   month: <ReflectView {...base} period={periodOf('month', today)} data={data} />,

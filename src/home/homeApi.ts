@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { HomeTask, TagRecord, TicketInfo, TimerRecord } from './homeModel'
+import type { HomeTask, NewBadge, TagRecord, TicketInfo, TimerRecord } from './homeModel'
 import { addDays, jstDate, needsResume } from './homeModel'
 
 export type HomeData = {
@@ -47,6 +47,8 @@ export type CompleteResult = {
   /** その日の最初の記録か／連続記録の節目か（全面のシートを出すかの判断） */
   firstOfDay: boolean
   milestone: boolean
+  /** 今回の記録で新しく得たバッジ（条件でもらえるもの） */
+  newBadges: NewBadge[]
   coinsGranted: number
 }
 
@@ -190,6 +192,7 @@ export async function completeTask(userTaskId: string): Promise<CompleteResult> 
     longestDays: d.longest_days as number,
     firstOfDay: (d.first_of_day as boolean | undefined) ?? false,
     milestone: (d.milestone as boolean | undefined) ?? false,
+    newBadges: toNewBadges(d.new_badges),
     coinsGranted: (d.coins_granted as number | undefined) ?? 0,
   }
 }
@@ -211,10 +214,15 @@ export async function registerFreeTask(title: string, subject: string, minutes: 
   if (error) throw new FreeTaskError(error.message)
 }
 
+function toNewBadges(v: unknown): NewBadge[] {
+  if (!Array.isArray(v)) return []
+  return v.map((b) => ({ code: String((b as Record<string, unknown>).code), name: String((b as Record<string, unknown>).name), rarity: (b as Record<string, unknown>).rarity as NewBadge['rarity'] }))
+}
+
 export type StudyResult = {
   coinsGranted: number; currentDays: number; durationSeconds: number | null
   focusAchieved: boolean; focusBonus: number
-  firstOfDay: boolean; milestone: boolean; completedToday: number
+  firstOfDay: boolean; milestone: boolean; newBadges: NewBadge[]; completedToday: number
   recordId: string | null; alreadyRecorded: boolean; recordedAt: string | null
 }
 
@@ -227,6 +235,7 @@ function toStudyResult(d: Record<string, unknown>): StudyResult {
     focusBonus: (d.focus_bonus as number | undefined) ?? 0,
     firstOfDay: (d.first_of_day as boolean | undefined) ?? false,
     milestone: (d.milestone as boolean | undefined) ?? false,
+    newBadges: toNewBadges(d.new_badges),
     completedToday: (d.completed_today as number | undefined) ?? 0,
     recordId: (d.record_id as string | undefined) ?? null,
     alreadyRecorded: (d.already_recorded as boolean | undefined) ?? false,

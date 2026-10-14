@@ -33,3 +33,18 @@ assert.equal(inviteUrl('2001-abc', 'abcdef123456'), 'https://miniapp.line.me/200
 assert.equal(formatJst('2026-10-09T00:51:00Z'), '10/9 09:51')
 assert.equal(formatJst(null), '')
 console.log('ok')
+
+import { addProblem, adminErrorMessage, adminLabel, normalizeEmail } from '../src/admin/clubAdminsModel.ts'
+// クラブ管理者の追加：入力の確認・表示・エラー文
+{
+  assert.equal(normalizeEmail('  A@Example.com '), 'a@example.com')
+  assert.equal(addProblem('', ''), 'メールアドレスを入力してください')
+  assert.match(addProblem('abc', '') ?? '', /形式/)
+  assert.match(addProblem('a@example.com', 'あ'.repeat(21)) ?? '', /20文字/)
+  assert.equal(addProblem(' a@example.com ', '［管理者名］'), null)
+  assert.equal(adminLabel({ userId: 'u', email: 'a@example.com', displayName: '［管理者名］' }), '［管理者名］（a@example.com）')
+  assert.equal(adminLabel({ userId: 'u', email: 'a@example.com', displayName: null }), 'a@example.com')
+  assert.match(adminErrorMessage(new Error('other_club')), /ほかのクラブ/)
+  assert.match(adminErrorMessage(new Error('not_allowed')), /生徒または運営/)
+  assert.match(adminErrorMessage(new Error('zzz')), /保存できませんでした/)
+}

@@ -38,6 +38,31 @@ export function sortRules(rules: ReadonlyArray<AlertRule>): AlertRule[] {
   return [...rules].sort((a, b) => (order.get(a.kind) ?? 99) - (order.get(b.kind) ?? 99))
 }
 
+/** 文面に差し込める言葉（仕様書 6章）。種類ごとに、値が必ずある言葉だけを許す */
+export const PLACEHOLDERS: Record<AlertKind, ReadonlyArray<string>> = {
+  not_started: ['名前', '残り数'],
+  gap: ['名前'],
+  streak_broken: ['名前', '連続日数'],
+  task_overdue: ['名前', '残り数'],
+  streak_milestone: ['名前', '連続日数'],
+  badge_earned: ['名前'],
+  club_mission: ['名前'],
+}
+
+/** 文面の中の {…} を取り出す */
+export function placeholdersIn(text: string): string[] {
+  return [...text.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1])
+}
+
+/** 差し込みの問題。なければ null */
+export function placeholderProblem(kind: AlertKind, text: string): string | null {
+  const ok = PLACEHOLDERS[kind]
+  for (const name of placeholdersIn(text)) {
+    if (!ok.includes(name)) return `{${name}} は、この種類では使えません。使えるのは ${ok.map((n) => `{${n}}`).join(' ')} です`
+  }
+  return null
+}
+
 /** 入力の問題。なければ null */
 export function ruleProblem(r: Pick<AlertRule, 'kind' | 'thresholdDays' | 'template'>): string | null {
   if (r.kind === 'gap') {
@@ -47,7 +72,7 @@ export function ruleProblem(r: Pick<AlertRule, 'kind' | 'thresholdDays' | 'templ
   const n = [...r.template.trim()].length
   if (n === 0) return '文面を入力してください'
   if (n > TEMPLATE_MAX) return `文面は${TEMPLATE_MAX}文字までです`
-  return null
+  return placeholderProblem(r.kind, r.template)
 }
 
 /** 保存済みの内容と違うか（保存ボタンの有効化に使う） */

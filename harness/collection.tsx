@@ -3,6 +3,8 @@ import '../src/styles.css'
 import { CollectionView } from '../src/home/Collection'
 import type { CollectionData, GachaResult } from '../src/home/collectionApi'
 import type { ItemDef } from '../src/home/collectionModel'
+import { CompletionSheet } from '../src/home/CompletionSheet'
+import { buildBand } from '../src/home/homeModel'
 
 const items: ItemDef[] = [
   ['title_first_step', 'はじめの一歩', 'title', 'normal'], ['title_steady', 'コツコツ見習い', 'title', 'normal'],
@@ -23,9 +25,18 @@ const base: CollectionData = {
     { itemId: 'bg_sunset_note', acquiredAt: '2026-10-09T01:00:00Z', equipped: false },
     { itemId: 'badge_first_draw', acquiredAt: '2026-10-04T01:00:00Z', equipped: false },
   ],
-  recordsToday: 2, drawnToday: false,
+  recordsToday: 2, drawnToday: false, extraDrawnToday: false,
+  badges: [
+    { code: 'streak_3', name: '3日連続', category: 'streak', rarity: 'normal', goal: 3, condition: '3日連続で学習を記録する', earnedOn: '2026-10-04', progress: 3 },
+    { code: 'streak_7', name: '7日連続', category: 'streak', rarity: 'rare', goal: 7, condition: '7日連続で学習を記録する', earnedOn: '2026-10-08', progress: 7 },
+    { code: 'subject_eng', name: '英語のはじめて', category: 'subject', rarity: 'normal', goal: 1, condition: '英語を初めて記録する', earnedOn: '2026-10-01', progress: 1 },
+    { code: 'streak_30', name: '30日連続', category: 'streak', rarity: 'super_rare', goal: 30, condition: '30日連続で学習を記録する', earnedOn: null, progress: 21 },
+    { code: 'focus_10', name: '集中のつみかさね', category: 'action', rarity: 'rare', goal: 10, condition: '15分集中を10回達成する', earnedOn: null, progress: 9 },
+    { code: 'focus_first', name: '15分チャレンジャー', category: 'action', rarity: 'normal', goal: 1, condition: '15分集中を初めて達成する', earnedOn: null, progress: 0 },
+    { code: 'mission_join', name: 'クラブミッション参加', category: 'event', rarity: 'normal', goal: 1, condition: 'クラブミッションに初めて参加する', earnedOn: null, progress: 0 },
+  ],
 }
-const none = { ...base, owned: [], recordsToday: 0 }
+const none = { ...base, owned: [], recordsToday: 0, badges: base.badges.map((b) => ({ ...b, earnedOn: null, progress: 0 })) }
 const props = {
   displayName: '表示名', grade: 8, error: null, gachaOpen: false, result: null, equipped: false, busy: false, gachaError: null,
   onOpenGacha() {}, onCloseGacha() {}, onDraw() {}, onEquip() {}, onEquipOwned() {}, onTab() {},
@@ -33,7 +44,9 @@ const props = {
 const res = (o: Partial<GachaResult>): GachaResult => ({
   itemId: 'x', name: 'ひらめき上手', category: 'title', rarity: 'rare', duplicate: false, coinsGranted: 0, drawnAt: '2026-10-10T01:00:00Z', ...o,
 })
+const cells = buildBand([{ date: '2026-10-08', count: 2 }, { date: '2026-10-09', count: 3 }], '2026-10-09', 14, [])
 const screens: Record<string, JSX.Element> = {
+  sheet_badge: <CompletionSheet label="バッジ獲得" title="数学を記録" completedAt="2026-10-09T08:05:00Z" cells={cells} currentDays={4} completedToday={2} badges={['数学のはじめて']} onClose={() => {}} />,
   ready: <CollectionView {...props} data={base} />,
   norecord: <CollectionView {...props} data={{ ...base, recordsToday: 0 }} />,
   drawn: <CollectionView {...props} data={{ ...base, drawnToday: true }} />,

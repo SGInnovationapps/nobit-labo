@@ -4,12 +4,14 @@ import { DISPLAY_NAME_MAX, GRADES, gradeLabel, validateDisplayName } from '../li
 type Props = {
   initialName: string | null
   initialGrade: number | null
+  /** 表示名の初期値が LINE の名前のとき、その旨を添える */
+  nameFromLine?: boolean
   busy: boolean
   error: string | null
   onSubmit: (displayName: string, grade: number) => void
 }
 
-export function ProfileStep({ initialName, initialGrade, busy, error, onSubmit }: Props) {
+export function ProfileStep({ initialName, initialGrade, nameFromLine = false, busy, error, onSubmit }: Props) {
   const [name, setName] = useState(initialName ?? '')
   const [grade, setGrade] = useState<number | null>(initialGrade)
   const nameCheck = validateDisplayName(name)
@@ -18,26 +20,7 @@ export function ProfileStep({ initialName, initialGrade, busy, error, onSubmit }
   return (
     <>
       <h1>あなたのことを教えてください</h1>
-
-      <div className="field">
-        <label htmlFor="display-name">
-          表示名
-          <span className="count">
-            <span className="num">{[...name.trim()].length}</span> / <span className="num">{DISPLAY_NAME_MAX}</span>
-          </span>
-        </label>
-        <input
-          id="display-name"
-          type="text"
-          value={name}
-          autoComplete="off"
-          onChange={(e) => setName(e.target.value)}
-          aria-describedby="display-name-hint"
-        />
-        <p className="hint" id="display-name-hint">
-          クラブの管理者に表示される名前です。
-        </p>
-      </div>
+      {nameFromLine && <p className="lead">学年を1つ選ぶだけで進めます。</p>}
 
       <fieldset className="choices">
         <legend>学年</legend>
@@ -57,6 +40,26 @@ export function ProfileStep({ initialName, initialGrade, busy, error, onSubmit }
       <p className="selected-note" aria-live="polite">
         {grade === null ? '学年を選んでください' : `選んだ学年：${gradeLabel(grade)}`}
       </p>
+
+      <div className="field">
+        <label htmlFor="display-name">
+          表示名
+          <span className="count">
+            <span className="num">{[...name.trim()].length}</span> / <span className="num">{DISPLAY_NAME_MAX}</span>
+          </span>
+        </label>
+        <input
+          id="display-name"
+          type="text"
+          value={name}
+          autoComplete="off"
+          onChange={(e) => setName(e.target.value)}
+          aria-describedby="display-name-hint"
+        />
+        <p className="hint" id="display-name-hint">
+          {nameFromLine ? 'LINEの名前を入れています。変えられます。' : 'クラブの管理者に表示される名前です。'}
+        </p>
+      </div>
 
       {error && (
         <p className="error" role="alert">

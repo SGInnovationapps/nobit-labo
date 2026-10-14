@@ -185,6 +185,28 @@ export function subjectBreakdown(subjects: ReadonlyArray<string>): SubjectCount[
     .sort((a, b) => b.count - a.count || a.subject.localeCompare(b.subject, 'ja'))
 }
 
+/** コイン台帳の理由の表示名（運営の画面だけで使う） */
+export const COIN_REASON_LABEL: Record<string, string> = {
+  task_complete: '配信タスク',
+  study_day: '学習した日',
+  focus_complete: '15分集中',
+  study_plain: '教科の記録',
+  study_content: '教科の記録（内容つき）',
+  gacha_duplicate: 'ガチャ（重複）',
+  gacha_extra: '追加ガチャ',
+  mission_personal: 'クラブミッション（個人）',
+  mission_club: 'クラブミッション（クラブ）',
+}
+
+export function coinReasonLabel(reason: string): string {
+  return COIN_REASON_LABEL[reason] ?? reason
+}
+
+/** +10 / −30 の形。符号は文字で示す */
+export function coinAmountLabel(amount: number): string {
+  return amount > 0 ? `+${amount}` : `−${Math.abs(amount)}`
+}
+
 export const COMMENT_MAX = 300
 
 export function commentError(body: string): string | null {

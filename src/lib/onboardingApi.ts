@@ -21,7 +21,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
   if (authError || !auth.user) throw new Error('ログイン情報を確認できませんでした')
   const userId = auth.user.id
 
-  const [userRes, memberRes, scopeRes] = await Promise.all([
+  const [userRes, memberRes, scopeRes, lineRes] = await Promise.all([
     supabase.from('users').select('role, display_name, grade').eq('id', userId).maybeSingle(),
     supabase
       .from('club_members')
@@ -31,10 +31,12 @@ export async function loadSnapshot(): Promise<Snapshot> {
       .order('created_at', { ascending: false })
       .limit(1),
     supabase.from('consent_scope_versions').select('version, summary').order('version', { ascending: false }).limit(1),
+    supabase.from('line_accounts').select('line_display_name').eq('user_id', userId).maybeSingle(),
   ])
   if (userRes.error) throw userRes.error
   if (memberRes.error) throw memberRes.error
   if (scopeRes.error) throw scopeRes.error
+  // LINE の名前が読めなくても、導入は止めない（初期値が空になるだけ）
   if (!userRes.data) throw new Error('ユーザー情報が見つかりませんでした')
 
   const member = (memberRes.data as unknown as MembershipRow[])[0] ?? null
@@ -61,6 +63,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
       : null,
     latestScope: scope ? { version: scope.version as number, summary: scope.summary as string } : null,
     consentedVersions,
+    lineName: (lineRes.data?.line_display_name as string | null | undefined) ?? null,
   }
 }
 

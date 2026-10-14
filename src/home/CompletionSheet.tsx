@@ -12,13 +12,15 @@ type Props = {
   cells: ReadonlyArray<BandCell>
   currentDays: number
   completedToday: number
+  /** 新しく得たバッジの名前（あるときだけ） */
+  badges?: ReadonlyArray<string>
   /** その日の最初の記録のとき、ガチャ（05）へ直接進める */
   onGacha?: () => void
   onClose: () => void
 }
 
 /** 02 記録の瞬間。ホームの上に重ねるシート。出すのは、その日の最初の記録・連続記録の節目・バッジ獲得のときだけ。ノビットはここに出る */
-export function CompletionSheet({ label, title, completedAt, cells, currentDays, completedToday, onGacha, onClose }: Props) {
+export function CompletionSheet({ label, title, completedAt, cells, currentDays, completedToday, badges, onGacha, onClose }: Props) {
   const first = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     first.current?.focus()
@@ -34,6 +36,11 @@ export function CompletionSheet({ label, title, completedAt, cells, currentDays,
         <p className="sheet-label">{label}</p>
         <h2 id="sheet-title" className="sheet-title">{title}</h2>
         <p className="sheet-time num">{timeLabel(completedAt)}</p>
+        {badges && badges.length > 0 && (
+          <ul className="sheet-badges" aria-label="新しいバッジ">
+            {badges.map((b) => <li key={b}>バッジ「{b}」を獲得</li>)}
+          </ul>
+        )}
         <RecordBand cells={cells} animateToday />
         <p className="sheet-note">
           今日の記録 <span className="num">{completedToday}</span> 件　連続 <span className="num">{currentDays}</span> 日

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Club } from './adminApi'
 import { createClub, regenerateInviteCode, updateClub } from './adminApi'
 import { inviteUrl } from './applicants'
+import ClubAdmins from './ClubAdmins'
 import { QrCode } from './QrCode'
 
 const NAME_MAX = 80
@@ -174,11 +175,13 @@ export function ClubSettingsView({ club, liffId, busy, error, notice, onCreate, 
 
 type PageProps = {
   club: Club | null
+  /** クラブ管理者の追加・解除は運営だけ */
+  isOperator: boolean
   onClubSaved: (club: Club) => void
   onClubCreated: (club: Club) => void
 }
 
-export default function ClubSettingsPage({ club, onClubSaved, onClubCreated }: PageProps) {
+export default function ClubSettingsPage({ club, isOperator, onClubSaved, onClubCreated }: PageProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -199,6 +202,7 @@ export default function ClubSettingsPage({ club, onClubSaved, onClubCreated }: P
   }
 
   return (
+    <>
     <ClubSettingsView
       club={club}
       liffId={import.meta.env.VITE_LIFF_ID as string | undefined}
@@ -215,5 +219,7 @@ export default function ClubSettingsPage({ club, onClubSaved, onClubCreated }: P
         }, 'コピーしました。')
       }
     />
+    {isOperator && club && <ClubAdmins key={club.id} clubId={club.id} clubName={club.name} />}
+    </>
   )
 }

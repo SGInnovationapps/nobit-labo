@@ -64,3 +64,25 @@ test('minutesLabel', () => {
   assert.equal(minutesLabel(60), '1時間')
   assert.equal(minutesLabel(95), '1時間35分')
 })
+
+import { streakTrend, ticketLine } from '../src/home/reflectModel.ts'
+test('streakTrend: 学習で+1、休息日は据え置き、空いた日で0、今日は崩さない', () => {
+  // 2026-10-10 は土曜。今週の月曜は 10/5
+  const act = ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-08', '2026-10-09'].map((date) => ({ date, count: 1 }))
+  const t = streakTrend(act, ['2026-10-07'], '2026-10-10', 2)
+  assert.equal(t.length, 2)
+  assert.equal(t[0].weekStart, '2026-09-28')
+  assert.equal(t[0].days, 4) // 10/1〜10/4 の 4 日（その前は記録なし）
+  // 10/7 は休息日で据え置き。10/8・10/9 で +2。今日（10/10）は未記録でも崩さない → 4+2(10/5,10/6)+2 = 8
+  assert.equal(t[1].weekStart, '2026-10-05')
+  assert.equal(t[1].days, 8)
+})
+test('streakTrend: 空いた日は0に戻り、窓より前の連続も引き継ぐ', () => {
+  const t = streakTrend([{ date: '2026-09-20', count: 1 }, { date: '2026-09-21', count: 1 }, { date: '2026-10-09', count: 2 }], [], '2026-10-10', 1)
+  assert.equal(t[0].days, 1) // 9/22 から空いたので 0 に戻り、10/9 で 1
+  assert.deepEqual(streakTrend([], [], '2026-10-10', 3).map((p) => p.days), [0, 0, 0])
+})
+test('ticketLine', () => {
+  assert.equal(ticketLine(2, 0, '月'), 'いま持っているのは2枚。この月は使っていません。')
+  assert.equal(ticketLine(1, 3, '週'), 'いま持っているのは1枚。この週に使ったのは3日。')
+})

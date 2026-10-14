@@ -4,21 +4,24 @@ import { METRIC_LABEL, METRIC_UNIT, periodLabel } from '../home/missionModel'
 import type { MissionMetric } from '../home/missionModel'
 import type { Club } from './adminApi'
 import { cancelClubMission, createClubMission, loadAdminMissions } from './adminApi'
-import { checkDraft, DESCRIPTION_MAX, emptyDraft, missionAdminError, reachedRate, splitAdmin, TITLE_MAX } from './missionAdminModel'
-import type { AdminMission, MissionDraft } from './missionAdminModel'
+import { bulkResultText, checkDraft, DESCRIPTION_MAX, draftFromMission, emptyDraft, missionAdminError, reachedRate, splitAdmin, TITLE_MAX } from './missionAdminModel'
+import type { AdminMission, BulkResult, MissionDraft } from './missionAdminModel'
 
 type ViewProps = {
   clubName: string
+  /** 表示中のクラブと、配信先に選べるクラブ。2つ以上あるときだけ、クラブの選択を出す */
+  clubId?: string
+  clubs?: ReadonlyArray<{ id: string; name: string }>
   missions: AdminMission[]
   today: string
   busy: boolean
   error: string | null
   notice: string | null
-  onCreate: (d: MissionDraft) => void
+  onCreate: (d: MissionDraft, clubIds: string[]) => void
   onCancel: (id: string) => void
 }
 
-function MissionBlock({ m, busy, onCancel, canCancel }: { m: AdminMission; busy: boolean; onCancel: (id: string) => void; canCancel: boolean }) {
+function MissionBlock({ m, busy, onCancel, onDuplicate, canCancel }: { m: AdminMission; busy: boolean; onCancel: (id: string) => void; onDuplicate: (m: AdminMission) => void; canCancel: boolean }) {
   const unit = METRIC_UNIT[m.metric]
   const rate = reachedRate(m)
   const [confirm, setConfirm] = useState(false)
@@ -48,6 +51,9 @@ function MissionBlock({ m, busy, onCancel, canCancel }: { m: AdminMission; busy:
           </ul>
         </details>
       )}
+      <div className="adm-actions-row">
+        <button type="button" className="btn btn-secondary" onClick={() => onDuplicate(m)}>複製する</button>
+      </div>
       {canCancel && (confirm ? (
         <div className="adm-actions-row">
           <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => { setConfirm(false); onCancel(m.id) }}>取り消す</button>
@@ -60,9 +66,13 @@ function MissionBlock({ m, busy, onCancel, canCancel }: { m: AdminMission; busy:
   )
 }
 
-export function MissionAdminView({ clubName, missions, today, busy, error, notice, onCreate, onCancel }: ViewProps) {
+export function MissionAdminView({ clubName, clubId = '', clubs = [], missions, today, busy, error, notice, onCreate, onCancel }: ViewProps) {
   const [draft, setDraft] = useState<MissionDraft>(() => emptyDraft(today))
   const [open, setOpen] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
+  const [clubIds, setClubIds] = useState<string[]>(clubId ? [clubId] : [])
+  const pickClubs = clubs.length > 1
+  const duplicate = (m: AdminMission) => { setDraft(draftFromMission(m, today)); setDuplicating(true); setClubIds(clubId ? [clubId] : []); setOpen(true); window.scrollTo({ top: 0 }) }
   const g = splitAdmin(missions)
   const check = checkDraft(draft, today, missions)
   const set = (patch: Partial<MissionDraft>) => setDraft({ ...draft, ...patch })
@@ -71,7 +81,7 @@ export function MissionAdminView({ clubName, missions, today, busy, error, notic
     <>
       <div className="adm-title-row">
         <h1 className="adm-h1">クラブミッション<span className="adm-grade">{clubName}</span></h1>
-        {!open && <button type="button" className="btn btn-primary adm-inline" onClick={() => setOpen(true)}>ミッションを作る</button>}
+        {!open && <button type="button" className="btn btn-primary adm-inline" onClick={() => { setDuplicating(false); setDraft(emptyDraft(today)); setClubIds(clubId ? [clubId] : []); setOpen(true) }}>ミッションを作る</button>}
       </div>
       <p className="muted">クラブ全体の目標と、個人の目標を決めます。生徒には、自分とクラブ全体の数字だけが見えます。</p>
       {error && <p className="error" role="alert">{error}</p>}
@@ -79,7 +89,8 @@ export function MissionAdminView({ clubName, missions, today, busy, error, notic
 
       {open && (
         <section className="adm-section" aria-labelledby="msn-new">
-          <h2 id="msn-new">ミッションを作る</h2>
+          <h2 id="msn-new">{duplicating ? 'ミッションを複製する' : 'ミッションを作る'}</h2>
+          {duplicating && <p className="muted">タイトル・数えるもの・目標・報酬を引き継ぎました。期間は同じ長さで、今日から始めます。</p>}
           <div className="field">
             <label htmlFor="msn-title">タイトル（{TITLE_MAX}文字まで）</label>
             <input id="msn-title" type="text" value={draft.title} onChange={(e) => set({ title: e.target.value })} placeholder="例：秋の学習チャレンジ" />
@@ -109,10 +120,26 @@ export function MissionAdminView({ clubName, missions, today, busy, error, notic
             <div className="field"><label htmlFor="msn-rp">個人の報酬（コイン）</label><input id="msn-rp" type="number" inputMode="numeric" min={0} value={draft.rewardPersonal} onChange={(e) => set({ rewardPersonal: e.target.value })} /></div>
             <div className="field"><label htmlFor="msn-rc">クラブの報酬（コイン）</label><input id="msn-rc" type="number" inputMode="numeric" min={0} value={draft.rewardClub} onChange={(e) => set({ rewardClub: e.target.value })} /></div>
           </div>
+          {pickClubs && (
+            <fieldset className="adm-club-pick">
+              <legend>作るクラブ（複数選べます）</legend>
+              <div className="adm-actions-row">
+                <button type="button" className="btn btn-quiet" onClick={() => setClubIds(clubs.map((c) => c.id))}>すべて選ぶ</button>
+                <button type="button" className="btn btn-quiet" onClick={() => setClubIds([])}>選びなおす</button>
+              </div>
+              {clubs.map((c) => (
+                <label className="agree adm-all" key={c.id}>
+                  <input type="checkbox" checked={clubIds.includes(c.id)} onChange={(e) => setClubIds(e.target.checked ? [...clubIds, c.id] : clubIds.filter((x) => x !== c.id))} />
+                  <span>{c.name}</span>
+                </label>
+              ))}
+              <p className="muted">期間が重なるクラブは作れません（作れたクラブだけに作ります）。</p>
+            </fieldset>
+          )}
           <p className="muted">クラブの報酬は、参加して1回以上記録した全員に付きます。開始日と終了の前日には、アラートが出ます。</p>
           {draft.title !== '' && check.problem && <p className="error" role="alert">{check.problem}</p>}
           <div className="adm-actions-row">
-            <button type="button" className="btn btn-primary" disabled={busy || check.value === null} onClick={() => { onCreate(draft); setOpen(false); setDraft(emptyDraft(today)) }}>作る</button>
+            <button type="button" className="btn btn-primary" disabled={busy || check.value === null || (pickClubs && clubIds.length === 0)} onClick={() => { onCreate(draft, pickClubs ? clubIds : clubId ? [clubId] : []); setOpen(false); setDuplicating(false); setDraft(emptyDraft(today)) }}>{pickClubs && clubIds.length > 1 ? `${clubIds.length}クラブに作る` : '作る'}</button>
             <button type="button" className="btn btn-quiet" onClick={() => setOpen(false)}>やめる</button>
           </div>
         </section>
@@ -120,13 +147,13 @@ export function MissionAdminView({ clubName, missions, today, busy, error, notic
 
       <section className="adm-section" aria-labelledby="msn-now">
         <h2 id="msn-now">配信中・これから</h2>
-        {g.current.length === 0 ? <p className="muted">配信中のミッションはありません。</p> : g.current.map((m) => <MissionBlock key={m.id} m={m} busy={busy} onCancel={onCancel} canCancel />)}
+        {g.current.length === 0 ? <p className="muted">配信中のミッションはありません。</p> : g.current.map((m) => <MissionBlock key={m.id} m={m} busy={busy} onCancel={onCancel} onDuplicate={duplicate} canCancel />)}
       </section>
 
       {g.past.length > 0 && (
         <section className="adm-section" aria-labelledby="msn-past">
           <h2 id="msn-past">これまでのミッション</h2>
-          {g.past.map((m) => <MissionBlock key={m.id} m={m} busy={busy} onCancel={onCancel} canCancel={false} />)}
+          {g.past.map((m) => <MissionBlock key={m.id} m={m} busy={busy} onCancel={onCancel} onDuplicate={duplicate} canCancel={false} />)}
         </section>
       )}
       <p className="muted">今日：{dateLabel(today)}</p>
@@ -134,7 +161,7 @@ export function MissionAdminView({ clubName, missions, today, busy, error, notic
   )
 }
 
-export default function MissionAdmin({ club }: { club: Club }) {
+export default function MissionAdmin({ club, clubs = [] }: { club: Club; clubs?: Club[] }) {
   const [missions, setMissions] = useState<AdminMission[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -155,10 +182,25 @@ export default function MissionAdmin({ club }: { club: Club }) {
   if (!missions) return error ? <p className="error" role="alert">{error}</p> : <p className="lead">読み込み中です…</p>
   return (
     <MissionAdminView
-      clubName={club.name} missions={missions} today={today} busy={busy} error={error} notice={notice}
-      onCreate={(d) => {
+      clubName={club.name} clubId={club.id} clubs={clubs} missions={missions} today={today} busy={busy} error={error} notice={notice}
+      onCreate={(d, clubIds) => {
         const c = checkDraft(d, today, missions)
-        if (c.value) void run(() => createClubMission(club.id, c.value as NonNullable<typeof c.value>), 'ミッションを作りました。')
+        if (!c.value) return
+        const value = c.value
+        const targets = clubIds.length > 0 ? clubIds : [club.id]
+        void (async () => {
+          setBusy(true); setError(null); setNotice(null)
+          // 1クラブずつ作る（期間が重なるクラブがあっても、ほかのクラブは作る）
+          const results: BulkResult[] = []
+          for (const id of targets) {
+            const name = clubs.find((x) => x.id === id)?.name ?? club.name
+            try { await createClubMission(id, value); results.push({ clubName: name, error: null }) } catch (e) { console.error(e); results.push({ clubName: name, error: missionAdminError(e) }) }
+          }
+          const r = bulkResultText(results)
+          try { await reload() } catch (e) { console.error(e) }
+          if (r.allFailed) setError(r.text); else setNotice(r.text)
+          setBusy(false)
+        })()
       }}
       onCancel={(id) => void run(() => cancelClubMission(id), 'ミッションを取り消しました。')}
     />

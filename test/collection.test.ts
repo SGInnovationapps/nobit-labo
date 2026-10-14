@@ -47,3 +47,23 @@ test('acquiredLabel（JST）と duplicateNote', () => {
   assert.equal(acquiredLabel('2026-10-09T16:00:00Z'), '10月10日')
   assert.equal(duplicateNote(15), 'もっているので、＋15コインにかえました')
 })
+
+import { badgeProgressLabel, earnedOnLabel, splitBadges } from '../src/home/collectionModel.ts'
+import type { BadgeRow } from '../src/home/collectionModel.ts'
+
+const B = (code: string, rarity: BadgeRow['rarity'], goal: number, progress: number, earnedOn: string | null): BadgeRow =>
+  ({ code, name: code, category: 'streak', rarity, goal, condition: '', earnedOn, progress })
+
+test('splitBadges: 獲得はレアリティの高い順、同じなら新しい順。これからは進みの大きい順', () => {
+  const { earned, upcoming } = splitBadges([
+    B('a', 'normal', 3, 3, '2026-10-01'), B('b', 'rare', 7, 7, '2026-10-02'), B('c', 'normal', 1, 1, '2026-10-05'),
+    B('d', 'super_rare', 30, 10, null), B('e', 'rare', 10, 9, null), B('f', 'normal', 1, 0, null),
+  ])
+  assert.deepEqual(earned.map((x) => x.code), ['b', 'c', 'a'])
+  assert.deepEqual(upcoming.map((x) => x.code), ['e', 'd', 'f'])
+})
+
+test('badgeProgressLabel / earnedOnLabel', () => {
+  assert.equal(badgeProgressLabel({ progress: 9, goal: 10 }), '9 / 10')
+  assert.equal(earnedOnLabel('2026-10-04'), '10月4日')
+})

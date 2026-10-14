@@ -19,6 +19,8 @@ export type Snapshot = {
   latestScope: { version: number; summary: string } | null
   /** この生徒が、所属クラブについて同意した版 */
   consentedVersions: number[]
+  /** LINE の表示名（取れているときだけ）。表示名の初期値に使う */
+  lineName?: string | null
 }
 
 export type Step =
@@ -66,6 +68,16 @@ export function gradeLabel(value: number | null): string {
 }
 
 export const DISPLAY_NAME_MAX = 20
+
+/**
+ * ［仮］v1.7：表示名の初期値は LINE の名前。制御文字を除き、空白を詰め、20文字までに切る。使えなければ空
+ * （DB の char_length と同じく、文字数は code point で数える）
+ */
+export function suggestedDisplayName(lineName: string | null | undefined): string {
+  if (!lineName) return ''
+  const cleaned = lineName.replace(/\s+/g, ' ').replace(/[\u0000-\u001f\u007f]/g, '').trim()
+  return [...cleaned].slice(0, DISPLAY_NAME_MAX).join('').trim()
+}
 
 /** 表示名の検証。DB の char_length（文字数）と同じ数え方にする */
 export function validateDisplayName(raw: string): { ok: true; value: string } | { ok: false; message: string } {

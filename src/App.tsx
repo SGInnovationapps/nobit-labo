@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { forgetInvite, readInvite, rememberInvite } from './lib/invite'
 import { signInWithLine } from './lib/lineLogin'
 import { InviteError, joinClub, loadSnapshot, recordConsent, saveProfile } from './lib/onboardingApi'
+import { suggestedDisplayName } from './lib/steps'
 import { deriveStep, progressOf } from './lib/steps'
 import type { Snapshot } from './lib/steps'
 import { ConsentStep } from './screens/ConsentStep'
@@ -194,7 +195,8 @@ export default function App() {
 
       {step.name === 'profile' && (
         <ProfileStep
-          initialName={snapshot.displayName}
+          initialName={snapshot.displayName ?? suggestedDisplayName(snapshot.lineName)}
+          nameFromLine={!snapshot.displayName && suggestedDisplayName(snapshot.lineName) !== ''}
           initialGrade={snapshot.grade}
           busy={busy}
           error={actionError}

@@ -46,11 +46,21 @@ export function reasonText(kind: AlertKind, detail: Record<string, unknown>): st
 }
 
 /** 公式LINE に貼る文面。節目のひな型の「7日」は、実際の日数に置き換える */
-export function copyText(kind: AlertKind, template: string | null, detail: Record<string, unknown>): string {
+export function copyText(kind: AlertKind, template: string | null, detail: Record<string, unknown>, name: string | null = null): string {
   const base = (template ?? defOf(kind).defaultTemplate).trim()
   if (kind === 'club_mission' && detail.phase === 'end' && base === defOf(kind).defaultTemplate.trim()) return CLUB_MISSION_END_TEXT
-  if (kind === 'streak_milestone' && num(detail.days) > 0) return base.replace(/7日/g, `${num(detail.days)}日`)
-  return base
+  const text = kind === 'streak_milestone' && num(detail.days) > 0 ? base.replace(/7日/g, `${num(detail.days)}日`) : base
+  return fillTemplate(kind, text, detail, name)
+}
+
+/** {名前}{残り数}{連続日数} を差し込む。値がないものは、そのまま残す（運営が表示で気づける） */
+export function fillTemplate(kind: AlertKind, text: string, detail: Record<string, unknown>, name: string | null): string {
+  const values: Record<string, string | null> = {
+    名前: name && name.trim() ? name.trim() : null,
+    残り数: kind === 'not_started' ? String(num(detail.assigned)) : kind === 'task_overdue' ? String(num(detail.overdue)) : null,
+    連続日数: kind === 'streak_broken' ? String(num(detail.streak_days)) : kind === 'streak_milestone' ? String(num(detail.days)) : null,
+  }
+  return text.replace(/\{([^{}]*)\}/g, (all, key: string) => values[key] ?? all)
 }
 
 export type AlertGroups = { open: AlertItem[]; contacted: AlertItem[]; resolved: AlertItem[] }
@@ -180,7 +190,7 @@ export function rowsByStudent(items: ReadonlyArray<AlertItem>): StudentAlertRow[
       lineName: top.lineName ?? null,
       grade: top.grade,
       items: sorted,
-      text: copyText(top.kind, top.template, top.detail),
+      text: copyText(top.kind, top.template, top.detail, top.displayName),
       ids: sorted.map((x) => x.id),
       since: sorted.reduce((m, x) => (x.occurredOn < m ? x.occurredOn : m), sorted[0].occurredOn),
       contactedAt: sorted.reduce<string | null>((m, x) => (x.contactedAt && (!m || x.contactedAt > m) ? x.contactedAt : m), null),

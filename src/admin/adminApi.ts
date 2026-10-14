@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { ClubAdmin } from './clubAdminsModel'
 import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
 import { addDays, jstDate } from '../home/homeModel'
@@ -8,6 +9,7 @@ import type { AlertKind, AlertRule, SendMethod } from './alertsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
 import type { GapRule, StudentRow } from './studentModel'
 import { DEFAULT_GAP_RULE } from './studentModel'
+import { ASSIGNED_TASK_COINS } from './taskModel'
 import type { AdminTask, Draft, Recurrence } from './taskModel'
 
 export type Me = {
@@ -166,6 +168,8 @@ type TaskRow = {
   recurrence: Recurrence
   estimated_minutes: number | null
   archived_at: string | null
+  target_grades: number[] | null
+  reward_coins: number
 }
 
 export type TaskBoard = {
@@ -174,18 +178,20 @@ export type TaskBoard = {
   doneToday: Record<string, number>
   /** 承認済みの生徒数 */
   students: number
+  /** 承認済みの生徒の学年（未入力は null）。学年の対象ごとの完了率の分母に使う */
+  studentGrades: Array<number | null>
 }
 
 export async function loadTaskBoard(clubId: string, today: string): Promise<TaskBoard> {
   const [taskRes, doneRes, studentRes] = await Promise.all([
     supabase
       .from('tasks')
-      .select('id, club_id, title, subject, starts_on, due_on, recurrence, estimated_minutes, archived_at')
+      .select('id, club_id, title, subject, starts_on, due_on, recurrence, estimated_minutes, archived_at, target_grades, reward_coins')
       .eq('club_id', clubId)
       .eq('kind', 'assigned')
       .order('created_at', { ascending: false }),
     supabase.from('user_tasks').select('task_id').eq('club_id', clubId).eq('is_free', false).eq('task_date', today).not('completed_at', 'is', null),
-    supabase.from('club_members').select('id', { count: 'exact', head: true }).eq('club_id', clubId).eq('member_role', 'student').eq('status', 'approved'),
+    supabase.from('club_members').select('user_id, users(grade)').eq('club_id', clubId).eq('member_role', 'student').eq('status', 'approved'),
   ])
   if (taskRes.error) throw taskRes.error
   if (doneRes.error) throw doneRes.error
@@ -203,8 +209,14 @@ export async function loadTaskBoard(clubId: string, today: string): Promise<Task
     recurrence: r.recurrence,
     estimatedMinutes: r.estimated_minutes,
     archivedAt: r.archived_at,
+    targetGrades: r.target_grades,
+    rewardCoins: r.reward_coins,
   }))
-  return { tasks, doneToday, students: studentRes.count ?? 0 }
+  const studentGrades = (studentRes.data as unknown as Array<{ users: { grade: number | null } | { grade: number | null }[] | null }>).map((m) => {
+    const u = Array.isArray(m.users) ? m.users[0] : m.users
+    return u?.grade ?? null
+  })
+  return { tasks, doneToday, students: studentGrades.length, studentGrades }
 }
 
 /** 配信するタスクを作る。報酬コインは Phase 2 から（それまでは 0 のまま） */
@@ -218,6 +230,8 @@ export async function createTasks(clubIds: string[], draft: Draft, userId: strin
     due_on: draft.dueOn || null,
     recurrence: draft.recurrence,
     estimated_minutes: draft.minutes.trim() === '' ? null : Number(draft.minutes),
+    target_grades: draft.grades.length === 0 || draft.grades.length === 6 ? null : draft.grades,
+    reward_coins: draft.coins.trim() === '' ? ASSIGNED_TASK_COINS : Number(draft.coins),
     created_by: userId,
   }))
   const { error } = await supabase.from('tasks').insert(rows)
@@ -337,14 +351,21 @@ export async function loadStudentBoard(clubId: string, today: string): Promise<S
 }
 
 export type SupportComment = { id: string; body: string; createdAt: string; mine: boolean; kind: 'comment' | 'seen' }
-export type HistoryItem = { id: string; title: string; subject: string; completedAt: string }
+export type HistoryItem = { id: string; title: string; /** 運営だけ。クラブ管理者には教科を渡さない */ subject: string | null; completedAt: string }
+export type EarnedBadge = { code: string; name: string; rarity: 'normal' | 'rare' | 'super_rare'; earnedOn: string }
+export type CoinRow = { id: string; amount: number; reason: string; grantedOn: string; createdAt: string }
 export type StudentDetail = {
   student: StudentRow
   /** 直近12週（84日）の、学習した日 */
   studyDates: string[]
   history: HistoryItem[]
-  /** 直近30日の、完了したタスクの教科 */
+  /** 直近30日の、完了したタスクの教科（運営だけ。クラブ管理者には空） */
   subjects: string[]
+  /** コインの残高と直近の台帳（運営だけ。クラブ管理者には null と空） */
+  coinBalance: number | null
+  coins: CoinRow[]
+  /** 獲得したバッジ（運営だけ。クラブ管理者には空） */
+  badges: EarnedBadge[]
   comments: SupportComment[]
   restDates: string[]
   /** 今日、「見たよ」を送ったか */
@@ -354,41 +375,60 @@ export type StudentDetail = {
 type HistoryRow = {
   id: string
   completed_at: string
-  tasks: { title: string; subject: string } | { title: string; subject: string }[] | null
+  tasks: { title: string; subject?: string } | { title: string; subject?: string }[] | null
 }
 
-export async function loadStudentDetail(clubId: string, studentId: string, today: string, myId: string): Promise<StudentDetail | null> {
+export async function loadStudentDetail(clubId: string, studentId: string, today: string, myId: string, isOperator = false): Promise<StudentDetail | null> {
   const board = await loadStudentBoard(clubId, today)
   const student = board.students.find((s) => s.userId === studentId)
   if (!student) return null
 
-  const [activityRes, historyRes, commentRes] = await Promise.all([
+  const [activityRes, historyRes, commentRes, coinRes, balanceRes, badgeRes] = await Promise.all([
     supabase.from('daily_activity').select('activity_date').eq('student_id', studentId).gt('completed_count', 0).gte('activity_date', addDays(today, -83)).lte('activity_date', today),
     // 完了したタスク。自由登録は含めない（クラブ管理者に中身を見せない）
     supabase
       .from('user_tasks')
-      .select('id, completed_at, tasks(title, subject)')
+      .select(isOperator ? 'id, completed_at, tasks(title, subject)' : 'id, completed_at, tasks(title)')
       .eq('student_id', studentId)
       .eq('is_free', false)
       .not('completed_at', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(60),
     supabase.from('support_comments').select('id, body, created_at, author_id, kind').eq('student_id', studentId).order('created_at', { ascending: false }).limit(50),
+    // コインは運営だけ（クラブ管理者には読ませない。DB の RLS でも読めない）
+    isOperator
+      ? supabase.from('coin_transactions').select('id, amount, reason, granted_on, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(30)
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>>, error: null }),
+    isOperator
+      ? supabase.from('coin_balances').select('balance').eq('student_id', studentId).maybeSingle()
+      : Promise.resolve({ data: null as { balance: number } | null, error: null }),
+    isOperator
+      ? supabase.from('user_badges').select('badge_code, earned_on, badge_defs(name, rarity)').eq('student_id', studentId).order('earned_on', { ascending: false })
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>>, error: null }),
   ])
+  if (badgeRes.error) throw badgeRes.error
+  if (coinRes.error) throw coinRes.error
+  if (balanceRes.error) throw balanceRes.error
   if (activityRes.error) throw activityRes.error
   if (historyRes.error) throw historyRes.error
   if (commentRes.error) throw commentRes.error
 
   const history = (historyRes.data as unknown as HistoryRow[]).flatMap((r): HistoryItem[] => {
     const t = Array.isArray(r.tasks) ? r.tasks[0] : r.tasks
-    return t ? [{ id: r.id, title: t.title, subject: t.subject, completedAt: r.completed_at }] : []
+    return t ? [{ id: r.id, title: t.title, subject: isOperator ? (t.subject ?? null) : null, completedAt: r.completed_at }] : []
   })
   const from = addDays(today, -29)
   return {
     student,
     studyDates: activityRes.data.map((r) => r.activity_date as string),
     history,
-    subjects: history.filter((h) => jstDate(h.completedAt) >= from).map((h) => h.subject),
+    subjects: isOperator ? history.filter((h) => jstDate(h.completedAt) >= from).flatMap((h) => (h.subject ? [h.subject] : [])) : [],
+    coinBalance: isOperator ? ((balanceRes.data as { balance: number } | null)?.balance ?? 0) : null,
+    badges: ((badgeRes.data ?? []) as Array<Record<string, unknown>>).flatMap((b): EarnedBadge[] => {
+      const d = Array.isArray(b.badge_defs) ? b.badge_defs[0] : b.badge_defs
+      return d ? [{ code: b.badge_code as string, name: (d as { name: string }).name, rarity: (d as { rarity: EarnedBadge['rarity'] }).rarity, earnedOn: b.earned_on as string }] : []
+    }),
+    coins: ((coinRes.data ?? []) as Array<Record<string, unknown>>).map((c) => ({ id: c.id as string, amount: c.amount as number, reason: c.reason as string, grantedOn: c.granted_on as string, createdAt: c.created_at as string })),
     restDates: [...board.restDates, ...(board.studentRest[studentId] ?? []).filter((d) => d <= today)],
     seenToday: board.seenToday.includes(studentId),
     comments: commentRes.data.map((c) => ({ id: c.id as string, body: c.body as string, createdAt: c.created_at as string, mine: c.author_id === myId, kind: ((c.kind as string | null) ?? 'comment') as 'comment' | 'seen' })),
@@ -584,3 +624,18 @@ export async function cancelClubMission(id: string): Promise<void> {
   const { error } = await supabase.rpc('cancel_club_mission', { p_id: id })
   if (error) throw error
 }
+
+/** クラブ管理者の一覧・追加・解除（運営だけ。Edge Function club-admin を通す） */
+async function clubAdminCall(body: Record<string, unknown>): Promise<ClubAdmin[]> {
+  const { data, error } = await supabase.functions.invoke('club-admin', { body })
+  if (error) {
+    // 関数が返した理由（{ error: '…' }）を取り出す
+    const res = (error as { context?: Response }).context
+    const reason = res && typeof res.json === 'function' ? ((await res.json().catch(() => null)) as { error?: string } | null)?.error : null
+    throw new Error(reason ?? 'club_admin_failed')
+  }
+  return (data as { admins: ClubAdmin[] }).admins
+}
+export const loadClubAdmins = (clubId: string) => clubAdminCall({ action: 'list', clubId })
+export const addClubAdmin = (clubId: string, email: string, displayName: string) => clubAdminCall({ action: 'add', clubId, email, displayName })
+export const removeClubAdmin = (clubId: string, userId: string) => clubAdminCall({ action: 'remove', clubId, userId })

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-const STEP_LABELS = ['保護者同意', '表示名と学年', '承認待ち'] as const
+const STEP_LABELS = ['保護者同意', '学年と表示名', '承認待ち'] as const
 
 type Props = {
   /** 1〜3。出さないときは null */

@@ -102,3 +102,37 @@ export const EXTRA_NOTE: Record<ExtraState, string> = {
   poor: `追加ガチャは${EXTRA_GACHA_COST}コインです。コインを集めると引けます。`,
   drawn: '今日の追加ガチャは引きました。',
 }
+
+// ---- 条件でもらえるバッジ（仕様書 5-4）。ガチャの景品のバッジとは別 ----
+
+export type BadgeCategory = 'streak' | 'subject' | 'action' | 'event'
+export type BadgeRow = {
+  code: string; name: string; category: BadgeCategory; rarity: Rarity
+  goal: number; condition: string
+  /** 獲得日（YYYY-MM-DD）。未獲得は null */
+  earnedOn: string | null
+  progress: number
+}
+
+export const BADGE_CATEGORY_LABEL: Record<BadgeCategory, string> = { streak: 'ストリーク', subject: '教科', action: '行動', event: 'イベント' }
+
+/** 獲得したもの（レアリティの高い順、同じなら新しい順）と、これから（進みの大きい順） */
+export function splitBadges(rows: ReadonlyArray<BadgeRow>): { earned: BadgeRow[]; upcoming: BadgeRow[] } {
+  const earned = rows
+    .filter((r) => r.earnedOn !== null)
+    .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || (b.earnedOn ?? '').localeCompare(a.earnedOn ?? ''))
+  const upcoming = rows
+    .filter((r) => r.earnedOn === null)
+    .sort((a, b) => b.progress / b.goal - a.progress / a.goal || a.goal - b.goal)
+  return { earned, upcoming }
+}
+
+/** 未獲得の進み具合（例：集中 9 / 10回 のような「9 / 10」） */
+export function badgeProgressLabel(r: Pick<BadgeRow, 'progress' | 'goal'>): string {
+  return `${r.progress} / ${r.goal}`
+}
+
+/** 獲得日（YYYY-MM-DD）の表示。10月10日 */
+export function earnedOnLabel(date: string): string {
+  return `${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日`
+}

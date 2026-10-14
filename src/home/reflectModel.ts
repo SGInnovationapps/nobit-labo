@@ -116,3 +116,45 @@ export function minutesLabel(min: number): string {
   const m = min % 60
   return m === 0 ? `${h}時間` : `${h}時間${m}分`
 }
+
+export type TrendPoint = { weekStart: string; days: number }
+
+/**
+ * 連続記録の推移。各週（月〜日）の終わり時点の連続日数を、直近 weeks 週ぶん返す（古い週が先）。
+ * 学習した日は +1、休息日（大会日・チケット）は変えない、学習も休息もない日は 0 に戻す。
+ * 今日はまだ終わっていないので、記録がなくても 0 に戻さない。今の週は今日までの値
+ */
+export function streakTrend(
+  activity: ReadonlyArray<{ date: string; count: number }>,
+  restDates: ReadonlyArray<string>,
+  today: string,
+  weeks = 12,
+): TrendPoint[] {
+  const studied = new Set(activity.filter((a) => a.count > 0).map((a) => a.date))
+  const rest = new Set(restDates)
+  const firstWeek = addDays(addDays(today, -weekdayIndex(today)), -(weeks - 1) * 7)
+  const dates = [...studied].sort()
+  // 窓の前の分も連続記録に含めるため、記録のいちばん古い日から数える
+  let day = dates.length > 0 && dates[0] < firstWeek ? dates[0] : firstWeek
+  let streak = 0
+  const atWeekEnd = new Map<string, number>()
+  for (; day <= today; day = addDays(day, 1)) {
+    if (studied.has(day)) streak += 1
+    else if (rest.has(day)) { /* 休息日：そのまま */ }
+    else if (day !== today) streak = 0
+    atWeekEnd.set(day, streak)
+  }
+  const out: TrendPoint[] = []
+  for (let w = 0; w < weeks; w++) {
+    const weekStart = addDays(firstWeek, w * 7)
+    const end = addDays(weekStart, 6)
+    out.push({ weekStart, days: atWeekEnd.get(end > today ? today : end) ?? 0 })
+  }
+  return out
+}
+
+/** 休息チケットの一文（06） */
+export function ticketLine(balance: number, usedInPeriod: number, unit: string): string {
+  const used = usedInPeriod > 0 ? `この${unit}に使ったのは${usedInPeriod}日。` : `この${unit}は使っていません。`
+  return `いま持っているのは${balance}枚。${used}`
+}

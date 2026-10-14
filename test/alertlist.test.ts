@@ -135,3 +135,21 @@ test('contactedToday・guidelineNote: 今日（JST）に連絡した人数と、
   assert.equal(guidelineNote(20).warn, true)
   assert.ok(guidelineNote(20).text.includes('push'))
 })
+
+import { placeholderProblem, ruleProblem as ruleP } from '../src/admin/alertsModel.ts'
+test('文面の差し込み：名前・残り数・連続日数を置き換える', () => {
+  assert.equal(copyT('not_started', '{名前}さん、あと{残り数}つだよ！', { assigned: 2 }, '［生徒名］'), '［生徒名］さん、あと2つだよ！')
+  assert.equal(copyT('task_overdue', '期限切れが{残り数}件', { overdue: 3 }, null), '期限切れが3件')
+  assert.equal(copyT('streak_broken', '{連続日数}日続いたね。また始めよう', { streak_days: 5 }, null), '5日続いたね。また始めよう')
+  assert.equal(copyT('streak_milestone', '{名前}さん、{連続日数}日連続！', { days: 30 }, '［生徒名］'), '［生徒名］さん、30日連続！')
+  // 名前がないときは、そのまま残す（運営が表示で気づける）
+  assert.equal(copyT('gap', '{名前}さん、また始めよう', {}, null), '{名前}さん、また始めよう')
+  assert.equal(copyT('gap', '前の文面', {}, '［生徒名］'), '前の文面')
+})
+test('文面の差し込み：種類ごとに使える言葉だけを保存できる', () => {
+  assert.equal(placeholderProblem('not_started', '{名前}さん、あと{残り数}つ'), null)
+  assert.match(placeholderProblem('gap', '{残り数}日') ?? '', /この種類では使えません/)
+  assert.match(placeholderProblem('badge_earned', '{なまえ}') ?? '', /使えるのは \{名前\}/)
+  assert.match(ruleP({ kind: 'badge_earned', thresholdDays: null, template: '{連続日数}日' }) ?? '', /使えません/)
+  assert.equal(ruleP({ kind: 'badge_earned', thresholdDays: null, template: '{名前}さん、新しいバッジ！' }), null)
+})

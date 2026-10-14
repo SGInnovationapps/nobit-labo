@@ -62,3 +62,33 @@ test('reachedRate / splitAdmin / エラー文', () => {
   assert.match(missionAdminError(new Error('period_overlap')), /重なって/)
   assert.match(missionAdminError(new Error('zzz')), /保存できません/)
 })
+
+import { bulkResultText, draftFromMission } from '../src/admin/missionAdminModel.ts'
+import type { AdminMission } from '../src/admin/missionAdminModel.ts'
+
+const src: AdminMission = {
+  id: 'm1', title: '秋の学習チャレンジ', description: '週に5日', metric: 'study_days', startsOn: '2026-09-01', endsOn: '2026-09-14',
+  clubGoal: 200, personalGoal: 10, rewardPersonalCoins: 5, rewardClubCoins: 15, status: 'ended', participants: 8, clubProgress: 150, personalReached: 3, students: [],
+}
+
+test('draftFromMission: 期間は同じ長さで今日から。ほかは引き継ぐ', () => {
+  const d = draftFromMission(src, '2026-10-12')
+  assert.deepEqual(
+    { ...d },
+    { title: '秋の学習チャレンジ', description: '週に5日', metric: 'study_days', startsOn: '2026-10-12', endsOn: '2026-10-25', clubGoal: '200', personalGoal: '10', rewardPersonal: '5', rewardClub: '15' },
+  )
+  assert.equal(checkDraft(d, '2026-10-12', []).problem, null)
+  // 説明がないものは空の文字になる
+  assert.equal(draftFromMission({ ...src, description: null }, '2026-10-12').description, '')
+  // 1日だけのミッションは1日のまま
+  assert.equal(draftFromMission({ ...src, startsOn: '2026-09-01', endsOn: '2026-09-01' }, '2026-10-12').endsOn, '2026-10-12')
+})
+
+test('bulkResultText: 一括作成の結果（作れたクラブと、作れなかった理由）', () => {
+  assert.deepEqual(bulkResultText([{ clubName: 'A', error: null }]), { text: 'ミッションを作りました。', allFailed: false })
+  assert.deepEqual(bulkResultText([{ clubName: 'A', error: 'ほかのミッションと期間が重なっています。' }]), { text: 'ほかのミッションと期間が重なっています。', allFailed: true })
+  const mixed = bulkResultText([{ clubName: 'A', error: null }, { clubName: 'B', error: '期間が重なっています。' }, { clubName: 'C', error: null }])
+  assert.equal(mixed.allFailed, false)
+  assert.equal(mixed.text, '2クラブにミッションを作りました。\nB：期間が重なっています。')
+  assert.equal(bulkResultText([{ clubName: 'A', error: 'x' }, { clubName: 'B', error: 'y' }]).allFailed, true)
+})

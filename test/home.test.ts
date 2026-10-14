@@ -233,3 +233,14 @@ test('nextMilestone・isNewSupport・weekdayChar・BAND_NOTE', () => {
   assert.equal(weekdayChar('2026-10-09'), '金')
   assert.ok(BAND_NOTE.includes('責めない'))
 })
+
+test('バッジ獲得：シートを出す条件と見出し', () => {
+  const badge = [{ code: 'subject_math', name: '数学のはじめて', rarity: 'normal' as const }]
+  assert.equal(shouldShowSheet({ firstOfDay: false, milestone: false, newBadges: badge }), true)
+  assert.equal(shouldShowSheet({ firstOfDay: false, milestone: false, newBadges: [] }), false)
+  assert.equal(sheetLabel({ firstOfDay: false, milestone: false, currentDays: 4, newBadges: badge }), 'バッジ獲得')
+  // その日の最初の記録・節目のときは、そちらの見出しを優先する
+  assert.equal(sheetLabel({ firstOfDay: true, milestone: false, currentDays: 4, newBadges: badge }), '今日の最初の記録')
+  assert.equal(nextMilestone(1)?.target, 3)
+  assert.equal(nextMilestone(3)?.target, 7)
+})

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { jstDate } from './homeModel'
-import type { Category, ItemDef, OwnedItem, Rarity } from './collectionModel'
+import type { BadgeCategory, BadgeRow, Category, ItemDef, OwnedItem, Rarity } from './collectionModel'
 
 export type CollectionData = {
   streak: { current: number; longest: number }
@@ -10,19 +10,22 @@ export type CollectionData = {
   recordsToday: number
   drawnToday: boolean
   extraDrawnToday: boolean
+  /** 条件でもらえるバッジ（獲得日・進み具合つき） */
+  badges: BadgeRow[]
 }
 
 export async function loadCollection(): Promise<CollectionData> {
   const today = jstDate(Date.now())
-  const [streakRes, coinRes, itemsRes, ownedRes, activityRes, drawRes] = await Promise.all([
+  const [streakRes, coinRes, itemsRes, ownedRes, activityRes, drawRes, badgeRes] = await Promise.all([
     supabase.from('streak_status').select('current_days, longest_days').maybeSingle(),
     supabase.from('coin_balances').select('balance').maybeSingle(),
     supabase.from('items').select('id, name, category, rarity, sort_order').eq('active', true),
     supabase.from('user_items').select('item_id, acquired_at, equipped'),
     supabase.from('daily_activity').select('completed_count').eq('activity_date', today).maybeSingle(),
     supabase.from('gacha_draws').select('id, is_extra').eq('drawn_on', today),
+    supabase.rpc('my_badges'),
   ])
-  for (const r of [streakRes, coinRes, itemsRes, ownedRes, activityRes, drawRes]) if (r.error) throw r.error
+  for (const r of [streakRes, coinRes, itemsRes, ownedRes, activityRes, drawRes, badgeRes]) if (r.error) throw r.error
 
   return {
     streak: { current: streakRes.data?.current_days ?? 0, longest: streakRes.data?.longest_days ?? 0 },
@@ -37,6 +40,10 @@ export async function loadCollection(): Promise<CollectionData> {
     recordsToday: activityRes.data?.completed_count ?? 0,
     drawnToday: (drawRes.data ?? []).some((d) => !d.is_extra),
     extraDrawnToday: (drawRes.data ?? []).some((d) => d.is_extra),
+    badges: ((badgeRes.data ?? []) as Array<Record<string, unknown>>).map((b) => ({
+      code: b.code as string, name: b.name as string, category: b.category as BadgeCategory, rarity: b.rarity as Rarity,
+      goal: b.goal as number, condition: b.condition as string, earnedOn: (b.earned_on as string | null) ?? null, progress: b.progress as number,
+    })),
   }
 }
 

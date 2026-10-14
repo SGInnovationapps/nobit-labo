@@ -143,7 +143,7 @@ function Signed({ userId }: { userId: string }) {
           {activeTab === 'students' &&
             (club ? (
               studentId ? (
-                <StudentDetailPage clubId={club.id} studentId={studentId} myId={me.userId} canComment={me.role === 'club_admin'} onBack={() => setStudentId(null)} />
+                <StudentDetailPage clubId={club.id} studentId={studentId} myId={me.userId} canComment={me.role === 'club_admin'} isOperator={isOperator} onBack={() => setStudentId(null)} />
               ) : (
                 <>
                   {isOperator && <AlertList key={club.id} clubId={club.id} />}
@@ -165,7 +165,7 @@ function Signed({ userId }: { userId: string }) {
             (club ? <ClubEvents key={club.id} club={club} /> : <p className="lead">{isOperator ? 'クラブがまだありません。「クラブ設定」から追加してください。' : '担当しているクラブがありません。運営に連絡してください。'}</p>)}
 
           {activeTab === 'missions' &&
-            (club ? <MissionAdmin key={club.id} club={club} /> : <p className="lead">クラブがまだありません。「クラブ設定」から追加してください。</p>)}
+            (club ? <MissionAdmin key={club.id} club={club} clubs={clubs} /> : <p className="lead">クラブがまだありません。「クラブ設定」から追加してください。</p>)}
 
           {activeTab === 'alerts' &&
             (club ? <AlertSettings key={club.id} club={club} /> : <p className="lead">クラブがまだありません。「クラブ設定」から追加してください。</p>)}
@@ -175,6 +175,7 @@ function Signed({ userId }: { userId: string }) {
           {activeTab === 'clubs' && (
             <ClubSettings
               club={club}
+              isOperator={isOperator}
               onClubSaved={(saved) => setState((s) => (s.kind === 'ready' ? { ...s, clubs: s.clubs.map((c) => (c.id === saved.id ? saved : c)) } : s))}
               onClubCreated={(created) => {
                 setState((s) => (s.kind === 'ready' ? { ...s, clubs: [...s.clubs, created] } : s))

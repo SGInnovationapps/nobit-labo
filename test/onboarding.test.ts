@@ -68,3 +68,15 @@ assert.equal(normalizeInvite(' ABCDEFGH '), 'abcdefgh')
 assert.equal(normalizeInvite("x'; drop table"), null)
 
 console.log('ok')
+
+import { suggestedDisplayName } from '../src/lib/steps.ts'
+
+// ［仮］v1.7：表示名の初期値は LINE の名前。整えて、20文字までにする
+assert.equal(suggestedDisplayName('のびた'), 'のびた')
+assert.equal(suggestedDisplayName('  の び\tた \n'), 'の び た')
+assert.equal(suggestedDisplayName(null), '')
+assert.equal(suggestedDisplayName(undefined), '')
+assert.equal(suggestedDisplayName('   '), '')
+assert.equal([...suggestedDisplayName('あ'.repeat(30))].length, 20)
+assert.equal([...suggestedDisplayName('𠮷'.repeat(25))].length, 20)
+assert.equal(validateDisplayName(suggestedDisplayName('あ'.repeat(30))).ok, true)

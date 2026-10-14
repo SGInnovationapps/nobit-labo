@@ -4,13 +4,15 @@ import { RecordBand } from '../home/RecordBand'
 import { gradeLabel } from '../lib/steps'
 import { addSupportComment, deleteSupportComment, loadStudentDetail, sendSeen } from './adminApi'
 import type { StudentDetail } from './adminApi'
-import { COMMENT_MAX, commentError, lastStudyLabel, monthDays, STATE_TEXT, stateOf, subjectBreakdown, SUPPORT_TEMPLATES, weeklyDays } from './studentModel'
+import { COMMENT_MAX, coinAmountLabel, coinReasonLabel, commentError, lastStudyLabel, monthDays, STATE_TEXT, stateOf, subjectBreakdown, SUPPORT_TEMPLATES, weeklyDays } from './studentModel'
 
 type ViewProps = {
   detail: StudentDetail
   today: string
   /** クラブ管理者だけが、アプリ内の応援を書ける。運営は読むだけ */
   canComment: boolean
+  /** 運営だけ。教科の内訳とコインを見られる。クラブ管理者には完了したタスクと記録の帯まで */
+  isOperator?: boolean
   busy: boolean
   error: string | null
   onBack: () => void
@@ -19,9 +21,10 @@ type ViewProps = {
   onDelete: (id: string) => void
 }
 
+const RARITY_TEXT = { normal: 'ノーマル', rare: 'レア', super_rare: 'スーパーレア' } as const
 const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
 
-export function StudentDetailView({ detail, today, canComment, busy, error, onBack, onSend, onSeen, onDelete }: ViewProps) {
+export function StudentDetailView({ detail, today, canComment, isOperator = false, busy, error, onBack, onSend, onSeen, onDelete }: ViewProps) {
   const { student: s } = detail
   const [body, setBody] = useState('')
   const [shown, setShown] = useState<string | null>(null)
@@ -69,23 +72,25 @@ export function StudentDetailView({ detail, today, canComment, busy, error, onBa
         </div>
       </section>
 
-      <section className="adm-section" aria-labelledby="d-subj">
-        <h2 id="d-subj">教科別の完了（直近30日）</h2>
-        {subjects.length === 0 ? (
-          <p className="muted">まだ記録がありません。</p>
-        ) : (
-          <ul className="adm-subjects">
-            {subjects.map((x) => (
-              <li key={x.subject}>
-                <span className="adm-subject-name">{x.subject}</span>
-                <span className="adm-subject-bar" aria-hidden="true"><i style={{ width: `${Math.max(4, x.ratio * 100)}%` }} /></span>
-                <span className="num adm-subject-n">{x.count}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="adm-sub">運営が配信したタスクだけの集計です。自由登録の内容は含みません。</p>
-      </section>
+      {isOperator && (
+        <section className="adm-section" aria-labelledby="d-subj">
+          <h2 id="d-subj">教科別の完了（直近30日）</h2>
+          {subjects.length === 0 ? (
+            <p className="muted">まだ記録がありません。</p>
+          ) : (
+            <ul className="adm-subjects">
+              {subjects.map((x) => (
+                <li key={x.subject}>
+                  <span className="adm-subject-name">{x.subject}</span>
+                  <span className="adm-subject-bar" aria-hidden="true"><i style={{ width: `${Math.max(4, x.ratio * 100)}%` }} /></span>
+                  <span className="num adm-subject-n">{x.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="adm-sub">運営が配信したタスクだけの集計です。自由登録の内容は含みません。</p>
+        </section>
+      )}
 
       <section className="adm-section" aria-labelledby="d-hist">
         <h2 id="d-hist">学習履歴</h2>
@@ -97,12 +102,52 @@ export function StudentDetailView({ detail, today, canComment, busy, error, onBa
               <li className="adm-row adm-row-compact adm-history-row" key={h.id}>
                 <p className="adm-sub num">{dateLabel(jstDate(h.completedAt))}　{timeLabel(h.completedAt)}</p>
                 <p className="adm-name adm-history-title">{h.title}</p>
-                <p className="adm-sub">{h.subject}</p>
+                {isOperator && h.subject && <p className="adm-sub">{h.subject}</p>}
               </li>
             ))}
           </ul>
         )}
+        {!isOperator && <p className="adm-sub">クラブ管理者に見えるのは、完了した配信タスクと記録の帯までです。</p>}
       </section>
+
+      {isOperator && (
+        <section className="adm-section" aria-labelledby="d-badge">
+          <h2 id="d-badge">バッジ</h2>
+          {detail.badges.length === 0 ? (
+            <p className="muted">獲得したバッジは、まだありません。</p>
+          ) : (
+            <ul className="adm-list adm-list-compact">
+              {detail.badges.map((b) => (
+                <li className="adm-row adm-row-compact adm-coin-row" key={b.code}>
+                  <p className="adm-sub num">{dateLabel(b.earnedOn)}</p>
+                  <p className="adm-name">{b.name}</p>
+                  <p className="adm-sub">{RARITY_TEXT[b.rarity]}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {isOperator && (
+        <section className="adm-section" aria-labelledby="d-coin">
+          <h2 id="d-coin">コイン</h2>
+          <p className="adm-sub">残高　<span className="num adm-coin-balance">{detail.coinBalance ?? 0}</span></p>
+          {detail.coins.length === 0 ? (
+            <p className="muted">コインの記録は、まだありません。</p>
+          ) : (
+            <ul className="adm-list adm-list-compact">
+              {detail.coins.slice(0, 20).map((c) => (
+                <li className="adm-row adm-row-compact adm-coin-row" key={c.id}>
+                  <p className="adm-sub num">{dateLabel(c.grantedOn)}　{timeLabel(c.createdAt)}</p>
+                  <p className="adm-name">{coinReasonLabel(c.reason)}</p>
+                  <p className="num adm-coin-amount">{coinAmountLabel(c.amount)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className="adm-section" aria-labelledby="d-support">
         <h2 id="d-support">応援</h2>
@@ -141,7 +186,7 @@ export function StudentDetailView({ detail, today, canComment, busy, error, onBa
                 生徒に届く、アプリ内のコメント
                 <span className="count"><span className="num">{body.trim().length}</span> / <span className="num">{COMMENT_MAX}</span></span>
               </label>
-              <textarea id="support-body" rows={3} value={body} maxLength={COMMENT_MAX + 50} placeholder="例：今週も続けているね。数学の文章題、がんばっていました。" onChange={(e) => setBody(e.target.value)} />
+              <textarea id="support-body" rows={3} value={body} maxLength={COMMENT_MAX + 50} placeholder="例：今週も続けているね。毎日の記録、ちゃんと見ているよ。" onChange={(e) => setBody(e.target.value)} />
               {shown && <p className="error">{shown}</p>}
             </div>
             <button type="submit" className="btn btn-primary adm-inline" disabled={busy}>{busy ? '送っています…' : '応援を送る'}</button>
@@ -183,9 +228,9 @@ export function StudentDetailView({ detail, today, canComment, busy, error, onBa
   )
 }
 
-type PageProps = { clubId: string; studentId: string; myId: string; canComment: boolean; onBack: () => void }
+type PageProps = { clubId: string; studentId: string; myId: string; canComment: boolean; isOperator?: boolean; onBack: () => void }
 
-export default function StudentDetailPage({ clubId, studentId, myId, canComment, onBack }: PageProps) {
+export default function StudentDetailPage({ clubId, studentId, myId, canComment, isOperator = false, onBack }: PageProps) {
   const [detail, setDetail] = useState<StudentDetail | null | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -193,13 +238,13 @@ export default function StudentDetailPage({ clubId, studentId, myId, canComment,
 
   const load = useCallback(async () => {
     try {
-      setDetail(await loadStudentDetail(clubId, studentId, jstDate(Date.now()), myId))
+      setDetail(await loadStudentDetail(clubId, studentId, jstDate(Date.now()), myId, isOperator))
       setLoadError(null)
     } catch (e) {
       console.error(e)
       setLoadError('読み込めませんでした。通信を確認して、もう一度お試しください。')
     }
-  }, [clubId, studentId, myId])
+  }, [clubId, studentId, myId, isOperator])
 
   useEffect(() => {
     setDetail(undefined)
@@ -244,6 +289,7 @@ export default function StudentDetailPage({ clubId, studentId, myId, canComment,
       detail={detail}
       today={jstDate(Date.now())}
       canComment={canComment}
+      isOperator={isOperator}
       busy={busy}
       error={actionError}
       onBack={onBack}

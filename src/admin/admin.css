@@ -97,8 +97,12 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .adm-choices-rec { grid-template-columns: repeat(4, minmax(0, 160px)); }
 .adm-form .adm-hint { margin-top: 10px; }
 .adm-all { max-width: 360px; }
+.adm-choices-grade { grid-template-columns: repeat(7, minmax(0, 96px)); }
+.adm-club-pick { border: 0; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; min-width: 0; }
+.adm-club-pick legend { padding: 0; font-weight: 700; margin-bottom: 6px; }
+.adm-coins { max-width: 200px; }
 .adm-form .error { margin: 6px 0 0; }
-@media (max-width: 720px) { .adm-form-grid { grid-template-columns: 1fr; } .adm-choices-5 { grid-template-columns: repeat(3, 1fr); } .adm-choices-rec { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 720px) { .adm-choices-grade { grid-template-columns: repeat(4, minmax(0, 1fr)); } .adm-form-grid { grid-template-columns: 1fr; } .adm-choices-5 { grid-template-columns: repeat(3, 1fr); } .adm-choices-rec { grid-template-columns: repeat(2, 1fr); } }
 
 /* 生徒一覧（09）・生徒の詳細（10） */
 .adm-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 32px; align-items: end; }
@@ -140,6 +144,9 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .adm-subject-bar i { display: block; height: 100%; background: var(--mint); }
 .adm-subject-n { font-size: 20px; font-weight: 700; text-align: right; }
 .adm-history-row { grid-template-columns: 150px minmax(0, 1fr) 60px; }
+.adm-coin-row { grid-template-columns: 150px minmax(0, 1fr) 72px; }
+.adm-coin-amount { font-size: 20px; font-weight: 700; text-align: right; }
+.adm-coin-balance { font-size: 28px; font-weight: 700; color: var(--ink); }
 .adm-history-title { font-size: 15px; }
 .adm-comment-form textarea { width: 100%; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 12px; background: var(--surface); line-height: 1.7; resize: vertical; }
 .adm-comment-body { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -150,6 +157,7 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   .adm-row-actions { justify-content: flex-start; }
   .adm-bigstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .adm-history-row { grid-template-columns: 1fr; }
+  .adm-coin-row { grid-template-columns: 1fr; }
   .adm-week-d { font-size: 11px; }
 }
 @media (max-width: 720px) { .adm-nav { overflow-x: auto; } .adm-tab { white-space: nowrap; } }
@@ -252,3 +260,13 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 @media (max-width: 720px) {
   .adm-row-actions .btn { width: 100%; }
 }
+
+/* クラブ管理者の追加・解除（画面14） */
+.adm-admin-list { list-style: none; margin: 12px 0 20px; padding: 0; border-top: 1px solid var(--line); }
+.adm-admin-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.adm-admin-name { overflow-wrap: anywhere; }
+.adm-admin-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.adm-admin-form { max-width: 480px; margin-top: 8px; }
+.adm-admin-form .field + .field { margin-top: 16px; }
+.adm-admin-form .btn-primary { margin-top: 16px; }
+.adm-admin-row .btn { width: auto; flex: 0 0 auto; }
