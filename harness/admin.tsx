@@ -79,6 +79,7 @@ const detail = {
   comments: [{ id: 'c1', body: '今週も続けているね。\n数学の文章題、がんばっていました。', createdAt: '2026-10-08T09:00:00Z', mine: true, kind: 'comment' as const }, { id: 'c3', body: '見たよ', createdAt: '2026-10-08T12:00:00Z', mine: true, kind: 'seen' as const }, { id: 'c2', body: '期末テスト、応援しています。', createdAt: '2026-10-01T09:00:00Z', mine: false, kind: 'comment' as const }],
   restDates: [] as string[],
   seenToday: false,
+  line: { friendStatus: 'blocked' as const, contactAllowed: false },
   badges: [
     { code: 'streak_7', name: '7日連続', rarity: 'rare' as const, earnedOn: '2026-10-08' },
     { code: 'subject_math', name: '数学のはじめて', rarity: 'normal' as const, earnedOn: '2026-10-02' },
@@ -125,8 +126,8 @@ const screens: Record<string, React.ReactNode> = {
     { id: 'h4', studentId: 's4', displayName: 'ジャイ子', grade: 7, kind: 'not_started', detail: {}, occurredOn: '2026-10-09', status: 'resolved', contactedAt: '2026-10-09T09:00:00Z', resolvedAt: '2026-10-09T11:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 2 },
   ]} now={Date.parse('2026-10-10T00:00:00Z')} onSave={noop} rules={ALERT_DEFS.map((d, i) => ({ kind: d.kind, enabled: i !== 5, thresholdDays: d.kind === 'gap' ? 3 : null, sendMethod: 'manual' as const, template: d.defaultTemplate }))} /></Frame>,
   alertlist: <Frame tab="s"><AlertListView busy={false} error={null} notice="ノビ太さんの文面をコピーし、連絡済みに記録しました。" undoRow={null} onContacted={noop} onDismiss={noop} onUndo={noop} items={[
-    { id: '1', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: { missing_days: 4 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '今日も、ひとつ育てよう。短いタスクからで大丈夫。', completedAfterContact: null, lineName: 'のびた' },
-    { id: '1b', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'task_overdue', detail: { overdue: 2 }, occurredOn: '2026-10-08', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '期限が過ぎたタスクがあるよ。まずは1つから。', completedAfterContact: null, lineName: 'のびた' },
+    { id: '1', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'gap', detail: { missing_days: 4 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '今日も、ひとつ育てよう。短いタスクからで大丈夫。', completedAfterContact: null, lineName: 'のびた', friendStatus: 'blocked' as const },
+    { id: '1b', studentId: 's1', displayName: 'ノビ太', grade: 8, kind: 'task_overdue', detail: { overdue: 2 }, occurredOn: '2026-10-08', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '期限が過ぎたタスクがあるよ。まずは1つから。', completedAfterContact: null, lineName: 'のびた', friendStatus: 'blocked' as const },
     { id: '2', studentId: 's2', displayName: 'しずか', grade: 9, kind: 'streak_milestone', detail: { days: 30 }, occurredOn: '2026-10-10', status: 'open', contactedAt: null, resolvedAt: null, resumedAfterContact: null, template: '7日連続記録達成！おめでとう！', completedAfterContact: null },
     { id: '3', studentId: 's3', displayName: 'スネ夫', grade: 10, kind: 'streak_broken', detail: { streak_days: 12 }, occurredOn: '2026-10-09', status: 'contacted', contactedAt: new Date(Date.now() - 5 * 60000).toISOString(), resolvedAt: null, resumedAfterContact: null, template: '今日から、また始めよう。短いタスクからで大丈夫。', completedAfterContact: 0 },
     { id: '4', studentId: 's4', displayName: 'ジャイ子', grade: 7, kind: 'gap', detail: { missing_days: 5 }, occurredOn: '2026-10-05', status: 'resolved', contactedAt: '2026-10-07T08:05:00Z', resolvedAt: '2026-10-08T03:00:00Z', resumedAfterContact: true, template: null, completedAfterContact: 3 },

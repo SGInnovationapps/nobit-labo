@@ -31,6 +31,7 @@ function AlertRow({ row, mode, busy, now, onContacted, onDismiss, onUndo }: RowP
         </p>
         <p className="alert-kind">{row.items.map((i) => defOf(i.kind).label).join('・')}</p>
       </div>
+      {row.blocked && <p className="alert-blocked" role="status">公式LINE：ブロック中。文面を送っても届きません。</p>}
       <ul className="alert-reasons">
         {row.items.map((i: AlertItem) => (
           <li key={i.id} className="alert-reason">

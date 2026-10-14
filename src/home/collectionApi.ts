@@ -87,3 +87,15 @@ export async function equipItem(itemId: string): Promise<boolean> {
   if (error) throw error
   return data as boolean
 }
+
+/** 公式LINE からの連絡を受け取るか（本人の行だけ読める）。LINE の行がなければ true */
+export async function loadContactAllowed(): Promise<boolean> {
+  const { data, error } = await supabase.from('line_accounts').select('contact_allowed').maybeSingle()
+  if (error) throw error
+  return data?.contact_allowed ?? true
+}
+
+export async function setContactAllowed(allowed: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_contact_allowed', { p_allowed: allowed })
+  if (error) throw error
+}

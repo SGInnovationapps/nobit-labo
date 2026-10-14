@@ -153,3 +153,14 @@ test('文面の差し込み：種類ごとに使える言葉だけを保存で�
   assert.match(ruleP({ kind: 'badge_earned', thresholdDays: null, template: '{連続日数}日' }) ?? '', /使えません/)
   assert.equal(ruleP({ kind: 'badge_earned', thresholdDays: null, template: '{名前}さん、新しいバッジ！' }), null)
 })
+
+import { lineStatusText } from '../src/admin/studentModel.ts'
+test('公式LINE の状態：ブロック中は行に出し、連絡を止めた人は文言で示す', () => {
+  const rows = rowsByStudent([item({ id: 'a', studentId: 's1', friendStatus: 'blocked' }), item({ id: 'b', studentId: 's2', friendStatus: 'friend' }), item({ id: 'c', studentId: 's3' })])
+  assert.deepEqual(rows.map((r) => [r.studentId, r.blocked]).sort(), [['s1', true], ['s2', false], ['s3', false]])
+  assert.deepEqual(lineStatusText('friend', true), { friend: '友だち', contact: '受け取る', warn: false })
+  assert.equal(lineStatusText('blocked', true).warn, true)
+  assert.match(lineStatusText('blocked', true).friend, /届きません/)
+  assert.match(lineStatusText('friend', false).contact, /送らないでください/)
+  assert.equal(lineStatusText(null, undefined).friend, '未確認')
+})

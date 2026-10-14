@@ -270,3 +270,8 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .adm-admin-form .field + .field { margin-top: 16px; }
 .adm-admin-form .btn-primary { margin-top: 16px; }
 .adm-admin-row .btn { width: auto; flex: 0 0 auto; }
+
+/* 公式LINE の状態（運営だけ） */
+.alert-blocked { margin: 4px 0 0; font-size: 14px; font-weight: 700; color: #B4313D; }
+.adm-warn { color: #B4313D; }
+.adm-line-status dd { text-align: right; }

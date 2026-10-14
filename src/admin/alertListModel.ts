@@ -22,6 +22,8 @@ export type AlertItem = {
   completedAfterContact: number | null
   /** 生徒の LINE の表示名（取れているときだけ） */
   lineName?: string | null
+  /** 公式LINE の友だち状態（運営だけ） */
+  friendStatus?: 'unknown' | 'friend' | 'blocked' | null
 }
 
 /** 終了前日用の既定文面 [仮] */
@@ -165,6 +167,8 @@ export type StudentAlertRow = {
   studentId: string
   displayName: string | null
   lineName: string | null
+  /** 公式LINE でブロックされている（連絡が届かない） */
+  blocked: boolean
   grade: number | null
   items: AlertItem[]
   /** 公式LINE に貼る文面（優先度の最も高いアラートのもの） */
@@ -188,6 +192,7 @@ export function rowsByStudent(items: ReadonlyArray<AlertItem>): StudentAlertRow[
       studentId: top.studentId,
       displayName: top.displayName,
       lineName: top.lineName ?? null,
+      blocked: sorted.some((x) => x.friendStatus === 'blocked'),
       grade: top.grade,
       items: sorted,
       text: copyText(top.kind, top.template, top.detail, top.displayName),

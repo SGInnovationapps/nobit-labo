@@ -7,7 +7,7 @@ import type { AlertItem } from './alertListModel'
 import type { AdminMission, ParsedDraft } from './missionAdminModel'
 import type { AlertKind, AlertRule, SendMethod } from './alertsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
-import type { GapRule, StudentRow } from './studentModel'
+import type { FriendStatus, GapRule, StudentRow } from './studentModel'
 import { DEFAULT_GAP_RULE } from './studentModel'
 import { ASSIGNED_TASK_COINS } from './taskModel'
 import type { AdminTask, Draft, Recurrence } from './taskModel'
@@ -370,6 +370,8 @@ export type StudentDetail = {
   restDates: string[]
   /** 今日、「見たよ」を送ったか */
   seenToday: boolean
+  /** 公式LINE の状態（運営だけ。クラブ管理者には null） */
+  line: { friendStatus: FriendStatus; contactAllowed: boolean } | null
 }
 
 type HistoryRow = {
@@ -406,6 +408,8 @@ export async function loadStudentDetail(clubId: string, studentId: string, today
       ? supabase.from('user_badges').select('badge_code, earned_on, badge_defs(name, rarity)').eq('student_id', studentId).order('earned_on', { ascending: false })
       : Promise.resolve({ data: [] as Array<Record<string, unknown>>, error: null }),
   ])
+  const lineRes = isOperator ? await supabase.from('line_accounts').select('friend_status, contact_allowed').eq('user_id', studentId).maybeSingle() : null
+  if (lineRes?.error) throw lineRes.error
   if (badgeRes.error) throw badgeRes.error
   if (coinRes.error) throw coinRes.error
   if (balanceRes.error) throw balanceRes.error
@@ -431,6 +435,7 @@ export async function loadStudentDetail(clubId: string, studentId: string, today
     coins: ((coinRes.data ?? []) as Array<Record<string, unknown>>).map((c) => ({ id: c.id as string, amount: c.amount as number, reason: c.reason as string, grantedOn: c.granted_on as string, createdAt: c.created_at as string })),
     restDates: [...board.restDates, ...(board.studentRest[studentId] ?? []).filter((d) => d <= today)],
     seenToday: board.seenToday.includes(studentId),
+    line: lineRes?.data ? { friendStatus: lineRes.data.friend_status as FriendStatus, contactAllowed: lineRes.data.contact_allowed as boolean } : null,
     comments: commentRes.data.map((c) => ({ id: c.id as string, body: c.body as string, createdAt: c.created_at as string, mine: c.author_id === myId, kind: ((c.kind as string | null) ?? 'comment') as 'comment' | 'seen' })),
   }
 }
@@ -519,6 +524,7 @@ type AlertRow = {
   occurred_on: string; status: AlertItem['status']; contacted_at: string | null; resolved_at: string | null
   resumed_after_contact: boolean | null; template: string | null; completed_after_contact: number | null
   line_display_name?: string | null
+  friend_status?: 'unknown' | 'friend' | 'blocked' | null
 }
 
 /** 定時生成の最後の実行（運営のみ）。読めなくても画面は止めない */
@@ -536,7 +542,7 @@ export async function loadAlerts(clubId: string, now = Date.now()): Promise<Aler
   const since = new Date(now - 7 * 86_400_000).toISOString()
   const { data, error } = await supabase
     .from('alert_list')
-    .select('id, student_id, display_name, grade, kind, detail, occurred_on, status, contacted_at, resolved_at, resumed_after_contact, template, completed_after_contact, line_display_name')
+    .select('id, student_id, display_name, grade, kind, detail, occurred_on, status, contacted_at, resolved_at, resumed_after_contact, template, completed_after_contact, line_display_name, friend_status')
     .eq('club_id', clubId)
     .or(`status.in.(open,contacted),and(status.eq.resolved,resolved_at.gte.${since})`)
   if (error) throw error
@@ -545,6 +551,7 @@ export async function loadAlerts(clubId: string, now = Date.now()): Promise<Aler
     occurredOn: r.occurred_on, status: r.status, contactedAt: r.contacted_at, resolvedAt: r.resolved_at,
     resumedAfterContact: r.resumed_after_contact, template: r.template, completedAfterContact: r.completed_after_contact,
     lineName: r.line_display_name ?? null,
+    friendStatus: r.friend_status ?? null,
   }))
 }
 

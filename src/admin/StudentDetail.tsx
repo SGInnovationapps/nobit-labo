@@ -4,7 +4,7 @@ import { RecordBand } from '../home/RecordBand'
 import { gradeLabel } from '../lib/steps'
 import { addSupportComment, deleteSupportComment, loadStudentDetail, sendSeen } from './adminApi'
 import type { StudentDetail } from './adminApi'
-import { COMMENT_MAX, coinAmountLabel, coinReasonLabel, commentError, lastStudyLabel, monthDays, STATE_TEXT, stateOf, subjectBreakdown, SUPPORT_TEMPLATES, weeklyDays } from './studentModel'
+import { COMMENT_MAX, coinAmountLabel, coinReasonLabel, commentError, lastStudyLabel, lineStatusText, monthDays, STATE_TEXT, stateOf, subjectBreakdown, SUPPORT_TEMPLATES, weeklyDays } from './studentModel'
 
 type ViewProps = {
   detail: StudentDetail
@@ -126,6 +126,21 @@ export function StudentDetailView({ detail, today, canComment, isOperator = fals
               ))}
             </ul>
           )}
+        </section>
+      )}
+
+      {isOperator && detail.line && (
+        <section className="adm-section" aria-labelledby="d-line">
+          <h2 id="d-line">公式LINE</h2>
+          {(() => {
+            const t = lineStatusText(detail.line.friendStatus, detail.line.contactAllowed)
+            return (
+              <dl className="sum-list adm-line-status">
+                <div><dt>友だち状態</dt><dd className={detail.line.friendStatus === 'blocked' ? 'adm-warn' : undefined}>{t.friend}</dd></div>
+                <div><dt>連絡の受け取り</dt><dd className={detail.line.contactAllowed ? undefined : 'adm-warn'}>{t.contact}</dd></div>
+              </dl>
+            )
+          })()}
         </section>
       )}
 

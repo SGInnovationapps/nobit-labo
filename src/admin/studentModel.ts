@@ -255,3 +255,14 @@ export const SUPPORT_TEMPLATES: ReadonlyArray<string> = [
   '無理せず、できる日にやろう。待っているよ。',
   '大会に向けて、体も頭も育てていこう。',
 ]
+
+export type FriendStatus = 'unknown' | 'friend' | 'blocked'
+
+/** 公式LINE の状態（運営だけが見る）。warn は、連絡しても届かない・送らないでほしい状態 */
+export function lineStatusText(friend: FriendStatus | null | undefined, contactAllowed: boolean | null | undefined): { friend: string; contact: string; warn: boolean } {
+  return {
+    friend: friend === 'friend' ? '友だち' : friend === 'blocked' ? 'ブロック中（連絡は届きません）' : '未確認',
+    contact: contactAllowed === false ? '本人が止めています（送らないでください）' : '受け取る',
+    warn: friend === 'blocked' || contactAllowed === false,
+  }
+}

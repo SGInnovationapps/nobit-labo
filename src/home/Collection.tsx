@@ -4,6 +4,7 @@ import { drawGacha, drawGachaExtra, equipItem, GachaError, loadCollection } from
 import type { CollectionData, GachaResult } from './collectionApi'
 import { acquiredLabel, badgeProgressLabel, BADGE_CATEGORY_LABEL, earnedOnLabel, equippedTitle, EXTRA_NOTE, extraGachaState, GACHA_NOTE, gachaState, groupCollection, RARITY_LABEL, splitBadges } from './collectionModel'
 import { GachaSheet } from './GachaSheet'
+import { ContactSetting } from './ContactSetting'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
 
@@ -99,6 +100,7 @@ export function Collection({ displayName, grade, onTab, autoGacha = false, onAut
       onEquip={() => void onEquip()}
       onEquipOwned={(id) => { void equipItem(id).then(load).catch((e) => { console.error(e); setError(FAIL) }) }}
       onTab={onTab}
+      footer={<ContactSetting />}
     />
   )
 }
@@ -121,6 +123,8 @@ type ViewProps = {
   onEquip: () => void
   onEquipOwned: (itemId: string) => void
   onTab: (tab: Tab) => void
+  /** 一覧の下に置くもの（連絡の受け取り設定） */
+  footer?: React.ReactNode
 }
 
 export function CollectionView(p: ViewProps) {
@@ -236,6 +240,7 @@ export function CollectionView(p: ViewProps) {
       {p.gachaOpen && (
         <GachaSheet result={p.result} equipped={p.equipped} busy={p.busy} error={p.gachaError} onDraw={p.onDraw} extra={extra} onDrawExtra={p.onDrawExtra} onEquip={p.onEquip} onClose={p.onCloseGacha} />
       )}
+      {p.data && p.footer}
       <TabBar current="コレクション" onSelect={p.onTab} />
     </div>
   )

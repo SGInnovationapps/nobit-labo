@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import '../src/styles.css'
 import { CollectionView } from '../src/home/Collection'
+import { ContactSettingView } from '../src/home/ContactSetting'
 import type { CollectionData, GachaResult } from '../src/home/collectionApi'
 import type { ItemDef } from '../src/home/collectionModel'
 import { CompletionSheet } from '../src/home/CompletionSheet'
@@ -47,7 +48,8 @@ const res = (o: Partial<GachaResult>): GachaResult => ({
 const cells = buildBand([{ date: '2026-10-08', count: 2 }, { date: '2026-10-09', count: 3 }], '2026-10-09', 14, [])
 const screens: Record<string, JSX.Element> = {
   sheet_badge: <CompletionSheet label="バッジ獲得" title="数学を記録" completedAt="2026-10-09T08:05:00Z" cells={cells} currentDays={4} completedToday={2} badges={['数学のはじめて']} onClose={() => {}} />,
-  ready: <CollectionView {...props} data={base} />,
+  ready: <CollectionView {...props} data={base} footer={<ContactSettingView allowed onChange={() => {}} busy={false} error={null} />} />,
+  contact_off: <CollectionView {...props} data={base} footer={<ContactSettingView allowed={false} onChange={() => {}} busy={false} error={null} />} />,
   norecord: <CollectionView {...props} data={{ ...base, recordsToday: 0 }} />,
   drawn: <CollectionView {...props} data={{ ...base, drawnToday: true }} />,
   empty: <CollectionView {...props} data={none} />,
