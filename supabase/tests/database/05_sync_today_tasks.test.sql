@@ -41,9 +41,10 @@ select is((public.sync_today_tasks() ->> 'created')::int, 0, '完了後に再展
 -- 他クラブのタスクは展開されない
 select is((select count(*)::int from public.user_tasks where task_id = '22222222-2222-2222-2222-2222222222b1'), 0, '他クラブのタスクは入らない');
 
--- 承認前の生徒は呼べない
+-- 承認待ちの生徒も展開できる（v1.7「承認待ちの間もアプリを使え、記録は保持する」。
+-- クラブ管理者に見えないことと、クラブの合計に数えないことは RLS と集計側で担保する。30_pending_user_tasks）
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000c3"}', true); end $$;
-select throws_ok($$ select public.sync_today_tasks() $$, 'not_approved_student', '承認前の生徒は展開できない');
+select lives_ok($$ select public.sync_today_tasks() $$, '承認待ちの生徒でも展開できる');
 
 -- 未ログインは呼べない
 reset role;

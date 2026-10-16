@@ -26,6 +26,26 @@ export type Deps = {
 
 const LINE_SUB = /^U[0-9a-f]{32}$/;
 
+/**
+ * 署名は確かめずに、ID トークンの中身だけを覗く。
+ * 拒否した理由をログに残すためだけに使い、本人確認には使わない（検証は LINE の verify に任せる）。
+ * aud は、そのトークンが発行されたチャネルの ID。LINE_CHANNEL_IDS と突き合わせると、設定の取り違えが分かる。
+ */
+export function peekToken(idToken: string): { aud?: string; exp?: number } {
+  try {
+    const part = idToken.split(".")[1];
+    if (!part) return {};
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "=");
+    const body = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
+    return {
+      aud: typeof body?.aud === "string" ? body.aud : undefined,
+      exp: typeof body?.exp === "number" ? body.exp : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export function emailForLineUser(sub: string): string {
   // 実在しないドメイン（.invalid）。メールは一切送らない。LINE の ID から一意に決まる。
   return `line-${sub.toLowerCase()}@line.nobit.invalid`;
@@ -54,7 +74,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405, cors);
-  if (origin && !deps.allowedOrigins.includes(origin)) return json({ error: "origin_not_allowed" }, 403, cors);
+  if (origin && !deps.allowedOrigins.includes(origin)) {
+    deps.log("origin_not_allowed", { 呼び出し元: origin, 許可しているオリジン: deps.allowedOrigins });
+    return json({ error: "origin_not_allowed" }, 403, cors);
+  }
   if (deps.channelIds.length === 0) {
     deps.log("LINE_CHANNEL_IDS is not set");
     return json({ error: "server_misconfigured" }, 500, cors);
@@ -81,7 +104,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         break;
       }
     }
-    if (!sub || !LINE_SUB.test(sub)) return json({ error: "invalid_id_token" }, 401, cors);
+    if (!sub || !LINE_SUB.test(sub)) {
+      // どのチャネルでも検証が通らなかった。設定の取り違えか、トークンの期限切れを見分けられるように残す
+      const t = peekToken(idToken);
+      const now = Math.floor(Date.now() / 1000);
+      deps.log("invalid_id_token", {
+        トークンのチャネルID: t.aud ?? "(読み取れません)",
+        設定しているチャネルID: deps.channelIds,
+        期限切れ: t.exp === undefined ? "(不明)" : t.exp < now,
+        検証後のsubの形: sub ? "不正" : "(検証が通らず)",
+      });
+      return json({ error: "invalid_id_token" }, 401, cors);
+    }
 
     const { userId, hashedToken } = await deps.ensureUser(emailForLineUser(sub));
     await deps.ensureProfile(userId, sub, lineName);

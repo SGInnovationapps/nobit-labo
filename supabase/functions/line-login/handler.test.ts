@@ -1,6 +1,6 @@
 // 実行：node --experimental-strip-types handler.test.ts   （Deno なしで動く）
 import assert from "node:assert/strict";
-import { type Deps, emailForLineUser, handle } from "./handler.ts";
+import { type Deps, emailForLineUser, handle, peekToken } from "./handler.ts";
 
 const SUB = "U" + "0123456789abcdef".repeat(2);
 const TOKEN = "x".repeat(40);
@@ -57,4 +57,53 @@ assert.equal(r.status, 500);
 assert.deepEqual(await r.json(), { error: "server_error" });
 
 assert.equal(emailForLineUser("UABC"), "line-uabc@line.nobit.invalid");
+
+// ---- 拒否の理由をログに残す（設定の取り違えを見つけるため）----
+
+// ID トークンの中身（aud = 発行元のチャネルID、exp = 期限）を、署名を確かめずに覗ける
+const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const fakeToken = (payload: unknown) => `${b64url({ alg: "HS256" })}.${b64url(payload)}.sig`;
+assert.deepEqual(peekToken(fakeToken({ aud: "2001234567", exp: 1700000000, sub: SUB })), { aud: "2001234567", exp: 1700000000 });
+assert.deepEqual(peekToken("not a jwt"), {});
+assert.deepEqual(peekToken(""), {});
+assert.deepEqual(peekToken("a.!!!notbase64!!!.c"), {});
+
+// 401 のとき、トークンのチャネルIDと、設定しているチャネルIDを残す
+let logged: { message: string; detail?: unknown }[] = [];
+const collect = (message: string, detail?: unknown) => { logged.push({ message, detail }); };
+r = await handle(
+  req({ idToken: fakeToken({ aud: "999", exp: Math.floor(Date.now() / 1000) + 600 }) }),
+  base({ verifyIdToken: async () => null, log: collect }),
+);
+assert.equal(r.status, 401);
+assert.equal(logged.length, 1);
+assert.equal(logged[0].message, "invalid_id_token");
+assert.deepEqual(logged[0].detail, {
+  トークンのチャネルID: "999",
+  設定しているチャネルID: ["111", "222"],
+  期限切れ: false,
+  "検証後のsubの形": "(検証が通らず)",
+});
+
+// 期限切れのトークンは、そうと分かる
+logged = [];
+r = await handle(
+  req({ idToken: fakeToken({ aud: "111", exp: 1700000000 }) }),
+  base({ verifyIdToken: async () => null, log: collect }),
+);
+assert.equal(r.status, 401);
+assert.equal((logged[0].detail as { 期限切れ: boolean }).期限切れ, true);
+
+// 403 のとき、呼び出し元と許可しているオリジンを残す
+logged = [];
+r = await handle(req({ idToken: TOKEN }, { headers: { Origin: "https://evil.example" } }), base({ log: collect }));
+assert.equal(r.status, 403);
+assert.deepEqual(logged, [{
+  message: "origin_not_allowed",
+  detail: { 呼び出し元: "https://evil.example", 許可しているオリジン: ["https://nobit-labo.gymspiral.workers.dev"] },
+}]);
+
+// ログを出しても、画面に返す中身は変えない
+assert.deepEqual(await r.json(), { error: "origin_not_allowed" });
+
 console.log("ok");
