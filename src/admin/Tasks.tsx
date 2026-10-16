@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { jstDate } from '../home/homeModel'
-import { archiveTask, createTasks, loadTaskBoard } from './adminApi'
+import { archiveTask, createTasks, loadDrillCategories, loadTaskBoard } from './adminApi'
 import type { Club, TaskBoard } from './adminApi'
 import {
-  completionLabel, draftFromTask, dueToday, eligibleStudents, emptyDraft, gradesLabel, groupTasks, hasErrors, periodLabel, RECURRENCES, recurrenceLabel,
-  STATUS_LABEL, SUBJECTS, TASK_COINS_MAX, TASK_GRADES, toggleGrade, validateDraft,
+  canDrill, completionLabel, draftFromTask, DRILL_TASK_TOTAL_MAX, dueToday, eligibleStudents, emptyDraft, gradesLabel, groupTasks, hasErrors,
+  periodLabel, RECURRENCES, recurrenceLabel, STATUS_LABEL, SUBJECTS, TASK_COINS_MAX, TASK_GRADES, toggleGrade, validateDraft,
 } from './taskModel'
 import type { AdminTask, Draft, DraftErrors, TaskStatus } from './taskModel'
 
@@ -85,6 +85,7 @@ export function TasksView(p: ViewProps) {
                         <div><dt>くり返し</dt><dd>{recurrenceLabel(t)}</dd></div>
                         <div><dt>対象</dt><dd>{gradesLabel(t.targetGrades)}</dd></div>
                         {t.rewardCoins !== undefined && <div><dt>報酬</dt><dd><span className="num">{t.rewardCoins}</span> コイン</dd></div>}
+                        {t.drill && <div><dt>ドリル</dt><dd>{t.drill.category ?? 'おまかせ'}　<span className="num">{t.drill.total}</span> 問</dd></div>}
                         {t.estimatedMinutes !== null && <div><dt>目安</dt><dd><span className="num">{t.estimatedMinutes}</span> 分</dd></div>}
                         {status === 'active' && (
                           <div><dt>今日の完了</dt><dd className="num">{completionLabel(p.board.doneToday[t.id] ?? 0, eligibleStudents(t, p.board.studentGrades ?? []), dueToday(t, p.today))}</dd></div>
@@ -135,6 +136,24 @@ export function TaskForm({ today, busy, clubs, initial, duplicating = false, onS
   const pickClubs = clubs.length > 1
   const [shown, setShown] = useState<DraftErrors>({})
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }))
+  // 教科を変えたら、ドリルを出せない教科ではドリルの指定を外す
+  const setSubject = (subject: string) =>
+    setD((x) => (canDrill(subject) ? { ...x, subject } : { ...x, subject, isDrill: false, drillCategory: '' }))
+
+  const [units, setUnits] = useState<Array<{ category: string; questions: number }>>([])
+  const [unitsError, setUnitsError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!d.isDrill || !canDrill(d.subject)) {
+      setUnits([])
+      return
+    }
+    let live = true
+    loadDrillCategories(d.subject).then(
+      (r) => { if (live) { setUnits(r); setUnitsError(null) } },
+      (e) => { console.error(e); if (live) { setUnits([]); setUnitsError('単元の一覧を読み込めませんでした') } },
+    )
+    return () => { live = false }
+  }, [d.isDrill, d.subject])
 
   return (
     <form
@@ -161,12 +180,43 @@ export function TaskForm({ today, busy, clubs, initial, duplicating = false, onS
         <legend>教科</legend>
         {SUBJECTS.map((s) => (
           <label key={s} className="choice">
-            <input type="radio" name="t-subject" checked={d.subject === s} onChange={() => set('subject', s)} />
+            <input type="radio" name="t-subject" checked={d.subject === s} onChange={() => setSubject(s)} />
             <span className="choice-face">{s}</span>
           </label>
         ))}
       </fieldset>
       {shown.subject && <p className="error">{shown.subject}</p>}
+
+      {canDrill(d.subject) && (
+        <div className="adm-drill">
+          <label className="adm-drill-check">
+            <input type="checkbox" checked={d.isDrill} onChange={(e) => set('isDrill', e.target.checked)} />
+            <span>ドリル（四択）のタスクにする</span>
+          </label>
+          {d.isDrill && (
+            <>
+              <div className="adm-form-grid">
+                <div className="field">
+                  <label htmlFor="t-unit">単元</label>
+                  <select id="t-unit" value={d.drillCategory} onChange={(e) => set('drillCategory', e.target.value)}>
+                    <option value="">おまかせ（{d.subject}ぜんぶ）</option>
+                    {units.map((u) => (
+                      <option key={u.category} value={u.category}>{u.category}（{u.questions}問）</option>
+                    ))}
+                  </select>
+                  {unitsError && <p className="error">{unitsError}</p>}
+                </div>
+                <div className="field">
+                  <label htmlFor="t-dtotal">問題数（1〜{DRILL_TASK_TOTAL_MAX}）</label>
+                  <input id="t-dtotal" type="text" inputMode="numeric" value={d.drillTotal} onChange={(e) => set('drillTotal', e.target.value)} aria-invalid={!!shown.drill} />
+                </div>
+              </div>
+              <p className="muted adm-hint">解き終えるとこのタスクが完了します。正解数は問いません。生徒の画面には「完了」ボタンは出ません。</p>
+            </>
+          )}
+          {shown.drill && <p className="error">{shown.drill}</p>}
+        </div>
+      )}
 
       <div className="adm-form-grid">
         <div className="field">

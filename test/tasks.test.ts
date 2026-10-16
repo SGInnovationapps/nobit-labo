@@ -72,7 +72,10 @@ test('draftFromTask: 複製は開始日を今日にし、期限日を空にし�
   const d = draftFromTask(src, '2026-10-09', ['c1'])
   assert.deepEqual(
     { ...d },
-    { title: '方程式の文章題', subject: '数学', startsOn: '2026-10-09', dueOn: '', recurrence: 'weekly', minutes: '20', clubIds: ['c1'], grades: [7, 8], coins: '15' },
+    {
+      title: '方程式の文章題', subject: '数学', startsOn: '2026-10-09', dueOn: '', recurrence: 'weekly', minutes: '20',
+      clubIds: ['c1'], grades: [7, 8], coins: '15', isDrill: false, drillCategory: '', drillTotal: '10',
+    },
   )
   assert.equal(hasErrors(validateDraft(d, '2026-10-09')), false)
   const none = draftFromTask(t({ id: 'y', title: 'a', estimatedMinutes: null }), '2026-10-09', [])

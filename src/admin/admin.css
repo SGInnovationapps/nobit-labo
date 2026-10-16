@@ -284,3 +284,20 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .client-error-msg { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
 .client-error-items details > summary { cursor: pointer; padding: 10px 0; }
 .client-error-stack { margin: 4px 0 0; padding: 8px; background: #f3f5f6; border-radius: 8px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; }
+
+/* ドリルのタスク（画面11） */
+.adm-drill { margin-top: 16px; padding: 16px; border: 2px solid var(--adm-line, #e1e5ed); border-radius: 12px; }
+.adm-drill-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 700; cursor: pointer; }
+.adm-drill-check input { width: 20px; height: 20px; }
+.adm-drill .adm-form-grid { margin-top: 12px; }
+.adm-drill-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.adm-drill-tab { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 2px solid var(--adm-line, #e1e5ed); background: #fff; color: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.adm-drill-tab.is-on { border-color: #38cda1; background: #e6f8f2; color: #0b7a5a; }
+.adm-drill-tab:focus-visible { outline: 3px solid #1f2b45; outline-offset: 2px; }
+.adm-drill-detail { margin-top: 16px; }
+.adm-drill-detail .adm-h3 { margin: 18px 0 8px; font-size: 15px; font-weight: 700; }
+.adm-drill-state { width: 7em; text-align: right; }
+.adm-drill-state.lv1 { color: #b4313d; }
+.adm-drill-state.lv4 { color: #0b7a5a; }
+.adm-row-stack { padding: 10px 0; border-top: 1px solid var(--adm-line, #e1e5ed); }
+.adm-drill-q { word-break: auto-phrase; }

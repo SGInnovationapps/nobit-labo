@@ -7,6 +7,8 @@ export type HomeTask = {
   estimatedMinutes: number | null
   isFree: boolean
   completedAt: string | null
+  /** ドリルのタスクのときだけ入る。完了は、問題を解き終えたときだけ */
+  drill?: { subject: string; category: string | null; total: number } | null
 }
 
 export type BandCell =

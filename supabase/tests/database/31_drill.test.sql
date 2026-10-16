@@ -1,6 +1,6 @@
 -- ドリル（ラボドリの統合）：問題バンク・出題・採点・学習の記録への結びつけ
 begin;
-select plan(51);
+select plan(62);
 
 -- 問題バンクは本番のデータ（マイグレーションの 20261016160000_questions.sql）が入っているので、
 -- このテストの中だけ空にしてから始める（begin 〜 rollback の中なので、データは残る）
@@ -224,17 +224,39 @@ reset role;
 ------------------------------------------------------------------------------
 -- 9. ドリルの配信タスク：解き終えるとタスクが完了する（記録は二重にしない）
 ------------------------------------------------------------------------------
-insert into public.tasks (id, club_id, title, subject, kind, recurrence, starts_on) values
-  ('22222222-2222-2222-2222-22222222d101', '11111111-1111-1111-1111-11111111d101', '社会 ドリル', '社会', 'assigned', 'daily', private.jst_today());
 insert into public.questions (id, subject, grade, category, body, answer, distractors) values
   ('soc_1_001', '社会', 1, '地理', '日本の標準時子午線が通る市はどれか', '明石', array['京都','那覇','札幌']);
+
+-- 教科がそろっていないドリルのタスクは作れない
+select throws_ok($$
+  insert into public.tasks (club_id, title, subject, kind, recurrence, starts_on, drill_subject, drill_total)
+  values ('11111111-1111-1111-1111-11111111d101', 'ずれたドリル', '英語', 'assigned', 'daily', private.jst_today(), '社会', 1)$$,
+  '23514', null, 'タスクの教科とドリルの教科がそろっていないと作れない');
+-- 生徒の自由登録ではドリルのタスクを作れない
+select throws_ok($$
+  insert into public.tasks (club_id, title, subject, kind, owner_id, recurrence, starts_on, drill_subject, drill_total)
+  values ('11111111-1111-1111-1111-11111111d101', '自由ドリル', '社会', 'free', '00000000-0000-0000-0000-00000000d101', 'none', private.jst_today(), '社会', 1)$$,
+  '23514', null, '自由登録ではドリルのタスクを作れない');
+
+insert into public.tasks (id, club_id, title, subject, kind, recurrence, starts_on, drill_subject, drill_category, drill_total) values
+  ('22222222-2222-2222-2222-22222222d101', '11111111-1111-1111-1111-11111111d101', '社会 ドリル', '社会', 'assigned', 'daily', private.jst_today(), '社会', '地理', 1);
 
 set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000d101"}', true); end $$;
 select lives_ok($$select public.sync_today_tasks()$$, '配信タスクを展開する');
-select is((public.start_drill('社会', 'mixed', null, 3::smallint, 1::smallint,
-            (select id from public.user_tasks where student_id = '00000000-0000-0000-0000-00000000d101' limit 1)) ->> 'total')::int,
-  1, 'タスクからドリルを始める');
+-- ドリルのタスクは「完了」ボタンからは完了させない
+select throws_ok($$select public.complete_task((select id from public.user_tasks where student_id = '00000000-0000-0000-0000-00000000d101' limit 1))$$,
+  'P0001', 'drill_task_needs_drill', 'ドリルのタスクは、解かずに完了にはできない');
+-- 画面から別の教科を渡しても、運営が決めた指定で出す
+select is((public.start_drill('英語', 'mixed', null, 3::smallint, 10::smallint,
+            (select id from public.user_tasks where student_id = '00000000-0000-0000-0000-00000000d101' limit 1)) ->> 'subject'),
+  '社会', 'タスクの指定（社会・地理）で出す');
+select is((select category from public.drill_sessions
+            where student_id = '00000000-0000-0000-0000-00000000d101' and not finished), '地理',
+  '単元もタスクの指定どおり');
+select is((select total::int from public.drill_sessions
+            where student_id = '00000000-0000-0000-0000-00000000d101' and not finished), 1,
+  '問題数もタスクの指定どおり');
 -- わざと不正解で解き終える（正解数は問わず完了する）
 select pg_temp.play((select id from public.drill_sessions where student_id = '00000000-0000-0000-0000-00000000d101' and not finished), 0, 1);
 select ok((select completed_at from public.user_tasks where student_id = '00000000-0000-0000-0000-00000000d101' limit 1) is not null,
@@ -258,6 +280,24 @@ reset role;
 set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000d100"}', true); end $$;
 select ok((select count(*) from public.drill_sessions) > 0, '運営にはドリルの結果が見える');
+select is((public.student_drill_overview('00000000-0000-0000-0000-00000000d101') ->> 'answered')::int,
+  (select count(*)::int from public.drill_answers where student_id = '00000000-0000-0000-0000-00000000d101'),
+  '運営は生徒ごとの解いた数を見られる');
+select ok((public.student_drill_detail('00000000-0000-0000-0000-00000000d101', '理科') -> 'units') is not null,
+  '運営は単元ごとの正解率を見られる');
+select is((select count(*)::int from public.drill_categories('理科', 3::smallint)), 3,
+  '運営は配信できる単元の一覧を見られる');
+reset role;
+
+-- クラブ管理者には、ドリルの成績そのものを見せない
+set local role authenticated;
+do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000d109"}', true); end $$;
+select throws_ok($$select public.student_drill_overview('00000000-0000-0000-0000-00000000d101')$$,
+  'P0001', 'forbidden', 'クラブ管理者はドリルの成績を見られない');
+select throws_ok($$select public.student_drill_detail('00000000-0000-0000-0000-00000000d101', '理科')$$,
+  'P0001', 'forbidden', 'クラブ管理者は単元ごとの正解率も見られない');
+select throws_ok($$select * from public.drill_categories('理科')$$,
+  'P0001', 'forbidden', 'クラブ管理者は単元の一覧を見られない');
 reset role;
 
 select * from finish();

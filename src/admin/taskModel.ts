@@ -4,6 +4,15 @@
 export const SUBJECTS = ['英語', '数学', '国語', '理科', '社会'] as const
 export type Subject = (typeof SUBJECTS)[number]
 
+/** ドリルを出せる教科（問題バンクがあるのはこの3つ） */
+export const DRILL_SUBJECTS = ['英語', '理科', '社会'] as const
+export function canDrill(subject: string): boolean {
+  return (DRILL_SUBJECTS as readonly string[]).includes(subject)
+}
+/** ドリルのタスクの既定の問題数 */
+export const DRILL_TASK_TOTAL = 10
+export const DRILL_TASK_TOTAL_MAX = 50
+
 export type Recurrence = 'none' | 'daily' | 'weekdays' | 'weekly'
 export const RECURRENCES: ReadonlyArray<{ value: Recurrence; label: string }> = [
   { value: 'none', label: 'なし' },
@@ -35,6 +44,8 @@ export type AdminTask = {
   /** 配信する学年（7＝中1 … 12＝高3）。null は全学年 */
   targetGrades?: number[] | null
   rewardCoins?: number
+  /** ドリルのタスクのときだけ入る */
+  drill?: { subject: string; category: string | null; total: number } | null
 }
 
 export type TaskStatus = 'active' | 'scheduled' | 'ended'
@@ -109,10 +120,19 @@ export type Draft = {
   grades: number[]
   /** 報酬のコイン（文字のまま持つ） */
   coins: string
+  /** ドリルのタスクにするか */
+  isDrill: boolean
+  /** ドリルの単元。空は、その教科のおまかせ */
+  drillCategory: string
+  /** ドリルの問題数（文字のまま持つ） */
+  drillTotal: string
 }
 
 export function emptyDraft(today: string, clubIds: string[] = []): Draft {
-  return { title: '', subject: '', startsOn: today, dueOn: '', recurrence: 'none', minutes: '', clubIds, grades: [], coins: String(ASSIGNED_TASK_COINS) }
+  return {
+    title: '', subject: '', startsOn: today, dueOn: '', recurrence: 'none', minutes: '', clubIds, grades: [],
+    coins: String(ASSIGNED_TASK_COINS), isDrill: false, drillCategory: '', drillTotal: String(DRILL_TASK_TOTAL),
+  }
 }
 
 /** ［仮］v1.7：既存のタスクを複製する。開始日は今日、期限日は空にする（名前・教科・目安・くり返し・学年・報酬は引き継ぐ） */
@@ -127,6 +147,9 @@ export function draftFromTask(t: AdminTask, today: string, clubIds: string[]): D
     clubIds,
     grades: [...(t.targetGrades ?? [])].sort((a, b) => a - b),
     coins: String(t.rewardCoins ?? ASSIGNED_TASK_COINS),
+    isDrill: t.drill != null,
+    drillCategory: t.drill?.category ?? '',
+    drillTotal: String(t.drill?.total ?? DRILL_TASK_TOTAL),
   }
 }
 
@@ -147,7 +170,7 @@ export function eligibleStudents(t: Pick<AdminTask, 'targetGrades'>, studentGrad
   return studentGrades.filter((g) => g !== null && t.targetGrades!.includes(g)).length
 }
 
-export type DraftErrors = Partial<Record<'title' | 'subject' | 'startsOn' | 'dueOn' | 'minutes' | 'clubs' | 'coins', string>>
+export type DraftErrors = Partial<Record<'title' | 'subject' | 'startsOn' | 'dueOn' | 'minutes' | 'clubs' | 'coins' | 'drill', string>>
 
 /** needClubs：クラブを選ぶ画面（複数クラブの運営）のときだけ、1つ以上の選択を求める */
 export function validateDraft(d: Draft, today: string, needClubs = false): DraftErrors {
@@ -171,7 +194,27 @@ export function validateDraft(d: Draft, today: string, needClubs = false): Draft
     const n = Number(d.minutes)
     if (!Number.isInteger(n) || n < 1 || n > 600) e.minutes = '目安時間は、1〜600の整数で入力してください'
   }
+  if (d.isDrill) {
+    if (!canDrill(d.subject)) e.drill = 'ドリルを出せるのは、英語・理科・社会だけです'
+    else {
+      const n = Number(d.drillTotal)
+      if (!Number.isInteger(n) || n < 1 || n > DRILL_TASK_TOTAL_MAX) {
+        e.drill = `問題数は、1〜${DRILL_TASK_TOTAL_MAX}の整数で入力してください`
+      }
+    }
+  }
   return e
+}
+
+/** ドリルのタスクとして保存する値。ドリルでなければ null（列を空にする） */
+export function drillFields(d: Draft): { drill_subject: string; drill_category: string | null; drill_total: number } | null {
+  if (!d.isDrill || !canDrill(d.subject)) return null
+  const category = d.drillCategory.trim()
+  return {
+    drill_subject: d.subject,
+    drill_category: category === '' ? null : category,
+    drill_total: Number(d.drillTotal),
+  }
 }
 
 export function hasErrors(e: DraftErrors): boolean {

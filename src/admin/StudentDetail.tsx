@@ -3,6 +3,7 @@ import { buildBand, dateLabel, jstDate, timeLabel } from '../home/homeModel'
 import { RecordBand } from '../home/RecordBand'
 import { gradeLabel } from '../lib/steps'
 import { addSupportComment, deleteSupportComment, loadStudentDetail, sendSeen } from './adminApi'
+import { StudentDrill } from './StudentDrill'
 import type { StudentDetail } from './adminApi'
 import { COMMENT_MAX, coinAmountLabel, coinReasonLabel, commentError, lastStudyLabel, lineStatusText, monthDays, STATE_TEXT, stateOf, subjectBreakdown, SUPPORT_TEMPLATES, weeklyDays } from './studentModel'
 
@@ -128,6 +129,8 @@ export function StudentDetailView({ detail, today, canComment, isOperator = fals
           )}
         </section>
       )}
+
+      {isOperator && <StudentDrill studentId={s.userId} />}
 
       {isOperator && detail.line && (
         <section className="adm-section" aria-labelledby="d-line">

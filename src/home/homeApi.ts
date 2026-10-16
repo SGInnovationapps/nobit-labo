@@ -52,10 +52,20 @@ export type CompleteResult = {
   coinsGranted: number
 }
 
+type TaskDetail = {
+  title: string
+  subject: string
+  estimated_minutes: number | null
+  kind: string
+  drill_subject: string | null
+  drill_category: string | null
+  drill_total: number | null
+}
+
 type TaskRow = {
   id: string
   completed_at: string | null
-  tasks: { title: string; subject: string; estimated_minutes: number | null; kind: string } | { title: string; subject: string; estimated_minutes: number | null; kind: string }[] | null
+  tasks: TaskDetail | TaskDetail[] | null
 }
 
 /** ホームに必要なものをまとめて読む。配信タスクの展開と、アプリ起動の記録もここで行う */
@@ -73,7 +83,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes, timerDoneRes, ticketRes, usesRes, daysRes, gachaRes] = await Promise.all([
     supabase
       .from('user_tasks')
-      .select('id, completed_at, tasks(title, subject, estimated_minutes, kind)')
+      .select('id, completed_at, tasks(title, subject, estimated_minutes, kind, drill_subject, drill_category, drill_total)')
       .eq('task_date', today)
       .order('created_at', { ascending: true }),
     supabase.from('streak_status').select('current_days, longest_days, last_achieved_date, resume_seen_for').maybeSingle(),
@@ -113,6 +123,9 @@ export async function loadHome(clubId: string): Promise<HomeData> {
       estimatedMinutes: t.estimated_minutes,
       isFree: t.kind === 'free',
       completedAt: r.completed_at,
+      drill: t.drill_subject
+        ? { subject: t.drill_subject, category: t.drill_category, total: t.drill_total ?? 10 }
+        : null,
     }]
   })
 

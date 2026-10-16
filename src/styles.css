@@ -580,3 +580,4 @@ p { margin: 0; }
 .drill-missed-a { margin: 4px 0 0; font-size: 14px; color: var(--mint-ink); font-weight: 700; }
 .drill-missed-note { margin: 4px 0 0; font-size: 13px; color: #3c475b; line-height: 1.7; }
 .drill u { text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.task-btn-num { font-size: 16px; margin: 0 2px; }

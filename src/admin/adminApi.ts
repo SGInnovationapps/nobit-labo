@@ -10,7 +10,7 @@ import type { AlertKind, AlertRule, SendMethod } from './alertsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
 import type { FriendStatus, GapRule, StudentRow } from './studentModel'
 import { DEFAULT_GAP_RULE } from './studentModel'
-import { ASSIGNED_TASK_COINS } from './taskModel'
+import { ASSIGNED_TASK_COINS, drillFields } from './taskModel'
 import type { AdminTask, Draft, Recurrence } from './taskModel'
 
 export type Me = {
@@ -171,6 +171,9 @@ type TaskRow = {
   archived_at: string | null
   target_grades: number[] | null
   reward_coins: number
+  drill_subject: string | null
+  drill_category: string | null
+  drill_total: number | null
 }
 
 export type TaskBoard = {
@@ -187,7 +190,7 @@ export async function loadTaskBoard(clubId: string, today: string): Promise<Task
   const [taskRes, doneRes, studentRes] = await Promise.all([
     supabase
       .from('tasks')
-      .select('id, club_id, title, subject, starts_on, due_on, recurrence, estimated_minutes, archived_at, target_grades, reward_coins')
+      .select('id, club_id, title, subject, starts_on, due_on, recurrence, estimated_minutes, archived_at, target_grades, reward_coins, drill_subject, drill_category, drill_total')
       .eq('club_id', clubId)
       .eq('kind', 'assigned')
       .order('created_at', { ascending: false }),
@@ -212,6 +215,9 @@ export async function loadTaskBoard(clubId: string, today: string): Promise<Task
     archivedAt: r.archived_at,
     targetGrades: r.target_grades,
     rewardCoins: r.reward_coins,
+    drill: r.drill_subject
+      ? { subject: r.drill_subject, category: r.drill_category, total: r.drill_total ?? 10 }
+      : null,
   }))
   const studentGrades = (studentRes.data as unknown as Array<{ users: { grade: number | null } | { grade: number | null }[] | null }>).map((m) => {
     const u = Array.isArray(m.users) ? m.users[0] : m.users
@@ -234,9 +240,93 @@ export async function createTasks(clubIds: string[], draft: Draft, userId: strin
     target_grades: draft.grades.length === 0 || draft.grades.length === 6 ? null : draft.grades,
     reward_coins: draft.coins.trim() === '' ? ASSIGNED_TASK_COINS : Number(draft.coins),
     created_by: userId,
+    ...(drillFields(draft) ?? { drill_subject: null, drill_category: null, drill_total: null }),
   }))
   const { error } = await supabase.from('tasks').insert(rows)
   if (error) throw error
+}
+
+export type StudentDrill = {
+  answered: number
+  correct: number
+  percent: number
+  lastAt: string | null
+  /** 解き終えたドリルの回数 */
+  sessions: number
+  /** 途中でやめた回数 */
+  abandoned: number
+  subjects: Array<{ subject: string; answered: number; correct: number; percent: number }>
+}
+
+export type StudentDrillDetail = {
+  subject: string
+  units: Array<{ category: string; tried: number; correct: number; percent: number }>
+  wrong: Array<{ id: string; category: string; grade: number; body: string; answer: string; answeredAt: string }>
+}
+
+/** 生徒ごとのドリルの成績（運営だけ） */
+export async function loadStudentDrill(studentId: string): Promise<StudentDrill> {
+  const { data, error } = await supabase.rpc('student_drill_overview', { p_student_id: studentId })
+  if (error) throw error
+  const d = (data ?? {}) as Record<string, unknown>
+  const subs = Array.isArray(d.subjects) ? d.subjects : []
+  return {
+    answered: Number(d.answered ?? 0),
+    correct: Number(d.correct ?? 0),
+    percent: Number(d.percent ?? 0),
+    lastAt: (d.last_at as string | null) ?? null,
+    sessions: Number(d.sessions ?? 0),
+    abandoned: Number(d.abandoned ?? 0),
+    subjects: subs.map((x) => {
+      const r = x as Record<string, unknown>
+      return {
+        subject: String(r.subject),
+        answered: Number(r.answered ?? 0),
+        correct: Number(r.correct ?? 0),
+        percent: Number(r.percent ?? 0),
+      }
+    }),
+  }
+}
+
+/** 1教科の、単元ごとの正解率とまちがえた問題（運営だけ） */
+export async function loadStudentDrillDetail(studentId: string, subject: string): Promise<StudentDrillDetail> {
+  const { data, error } = await supabase.rpc('student_drill_detail', { p_student_id: studentId, p_subject: subject, p_limit: 20 })
+  if (error) throw error
+  const d = (data ?? {}) as Record<string, unknown>
+  const units = Array.isArray(d.units) ? d.units : []
+  const wrong = Array.isArray(d.wrong) ? d.wrong : []
+  return {
+    subject: String(d.subject ?? subject),
+    units: units.map((x) => {
+      const r = x as Record<string, unknown>
+      return {
+        category: String(r.category),
+        tried: Number(r.tried ?? 0),
+        correct: Number(r.correct ?? 0),
+        percent: Number(r.percent ?? 0),
+      }
+    }),
+    wrong: wrong.map((x) => {
+      const r = x as Record<string, unknown>
+      return {
+        id: String(r.id),
+        category: String(r.category),
+        grade: Number(r.grade ?? 1),
+        body: String(r.body),
+        answer: String(r.answer),
+        answeredAt: String(r.answered_at),
+      }
+    }),
+  }
+}
+
+/** ドリルのタスクで選べる単元（運営だけ） */
+export async function loadDrillCategories(subject: string): Promise<Array<{ category: string; questions: number }>> {
+  const { data, error } = await supabase.rpc('drill_categories', { p_subject: subject, p_grade_max: 3 })
+  if (error) throw error
+  const rows = (data as Array<Record<string, unknown>> | null) ?? []
+  return rows.map((r) => ({ category: String(r.category), questions: Number(r.questions) }))
 }
 
 /** 取り下げる。今日以降の、まだ完了していない割り当ても取り除く（完了済みの記録は残す） */

@@ -73,6 +73,8 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
   const [ticketBusy, setTicketBusy] = useState(false)
   const [ticketError, setTicketError] = useState<string | null>(null)
   const [drillOpen, setDrillOpen] = useState(false)
+  // ドリルのタスクから始めたとき。解き終えると、そのタスクが完了になる
+  const [drillTask, setDrillTask] = useState<{ id: string; subject: string } | null>(null)
   // ドリルで記録になったときの全面のシート（02）。結果の画面を見たあとに出す
   const [drillSheet, setDrillSheet] = useState<SheetInfo | null>(null)
 
@@ -181,6 +183,7 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
 
   function onCloseDrill() {
     setDrillOpen(false)
+    setDrillTask(null)
     if (drillSheet) {
       setDone(drillSheet)
       setDrillSheet(null)
@@ -330,7 +333,9 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
       onUseTicket={(w) => void onUseTicket(w)}
       grade={grade}
       drillOpen={drillOpen}
-      onOpenDrill={() => setDrillOpen(true)}
+      drillTask={drillTask}
+      onOpenDrill={() => { setDrillTask(null); setDrillOpen(true) }}
+      onDrillTask={(t) => { setDrillTask(t); setDrillOpen(true) }}
       onDrillRecorded={onDrillRecorded}
       onCloseDrill={onCloseDrill}
       onComplete={(id, title) => void onComplete(id, title)}
@@ -377,7 +382,10 @@ export type HomeViewProps = {
   /** 生徒の学年（ドリルの出題の範囲の初期値） */
   grade?: number | null
   drillOpen?: boolean
+  /** ドリルのタスクから開いたとき */
+  drillTask?: { id: string; subject: string } | null
   onOpenDrill?: () => void
+  onDrillTask?: (task: { id: string; subject: string }) => void
   onDrillRecorded?: (r: DrillRecorded) => void
   onCloseDrill?: () => void
   /** 連続記録が途切れたあとの最初の起動（ホームの再開の状態） */
@@ -450,6 +458,7 @@ export function HomeView(p: HomeViewProps) {
     return (
       <Drill
         grade={p.grade}
+        userTask={p.drillTask ?? null}
         onRecorded={(r) => p.onDrillRecorded?.(r)}
         onClose={() => p.onCloseDrill?.()}
       />
@@ -463,19 +472,31 @@ export function HomeView(p: HomeViewProps) {
       {list.map((t) => (
         <li key={t.id} className={t.completedAt ? 'task is-done' : 'task'}>
           <div className="task-body">
-            <span className="task-subject">{t.subject}{t.estimatedMinutes != null && <>　見込み<span className="num">{t.estimatedMinutes}</span>分</>}</span>
+            <span className="task-subject">
+              {t.subject}
+              {t.drill && <>　ドリル{t.drill.category ? `　${t.drill.category}` : ''}</>}
+              {t.estimatedMinutes != null && <>　見込み<span className="num">{t.estimatedMinutes}</span>分</>}
+            </span>
             <span className="task-title">{t.title}</span>
           </div>
           {t.completedAt ? (
             <span className="task-time num">{timeLabel(t.completedAt)}</span>
           ) : (
             <div className="task-actions">
-              <button type="button" className="task-btn task-btn-sub" disabled={pending !== null || timerRunning || p.timerBusy} onClick={() => p.onTaskTimer({ id: t.id, subject: t.subject, title: t.title })}>
-                タイマー
-              </button>
-              <button type="button" className="task-btn" disabled={pending !== null} onClick={() => p.onComplete(t.id, t.title)}>
-                {pending === t.id ? '記録中…' : '完了'}
-              </button>
+              {t.drill ? (
+                <button type="button" className="task-btn" disabled={pending !== null || !p.onDrillTask} onClick={() => p.onDrillTask?.({ id: t.id, subject: t.drill!.subject })}>
+                  ドリル<span className="num task-btn-num">{t.drill.total}</span>問
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="task-btn task-btn-sub" disabled={pending !== null || timerRunning || p.timerBusy} onClick={() => p.onTaskTimer({ id: t.id, subject: t.subject, title: t.title })}>
+                    タイマー
+                  </button>
+                  <button type="button" className="task-btn" disabled={pending !== null} onClick={() => p.onComplete(t.id, t.title)}>
+                    {pending === t.id ? '記録中…' : '完了'}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </li>

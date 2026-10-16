@@ -45,7 +45,7 @@ const screens: Record<string, React.ReactNode> = {
   need_invite: (
     <Shell progress={null}>
       <Notice title="招待リンクから開いてください">
-        <p className="copy-main">きょうのキミが、明日のキミを育てる。</p>
+        <p className="copy-main">きょうのがんばりが、明日のキミを育てる</p>
         <p>NOBIT! は、クラブから届いた招待のQRコードまたはリンクから始めます。クラブの管理者に、もう一度確認してください。</p>
       </Notice>
     </Shell>

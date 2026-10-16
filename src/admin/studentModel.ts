@@ -132,6 +132,15 @@ export function lastStudyLabel(lastAchievedDate: string | null, today: string): 
   return `${gap}日前`
 }
 
+/** ドリルを最後に解いた日時の表示。まだ解いていなければ「なし」 */
+export function drillLastLabel(at: string | null): string {
+  if (!at) return 'なし'
+  const d = new Date(at)
+  if (Number.isNaN(d.getTime())) return 'なし'
+  const jst = new Date(d.getTime() + 9 * 3600 * 1000)
+  return `${jst.getUTCFullYear()}/${jst.getUTCMonth() + 1}/${jst.getUTCDate()}`
+}
+
 /** 記録の帯（直近 days 日）。棒の段階は、最大値に対する割合で決める（クラブ全体の合計用） */
 export function buildScaledBand(activity: ReadonlyArray<{ date: string; count: number }>, today: string, days = 14): BandCell[] {
   const counts = new Map(activity.map((a) => [a.date, a.count]))

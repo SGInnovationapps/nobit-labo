@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { DrillEntry } from './DrillEntry'
 import { DrillPlay } from './DrillPlay'
 import { DrillResult } from './DrillResult'
@@ -36,6 +36,9 @@ export function Drill({ grade, userTask, onRecorded, onClose }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>({ at: 'entry' })
+  // タスクから始めたとき。そのタスクで1回解き終えたら外す（「もう10問」はふつうのドリルになる）
+  const [taskId, setTaskId] = useState<string | null>(userTask?.id ?? null)
+  const autoStarted = useRef(false)
 
   const loadEntry = useCallback(async () => {
     setLoading(true)
@@ -58,12 +61,13 @@ export function Drill({ grade, userTask, onRecorded, onClose }: Props) {
     if (phase.at === 'entry') void loadEntry()
   }, [loadEntry, phase.at])
 
+
   const begin = useCallback(async (mode: DrillMode, category: string | null) => {
     setBusy(true)
     setError(null)
     try {
       const s = await startDrill({
-        subject, mode, category, gradeMax, total: DRILL_TOTAL, userTaskId: userTask?.id ?? null,
+        subject, mode, category, gradeMax, total: DRILL_TOTAL, userTaskId: taskId,
       })
       if (!s.question) {
         setError('出せる問題がありませんでした。ほかの単元を選んでください。')
@@ -81,7 +85,15 @@ export function Drill({ grade, userTask, onRecorded, onClose }: Props) {
     } finally {
       setBusy(false)
     }
-  }, [subject, gradeMax, userTask])
+  }, [subject, gradeMax, taskId])
+
+  // タスクから開いたときは、選ばせずにそのまま始める（出題の指定は運営が決めている）
+  useEffect(() => {
+    if (taskId !== null && !autoStarted.current) {
+      autoStarted.current = true
+      void begin('mixed', null)
+    }
+  }, [taskId, begin])
 
   async function onAnswer(choice: string) {
     if (phase.at !== 'play') return
@@ -90,7 +102,11 @@ export function Drill({ grade, userTask, onRecorded, onClose }: Props) {
     try {
       const v = await answerDrill(phase.sessionId, phase.question.id, choice)
       setPhase({ ...phase, answered: v.answered, correctCount: v.correctCount, verdict: v })
-      if (v.result?.recorded) onRecorded(v.result)
+      if (v.result?.recorded) {
+        // タスクを完了したら、タスクとの結びつきは終わり
+        if (v.result.via === 'task') setTaskId(null)
+        onRecorded(v.result)
+      }
     } catch (e) {
       console.error(e)
       setError(drillErrorMessage(e))

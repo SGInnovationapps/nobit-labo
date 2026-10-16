@@ -163,7 +163,7 @@ export default function App() {
 
       {step.name === 'need_invite' && (
         <Notice title={inviteInvalid ? '招待リンクが正しくありません' : '招待リンクから開いてください'}>
-          <p className="copy-main">きょうのキミが、明日のキミを育てる。</p>
+          <p className="copy-main">きょうのがんばりが、明日のキミを育てる</p>
           <p>
             NOBIT! は、クラブから届いた招待のQRコードまたはリンクから始めます。
             {inviteInvalid ? 'このリンクは使えませんでした。' : ''}
