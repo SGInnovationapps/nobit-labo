@@ -86,6 +86,33 @@ export function recordedNote(recorded: boolean, via: 'tag' | 'task' | null, subj
   return coins > 0 ? `${head}　コイン +${coins}` : head
 }
 
+/** 問題文の一部分。underline が true のところが下線部（ラボドリの <u> … </u>） */
+export type MarkedPart = { text: string; underline: boolean }
+
+/**
+ * 問題文に入っている下線の印を、画面で引ける形に分ける。
+ * 読めるのは <u> … </u> だけで、ほかのタグらしい文字はそのまま文字として出す
+ * （問題文を HTML として解釈しないので、タグが混ざっても画面は壊れない）。
+ */
+export function markedParts(body: string): MarkedPart[] {
+  const parts: MarkedPart[] = []
+  const re = /<u>([\s\S]*?)<\/u>/gi
+  let at = 0
+  let m: RegExpExecArray | null
+  const plain = (text: string) => {
+    // 閉じ忘れなどで残った <u> や </u> は、文字として出さずに取り除く
+    const t = text.replace(/<\/?u>/gi, '')
+    if (t !== '') parts.push({ text: t, underline: false })
+  }
+  while ((m = re.exec(body)) !== null) {
+    plain(body.slice(at, m.index))
+    if (m[1] !== '') parts.push({ text: m[1], underline: true })
+    at = m.index + m[0].length
+  }
+  plain(body.slice(at))
+  return parts
+}
+
 /** 学年から、出題の範囲の初期値（中1 は中1 まで、中3 以上はすべて） */
 export function initialGradeMax(grade: number | null | undefined): number {
   if (grade == null) return 3

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  DRILL_TOTAL, drillErrorMessage, initialGradeMax, isDrillSubject, modeLabel, progressLabel, recordedNote,
-  resultCheer, sortUnits, unitLevel, unitState,
+  DRILL_TOTAL, drillErrorMessage, initialGradeMax, isDrillSubject, markedParts, modeLabel, progressLabel,
+  recordedNote, resultCheer, sortUnits, unitLevel, unitState,
 } from '../src/home/drillModel.ts'
 import type { DrillUnit } from '../src/home/drillModel.ts'
 
@@ -87,4 +87,34 @@ test('drillErrorMessage: 画面に出す言い換え', () => {
 
 test('DRILL_TOTAL は仕様書の10問', () => {
   assert.equal(DRILL_TOTAL, 10)
+})
+
+test('markedParts: 下線の印を、線を引くところと引かないところに分ける', () => {
+  assert.deepEqual(markedParts('Draw a straight <u>line</u>.の下線部の意味はどれか。'), [
+    { text: 'Draw a straight ', underline: false },
+    { text: 'line', underline: true },
+    { text: '.の下線部の意味はどれか。', underline: false },
+  ])
+  assert.deepEqual(markedParts('印のない問題文'), [{ text: '印のない問題文', underline: false }])
+  assert.deepEqual(markedParts('<u>先頭</u>'), [{ text: '先頭', underline: true }])
+  assert.deepEqual(markedParts('<U>大文字</U>も読む'), [
+    { text: '大文字', underline: true },
+    { text: 'も読む', underline: false },
+  ])
+  assert.deepEqual(markedParts('<u>ひとつめ</u>と<u>ふたつめ</u>'), [
+    { text: 'ひとつめ', underline: true },
+    { text: 'と', underline: false },
+    { text: 'ふたつめ', underline: true },
+  ])
+})
+
+test('markedParts: 閉じ忘れたタグは文字として出さず、取り除く', () => {
+  assert.deepEqual(markedParts('閉じ忘れ<u>のこり'), [{ text: '閉じ忘れのこり', underline: false }])
+  assert.deepEqual(markedParts('</u>だけ'), [{ text: 'だけ', underline: false }])
+})
+
+test('markedParts: 下線以外のタグらしい文字は、そのまま文字として出す（HTML として解釈しない）', () => {
+  assert.deepEqual(markedParts('a < b と <script>alert(1)</script>'), [
+    { text: 'a < b と <script>alert(1)</script>', underline: false },
+  ])
 })

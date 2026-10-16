@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Marked } from './Marked'
 import { modeLabel, progressLabel } from './drillModel'
 import type { DrillMode } from './drillModel'
 import type { DrillQuestion, DrillVerdict } from './drillApi'
@@ -51,7 +52,7 @@ export function DrillPlay(p: Props) {
       </div>
 
       <section className="drill-q" aria-labelledby="drill-q-h">
-        <h1 id="drill-q-h" className="drill-q-body">{p.question.body}</h1>
+        <h1 id="drill-q-h" className="drill-q-body"><Marked text={p.question.body} /></h1>
         {p.question.imageUrl && <img className="drill-q-img" src={p.question.imageUrl} alt="" />}
       </section>
 
@@ -73,7 +74,7 @@ export function DrillPlay(p: Props) {
                 disabled={p.busy || done}
                 onClick={() => { setPicked(c); p.onAnswer(c) }}
               >
-                <span className="drill-choice-text">{c}</span>
+                <span className="drill-choice-text"><Marked text={c} /></span>
                 {isAnswer && <span className="drill-choice-mark">正解</span>}
                 {done && isPicked && !isAnswer && <span className="drill-choice-mark is-wrong">えらんだ答え</span>}
               </button>
@@ -87,8 +88,8 @@ export function DrillPlay(p: Props) {
           <p className={p.verdict.correct ? 'drill-verdict-head is-ok' : 'drill-verdict-head'}>
             {p.verdict.correct ? 'あっている' : 'ちがう'}
           </p>
-          {!p.verdict.correct && <p className="drill-verdict-answer">答え　{p.verdict.answer}</p>}
-          {p.verdict.explanation && <p className="drill-verdict-note">{p.verdict.explanation}</p>}
+          {!p.verdict.correct && <p className="drill-verdict-answer">答え　<Marked text={p.verdict.answer} /></p>}
+          {p.verdict.explanation && <p className="drill-verdict-note"><Marked text={p.verdict.explanation} /></p>}
           <button ref={next} type="button" className="btn btn-primary drill-next" disabled={p.busy} onClick={p.onNext}>
             {p.verdict.finished ? '結果を見る' : '次の問題'}
           </button>

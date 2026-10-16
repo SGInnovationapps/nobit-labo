@@ -1,3 +1,4 @@
+import { Marked } from './Marked'
 import { modeLabel, recordedNote, resultCheer } from './drillModel'
 import type { DrillRecorded, DrillSummary } from './drillApi'
 
@@ -50,9 +51,9 @@ export function DrillResult({ summary, recorded, busy, error, onAgain, onClose }
           <ul className="drill-missed">
             {summary.missed.map((m, i) => (
               <li key={i}>
-                <p className="drill-missed-q">{m.question}</p>
-                <p className="drill-missed-a">答え　{m.answer}</p>
-                {m.explanation && <p className="drill-missed-note">{m.explanation}</p>}
+                <p className="drill-missed-q"><Marked text={m.question} /></p>
+                <p className="drill-missed-a">答え　<Marked text={m.answer} /></p>
+                {m.explanation && <p className="drill-missed-note"><Marked text={m.explanation} /></p>}
               </li>
             ))}
           </ul>
