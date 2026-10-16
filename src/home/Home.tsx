@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CompletionSheet } from './CompletionSheet'
+import { Drill } from './Drill'
+import type { DrillRecorded } from './drillApi'
 import { HomeActions } from './HomeActions'
 import { IconChevron, IconNext, IconSprout, IconStar, IconTimer } from './HomeIcons'
 import { SubjectSheet } from './SubjectSheet'
@@ -26,7 +28,12 @@ import {
   todayRecords, coinNote, dateLabel, focusNote, shouldShowSheet, sheetLabel, sortTasks, timeLabel, visibleRecords,
 } from './homeModel'
 
-type Props = { clubId: string; clubName: string | null; displayName: string | null; onTab?: (tab: Tab) => void; onGacha?: () => void }
+type Props = {
+  clubId: string; clubName: string | null; displayName: string | null
+  /** 生徒の学年（7 = 中1 … 12 = 高3）。ドリルの出題の範囲の初期値に使う */
+  grade?: number | null
+  onTab?: (tab: Tab) => void; onGacha?: () => void
+}
 
 /** 全面のシート（02）に出す内容。入口（タスク・教科・タイマー）を問わず同じ */
 export type SheetInfo = {
@@ -46,7 +53,7 @@ export type TagPanelState = { subject: string; recordId: string; recordedAt: str
 const SAVE_FAIL = '保存できませんでした。通信を確認して、もう一度お試しください。'
 
 /** 01 ホーム・今日のクエスト（v1.7：状態ごとの面、その下に「教科を記録する」「タスクを見る」、今日の記録、この7日間。残りは下に） */
-export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
+export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: Props) {
   const [data, setData] = useState<HomeData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
@@ -65,6 +72,9 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
   const [timerError, setTimerError] = useState<string | null>(null)
   const [ticketBusy, setTicketBusy] = useState(false)
   const [ticketError, setTicketError] = useState<string | null>(null)
+  const [drillOpen, setDrillOpen] = useState(false)
+  // ドリルで記録になったときの全面のシート（02）。結果の画面を見たあとに出す
+  const [drillSheet, setDrillSheet] = useState<SheetInfo | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -153,6 +163,29 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
     } finally {
       setTagPending(null)
     }
+  }
+
+  /** ドリルを解き終えて記録になった。画面02 は、結果の画面を閉じたあとに出す */
+  function onDrillRecorded(r: DrillRecorded) {
+    void load()
+    setDrillSheet(
+      shouldShowSheet(r)
+        ? {
+            label: sheetLabel(r), title: 'ドリルを記録', completedAt: r.recordedAt ?? new Date().toISOString(),
+            currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay,
+            badges: r.newBadges.map((b) => b.name),
+          }
+        : null,
+    )
+  }
+
+  function onCloseDrill() {
+    setDrillOpen(false)
+    if (drillSheet) {
+      setDone(drillSheet)
+      setDrillSheet(null)
+    }
+    void load()
   }
 
   async function onSaveContent(content: string | null) {
@@ -295,6 +328,11 @@ export function Home({ clubId, clubName, displayName, onTab, onGacha }: Props) {
       ticketBusy={ticketBusy}
       ticketError={ticketError}
       onUseTicket={(w) => void onUseTicket(w)}
+      grade={grade}
+      drillOpen={drillOpen}
+      onOpenDrill={() => setDrillOpen(true)}
+      onDrillRecorded={onDrillRecorded}
+      onCloseDrill={onCloseDrill}
       onComplete={(id, title) => void onComplete(id, title)}
       onCloseDone={() => setDone(null)}
       onGacha={() => { setDone(null); onGacha?.() }}
@@ -336,6 +374,12 @@ export type HomeViewProps = {
   ticketBusy?: boolean
   ticketError?: string | null
   onUseTicket?: (which: 'today' | 'yesterday') => void
+  /** 生徒の学年（ドリルの出題の範囲の初期値） */
+  grade?: number | null
+  drillOpen?: boolean
+  onOpenDrill?: () => void
+  onDrillRecorded?: (r: DrillRecorded) => void
+  onCloseDrill?: () => void
   /** 連続記録が途切れたあとの最初の起動（ホームの再開の状態） */
   resume?: boolean
   onComplete: (id: string, title: string) => void
@@ -400,6 +444,16 @@ export function HomeView(p: HomeViewProps) {
     const next = !recordsOpen
     setRecordsOpen(next)
     writeRecordsOpen(data.today, next)
+  }
+
+  if (p.drillOpen) {
+    return (
+      <Drill
+        grade={p.grade}
+        onRecorded={(r) => p.onDrillRecorded?.(r)}
+        onClose={() => p.onCloseDrill?.()}
+      />
+    )
   }
 
   const cheerLine = cheer && <p className="cheer"><span className="cheer-name">ノビット</span>{cheer}</p>
@@ -612,6 +666,13 @@ export function HomeView(p: HomeViewProps) {
 
       {data.tickets && state !== 'resume' && (
         <TicketPanel info={data.tickets} busy={p.ticketBusy ?? false} error={p.ticketError ?? null} onUse={(w) => p.onUseTicket?.(w)} />
+      )}
+
+      {p.onOpenDrill && (
+        <button type="button" className="focus-entry drill-entry" onClick={p.onOpenDrill}>
+          <span className="focus-entry-label">ドリル（四択）</span>
+          <span className="focus-entry-note"><span className="num">10</span>問で記録になる</span>
+        </button>
       )}
 
       {!timerRunning && (

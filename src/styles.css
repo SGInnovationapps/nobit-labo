@@ -502,3 +502,80 @@ p { margin: 0; }
 .home { padding-bottom: 96px; }
 .home > .sheet-backdrop { margin-top: 0; }
 .task-title { word-break: auto-phrase; }
+
+/* ドリル（四択）：入口・出題・結果。面の色は正解の帯だけ、影は使わない */
+.drill-entry .focus-entry-label { font-size: 15px; }
+.drill { display: flex; flex-direction: column; gap: 16px; padding-bottom: 40px; }
+.drill-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.drill-title { margin: 0; font-size: 24px; font-weight: 700; }
+.drill-where { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+.drill-mode { color: var(--ink-soft); font-weight: 500; }
+.drill-subjects { display: flex; gap: 8px; }
+.drill-sub { flex: 1; min-height: 48px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); color: var(--ink-soft); font-size: 16px; font-weight: 700; cursor: pointer; }
+.drill-sub.is-on { border-color: var(--mint); color: var(--mint-ink); background: var(--mint-tint); }
+.drill-grades { display: flex; gap: 8px; }
+.drill-grade { flex: 1; min-height: 44px; border: 0; border-bottom: 2px solid var(--line); background: none; color: var(--ink-soft); font-size: 13px; font-weight: 700; cursor: pointer; }
+.drill-grade.is-on { border-bottom-color: var(--mint); color: var(--ink); }
+.drill-sub:focus-visible, .drill-grade:focus-visible, .drill-start:focus-visible, .drill-wrong:focus-visible, .drill-unit:focus-visible, .drill-choice:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.drill-start, .drill-wrong { width: 100%; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 18px; border-radius: 18px; border: 2px solid #cde6dd; box-shadow: inset 0 -3px 0 #e3f1ec; background: var(--surface); color: var(--ink); cursor: pointer; }
+.drill-start-label { font-size: 17px; font-weight: 700; }
+.drill-start-label .num { font-size: 22px; margin: 0 2px; }
+.drill-start-note { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.drill-wrong { border-color: var(--line); box-shadow: none; }
+.drill-start:disabled, .drill-wrong:disabled, .drill-unit:disabled { opacity: .6; cursor: not-allowed; }
+.drill-units { list-style: none; margin: 0; padding: 0; }
+.drill-units > li + li { border-top: 1px solid var(--line); }
+.drill-unit { width: 100%; min-height: 60px; display: flex; align-items: center; gap: 12px; padding: 8px 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.drill-unit-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.drill-unit-name { font-size: 16px; font-weight: 700; word-break: auto-phrase; }
+.drill-unit-sub { font-size: 12px; color: var(--ink-soft); }
+.drill-unit-sub .num { font-size: 15px; color: var(--ink); }
+.drill-unit-bar { flex: none; width: 6px; height: 40px; display: flex; align-items: flex-end; background: #f1f3f7; border-radius: 3px; }
+.drill-unit-bar i { display: block; width: 100%; border-radius: 3px; background: var(--mint); }
+.drill-unit-bar.lv0 i { height: 0; }
+.drill-unit-bar.lv1 i { height: 25%; }
+.drill-unit-bar.lv2 i { height: 50%; }
+.drill-unit-bar.lv3 i { height: 75%; }
+.drill-unit-bar.lv4 i { height: 100%; }
+.drill-unit-state { flex: none; width: 6.5em; font-size: 12px; font-weight: 700; color: var(--ink-soft); text-align: right; }
+
+/* 出題と答え合わせ */
+.drill-progress { margin: 0; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.drill-progress .num { font-size: 18px; color: var(--ink); }
+.drill-bar { height: 4px; border-radius: 2px; background: #f1f3f7; overflow: hidden; }
+.drill-bar i { display: block; height: 100%; background: var(--mint); }
+.drill-q { margin: 0; }
+.drill-q-body { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.6; word-break: auto-phrase; }
+.drill-q-img { margin-top: 12px; max-width: 100%; height: auto; border-radius: 12px; }
+.drill-choices { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.drill-choice { width: 100%; min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 18px; border-radius: 16px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; }
+.drill-choice-text { font-size: 17px; font-weight: 700; word-break: auto-phrase; }
+.drill-choice:disabled { cursor: default; }
+.drill-choice.is-answer { border-color: var(--mint); background: var(--mint-tint); }
+.drill-choice.is-wrong { border-color: #f0c7cb; }
+.drill-choice.is-dim { opacity: .5; }
+.drill-choice-mark { flex: none; font-size: 12px; font-weight: 700; color: var(--mint-ink); }
+.drill-choice-mark.is-wrong { color: var(--error-ink); }
+.drill-verdict { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.drill-verdict-head { margin: 0; font-size: 18px; font-weight: 700; color: var(--error-ink); }
+.drill-verdict-head.is-ok { color: var(--mint-ink); }
+.drill-verdict-answer { margin: 0; font-size: 16px; font-weight: 700; }
+.drill-verdict-note { margin: 0; font-size: 14px; color: #3c475b; line-height: 1.7; }
+.drill-next { width: 100%; }
+
+/* 結果 */
+.drill-score { padding: 8px 0 4px; }
+.drill-score-main { margin: 0; display: flex; align-items: baseline; gap: 4px; }
+.drill-score-num { font-size: 64px; font-weight: 700; line-height: 1; color: var(--mint-ink); }
+.drill-score-unit { font-size: 16px; font-weight: 700; color: var(--ink-soft); }
+.drill-score-cheer { margin: 8px 0 0; font-size: 15px; }
+.drill-recorded { margin: 0; font-size: 14px; font-weight: 700; color: var(--mint-ink); }
+.drill-streak { margin: 0; font-size: 13px; color: var(--ink-soft); font-weight: 700; }
+.drill-streak .num { font-size: 20px; color: var(--ink); }
+.drill-badges { margin: 0; font-size: 13px; font-weight: 700; color: #5a45c9; }
+.drill-missed { list-style: none; margin: 0; padding: 0; }
+.drill-missed > li { padding: 10px 0; }
+.drill-missed > li + li { border-top: 1px solid var(--line); }
+.drill-missed-q { margin: 0; font-size: 15px; font-weight: 700; word-break: auto-phrase; }
+.drill-missed-a { margin: 4px 0 0; font-size: 14px; color: var(--mint-ink); font-weight: 700; }
+.drill-missed-note { margin: 4px 0 0; font-size: 13px; color: #3c475b; line-height: 1.7; }

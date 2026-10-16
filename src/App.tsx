@@ -147,7 +147,7 @@ export default function App() {
         ) : tab === 'ふりかえり' ? (
           <Reflect onTab={setTab} />
         ) : (
-          <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} onTab={setTab} onGacha={() => { setGachaRequest(true); setTab('コレクション') }} />
+          <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} onGacha={() => { setGachaRequest(true); setTab('コレクション') }} />
         )}
       </div>
     )
