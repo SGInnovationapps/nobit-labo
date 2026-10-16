@@ -1,25 +1,48 @@
--- 生徒1人の記録を削除する（保護者から、公式LINE のチャットで依頼があったとき）
--- Supabase の SQL Editor で実行する。［LINEユーザーID］は、管理画面の生徒の詳細で確認する。
--- 1. 下の「対象の確認」だけを先に実行し、本人であることを確かめる
--- 2. 確認できたら、「削除」を実行する（元に戻せない）
--- 削除されるもの：生徒のアカウント、所属、同意、記録、コイン台帳、ガチャ、バッジ、連絡の記録など（users に連なるもの）
--- 残るもの：クラブ、タスクの配信、クラブ全体の合計（個人は特定できない）
+-- 生徒の記録を削除する（保護者から公式LINE のチャットで依頼があったとき、テスト用のアカウントを片づけるとき）
+-- Supabase の SQL Editor で、1 → 2 → 3 の順に、ブロックごとに選んで実行する。
+--
+-- 削除されるもの：生徒のアカウント、所属、保護者の同意、学習の記録、コイン台帳、ガチャ、バッジ、連絡の記録（users に連なるもの）
+-- 残るもの：クラブ、配信したタスクの定義、クラブ全体の合計（個人は特定できない）。
+--           公式LINE の友だち状態（line_friends）も残す。本人が登録し直したときに引き継ぐため。
+--
+-- SQL Editor は、実行するたびに別のトランザクションになる。begin / commit で区切って
+-- 途中で確かめることはできないので、2 で対象を確かめてから 3 を実行する。
 
--- ■ 対象の確認
-select u.id, u.display_name, u.grade, c.name as club, la.line_user_id, la.friend_status
+-- ■ 1. 生徒の一覧（新しい順）。消したい生徒の id を、この結果から控える
+select
+  u.id,
+  u.display_name as 表示名,
+  u.grade as 学年,
+  c.name as クラブ,
+  m.status as 所属,
+  la.line_display_name as LINEの名前,
+  la.line_user_id as LINEのID,
+  (select count(*) from public.daily_activity d where d.student_id = u.id) as 学習日数,
+  u.created_at as 登録日時
 from public.users u
 left join public.club_members m on m.user_id = u.id and m.status in ('pending', 'approved')
 left join public.clubs c on c.id = m.club_id
 left join public.line_accounts la on la.user_id = u.id
-where la.line_user_id = '［LINEユーザーID］';
+where u.role = 'student'
+order by u.created_at desc;
 
--- ■ 削除（上の結果が1行で、本人と確認できたときだけ）
-begin;
-with target as (
-  select la.user_id, la.line_user_id from public.line_accounts la where la.line_user_id = '［LINEユーザーID］'
-), gone_friend as (
-  delete from public.line_friends f using target t where f.line_user_id = t.line_user_id returning 1
-)
-delete from auth.users a using target t where a.id = t.user_id;
--- 件数が「DELETE 1」であることを確認してから commit する
-commit;
+
+-- ■ 2. 消す前の確認（1 で控えた id を入れる。1人なら1つ、複数ならカンマで並べる）
+--      結果の行数と中身が、消したい生徒と合っているかを必ず確かめる
+select u.id, u.display_name as 表示名, c.name as クラブ, la.line_display_name as LINEの名前, u.created_at as 登録日時
+from public.users u
+left join public.club_members m on m.user_id = u.id and m.status in ('pending', 'approved')
+left join public.clubs c on c.id = m.club_id
+left join public.line_accounts la on la.user_id = u.id
+where u.id in ('［生徒のid］');
+
+
+-- ■ 3. 削除（2 の結果が正しいときだけ。元に戻せない）
+--      消した行が返るので、件数と中身をもう一度確かめる
+delete from auth.users
+where id in ('［生徒のid］')
+returning id, email;
+
+
+-- ■ 4. 確認（0 行なら削除できている）
+select u.id, u.display_name from public.users u where u.id in ('［生徒のid］');
