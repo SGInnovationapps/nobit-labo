@@ -28,7 +28,7 @@ select throws_ok($$select public.stop_study_timer(10)$$, 'P0001', 'invalid_minut
 
 select is((public.stop_study_timer() ->> 'focus_achieved')::boolean, true, '一時停止を除いて 15 分に届けば達成');
 select is((select duration_seconds from public.study_records where focus_achieved), 900, '記録の時間は目標の 15 分まで');
-select is((select balance from public.coin_balances), 6, 'コイン：記録 1 + 達成ボーナス 5（［仮］）');
+select is((select balance from public.coin_balances), 9, 'コイン：記録 1 + 達成ボーナス 5 + デイリークエスト「15分」3');
 
 -- 2 回目：同じ日の達成ボーナスは付かない
 select lives_ok($$select public.start_focus_session('国語')$$, '2 回目を始める');
@@ -37,7 +37,8 @@ update public.study_records set started_at = now() - interval '16 minutes' where
 set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000d1"}', true); end $$;
 select is((public.stop_study_timer() ->> 'focus_bonus')::int, 0, '達成ボーナスは 1 日 1 回');
-select is((select balance from public.coin_balances), 6, 'コインは増えない');
+-- 達成ボーナスは増えないが、2 教科になったのでクエストが 2 つ達成になる（3 + 全部達成 5）
+select is((select balance from public.coin_balances), 17, '達成ボーナスは増えず、クエストの分だけ増える');
 
 -- 途中で終える：経過した時間は残り、達成にはならない
 select lives_ok($$select public.start_focus_session('理科', '電流')$$, '内容つきで始める');

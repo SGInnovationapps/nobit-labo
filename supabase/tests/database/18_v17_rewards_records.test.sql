@@ -26,12 +26,12 @@ select is((public.record_study_tag('数学') ->> 'coins_granted')::int, 0, '同�
 select is((select count(*)::int from public.study_records where kind = 'tag'), 1, '同じ教科は1日1件のまま');
 select is((public.record_study_tag('英語') ->> 'first_of_day')::boolean, false, '2件目はその日の最初ではない');
 select is((select completed_count::int from public.daily_activity), 2, '記録の数は2（数学・英語）');
-select is((select balance from public.coin_balances), 1, '学習した日の1コインだけ');
+select is((select balance from public.coin_balances), 4, '学習した日 1 + デイリークエスト「2教科」3');
 
 -- 内容は事後にも書ける。自分の記録だけ
 select lives_ok($$select public.set_study_content((select id from public.study_records where subject = '数学'), '  二次関数  ')$$, '内容を事後に書ける');
 select is((select content from public.study_records where subject = '数学'), '二次関数', '内容は前後の空白を除いて保存される');
-select is((select balance from public.coin_balances), 1, '内容を書いてもコインは増えない');
+select is((select balance from public.coin_balances), 4, '内容を書いてもコインは増えない');
 select throws_ok($$select public.set_study_content((select id from public.study_records where subject = '数学'), repeat('あ', 61))$$, 'P0001', 'content_too_long', '内容は60文字まで');
 select lives_ok($$select public.set_study_content((select id from public.study_records where subject = '数学'), '')$$, '空にすると内容は消える');
 select is((select content from public.study_records where subject = '数学'), null, '内容が消える');
@@ -41,7 +41,7 @@ select lives_ok($$select public.start_study_timer('英語', '英語 配信', '33
 select is((public.stop_study_timer() ->> 'task_completed')::boolean, true, '終えるとタスクが完了する');
 select is((select count(*)::int from public.user_tasks where completed_at is not null and student_id = '00000000-0000-0000-0000-0000000000f1'), 1, 'タスクは完了済み');
 select is((select completed_count::int from public.daily_activity), 3, '記録の数は1件だけ増える');
-select is((select balance from public.coin_balances), 11, '配信タスクの10コインが付く（学習した日の1コインは付与済み）');
+select is((select balance from public.coin_balances), 17, '配信タスクの10コイン＋クエスト「配信タスク」3（学習した日とクエスト「2教科」は付与済み）');
 
 -- 他人のタスクではタイマーを始められない
 select throws_ok($$select public.start_study_timer('英語', null, '33333333-3333-3333-3333-3333333333f2')$$, 'P0001', 'task_not_found', '他の生徒のタスクでは始められない');
@@ -59,7 +59,7 @@ values ('11111111-1111-1111-1111-1111111111f1', '00000000-0000-0000-0000-0000000
 set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f1"}', true); end $$;
 select is((public.draw_gacha_extra() ->> 'extra')::boolean, true, '追加ガチャを引ける');
-select is((select balance from public.coin_balances), 41 - 30 + coalesce((select coins_granted from public.gacha_draws where is_extra), 0) + coalesce((select coins_granted from public.gacha_draws where not is_extra), 0), '30コインが引かれる（重複の交換コインは別）');
+select is((select balance from public.coin_balances), 47 - 30 + coalesce((select coins_granted from public.gacha_draws where is_extra), 0) + coalesce((select coins_granted from public.gacha_draws where not is_extra), 0), '30コインが引かれる（重複の交換コインは別）');
 select throws_ok($$select public.draw_gacha_extra()$$, 'P0001', 'already_drawn_extra', '追加は1日1回まで');
 select is((select count(*)::int from public.gacha_draws where student_id = '00000000-0000-0000-0000-0000000000f1'), 2, '無料1回と追加1回');
 

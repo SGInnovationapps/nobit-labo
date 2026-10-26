@@ -4,7 +4,8 @@ import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
 import { loadReflect } from './reflectApi'
 import type { ReflectData } from './reflectApi'
-import { calendarCells, minutesLabel, periodOf, shiftAnchor, summarize, ticketLine } from './reflectModel'
+import { calendarCells, minutesLabel, periodOf, questSummaryOf, shiftAnchor, summarize, ticketLine } from './reflectModel'
+import { QUEST_NAME } from './homeModel'
 import type { TrendPoint } from './reflectModel'
 import type { CalendarCell, Period, ReflectMode } from './reflectModel'
 
@@ -122,6 +123,33 @@ export function ReflectView(p: ViewProps) {
               <p className="muted">使った日は休息日（紫）になり、学習日には数えません。</p>
             </section>
           )}
+
+          <section className="section" aria-labelledby="qz-h">
+            <h2 id="qz-h">デイリークエスト</h2>
+            {data.quests.length === 0 ? (
+              <p className="muted">この{unit}の達成は、まだありません。</p>
+            ) : (
+              <>
+                <dl className="sum-list">
+                  <div><dt>達成した日</dt><dd><span className="num">{questSummaryOf(data.quests).days}</span>日</dd></div>
+                  <div><dt>全部達成した日</dt><dd><span className="num">{questSummaryOf(data.quests).allDays}</span>日</dd></div>
+                  <div><dt>もらったコイン</dt><dd><span className="num">{questSummaryOf(data.quests).coins}</span></dd></div>
+                </dl>
+                <ul className="quest-hist">
+                  {[...data.quests].reverse().map((q) => (
+                    <li key={q.date} className="quest-hist-row">
+                      <span className="quest-hist-date num">{Number(q.date.slice(5, 7))}/{Number(q.date.slice(8, 10))}</span>
+                      <span className="quest-hist-names">
+                        {q.keys.filter((k) => k !== 'all').map((k) => QUEST_NAME[k as keyof typeof QUEST_NAME] ?? k).join('、')}
+                        {q.keys.includes('all') && <span className="quest-hist-all">全部達成</span>}
+                      </span>
+                      <span className="quest-hist-coins num">{q.coins}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
 
           <section className="section" aria-labelledby="sub-h">
             <h2 id="sub-h">教科別</h2>

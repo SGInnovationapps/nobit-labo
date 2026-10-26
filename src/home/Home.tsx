@@ -25,7 +25,7 @@ import type { HomeData, StudyResult } from './homeApi'
 import type { HomeTask } from './homeModel'
 import {
   addDays, BAND_NOTE, buildBand, buildWeek, homeStateOf, isNewSupport, nextMilestone, questsOf, RECORD_PREVIEW, recordsOpenFor, shortFirst, stateCheer, ticketErrorMessage,
-  todayRecords, coinNote, dateLabel, focusNote, shouldShowSheet, sheetLabel, sortTasks, timeLabel, visibleRecords,
+  todayRecords, coinNote, dateLabel, focusNote, questNote, shouldShowSheet, sheetLabel, sortTasks, timeLabel, visibleRecords,
 } from './homeModel'
 
 type Props = {
@@ -123,7 +123,8 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
     if (data && (data.activity.find((a) => a.date === data.today)?.count ?? 0) > 0) setResumeActive(false)
   }, [data])
 
-  const noticeOf = (r: StudyResult) => `記録しました　${coinNote(r.coinsGranted)}`.trim()
+  const noticeOf = (r: StudyResult) =>
+    [`記録しました`, coinNote(r.coinsGranted), questNote(r.newQuests)].filter((x) => x !== '').join('　')
 
   async function onComplete(id: string, title: string) {
     setPending(id)
@@ -255,7 +256,8 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
       else if (shouldShowSheet(r)) {
         setDone({ label: sheetLabel(r), title: `${subject}のタイマー`, completedAt: new Date().toISOString(), currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name) })
       }
-      setNotice(wasFocus ? focusNote(r) : noticeOf(r))
+      setNotice([wasFocus ? focusNote(r) : noticeOf(r), wasFocus ? questNote(r.newQuests) : '']
+        .filter((x) => x !== '').join('　'))
     } catch (e) {
       console.error(e)
       setTimerError(SAVE_FAIL)

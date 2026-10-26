@@ -50,6 +50,8 @@ export type CompleteResult = {
   /** 今回の記録で新しく得たバッジ（条件でもらえるもの） */
   newBadges: NewBadge[]
   coinsGranted: number
+  /** 今回の記録で新しく達成したデイリークエスト */
+  newQuests: NewQuest[]
 }
 
 type TaskDetail = {
@@ -207,6 +209,7 @@ export async function completeTask(userTaskId: string): Promise<CompleteResult> 
     milestone: (d.milestone as boolean | undefined) ?? false,
     newBadges: toNewBadges(d.new_badges),
     coinsGranted: (d.coins_granted as number | undefined) ?? 0,
+    newQuests: toNewQuests(d.new_quests),
   }
 }
 
@@ -227,6 +230,17 @@ export async function registerFreeTask(title: string, subject: string, minutes: 
   if (error) throw new FreeTaskError(error.message)
 }
 
+/** 今回の記録で新しく達成したクエスト（key と、付いたコイン） */
+export type NewQuest = { key: string; coins: number }
+
+function toNewQuests(v: unknown): NewQuest[] {
+  if (!Array.isArray(v)) return []
+  return v.map((q) => {
+    const d = q as Record<string, unknown>
+    return { key: String(d.key), coins: Number(d.coins ?? 0) }
+  })
+}
+
 function toNewBadges(v: unknown): NewBadge[] {
   if (!Array.isArray(v)) return []
   return v.map((b) => ({ code: String((b as Record<string, unknown>).code), name: String((b as Record<string, unknown>).name), rarity: (b as Record<string, unknown>).rarity as NewBadge['rarity'] }))
@@ -237,6 +251,7 @@ export type StudyResult = {
   focusAchieved: boolean; focusBonus: number
   firstOfDay: boolean; milestone: boolean; newBadges: NewBadge[]; completedToday: number
   recordId: string | null; alreadyRecorded: boolean; recordedAt: string | null
+  newQuests: NewQuest[]
 }
 
 function toStudyResult(d: Record<string, unknown>): StudyResult {
@@ -253,6 +268,7 @@ function toStudyResult(d: Record<string, unknown>): StudyResult {
     recordId: (d.record_id as string | undefined) ?? null,
     alreadyRecorded: (d.already_recorded as boolean | undefined) ?? false,
     recordedAt: (d.recorded_at as string | undefined) ?? null,
+    newQuests: toNewQuests(d.new_quests),
   }
 }
 

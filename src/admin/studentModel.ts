@@ -205,6 +205,9 @@ export const COIN_REASON_LABEL: Record<string, string> = {
   gacha_extra: '追加ガチャ',
   mission_personal: 'クラブミッション（個人）',
   mission_club: 'クラブミッション（クラブ）',
+  daily_quest: 'デイリークエスト',
+  quest_bonus: 'クエスト全部達成',
+  admin_adjust: '運営の調整',
 }
 
 export function coinReasonLabel(reason: string): string {
@@ -214,6 +217,25 @@ export function coinReasonLabel(reason: string): string {
 /** +10 / −30 の形。符号は文字で示す */
 export function coinAmountLabel(amount: number): string {
   return amount > 0 ? `+${amount}` : `−${Math.abs(amount)}`
+}
+
+/** 運営のコイン調整：一度に動かせる額と、理由の長さ */
+export const ADJUST_MAX = 1000
+export const ADJUST_NOTE_MAX = 200
+
+/** 調整の入力を確かめる。balance はいまの残高（マイナスにはできない） */
+export function adjustError(amountText: string, note: string, balance: number): string | null {
+  const t = amountText.trim()
+  if (t === '') return '増減する数を入力してください'
+  const n = Number(t)
+  if (!Number.isInteger(n)) return '増減する数は、整数で入力してください'
+  if (n === 0) return '0 では調整になりません'
+  if (Math.abs(n) > ADJUST_MAX) return `一度に動かせるのは ${ADJUST_MAX} までです`
+  if (balance + n < 0) return `残高が足りません（いま ${balance}）`
+  const r = note.trim()
+  if (r.length === 0) return '理由を入力してください'
+  if (r.length > ADJUST_NOTE_MAX) return `理由は ${ADJUST_NOTE_MAX} 文字までです`
+  return null
 }
 
 export const COMMENT_MAX = 300

@@ -158,3 +158,14 @@ export function ticketLine(balance: number, usedInPeriod: number, unit: string):
   const used = usedInPeriod > 0 ? `この${unit}に使ったのは${usedInPeriod}日。` : `この${unit}は使っていません。`
   return `いま持っているのは${balance}枚。${used}`
 }
+
+/** クエストの達成履歴のまとめ（06 ふりかえり） */
+export function questSummaryOf(
+  quests: ReadonlyArray<{ date: string; keys: string[]; coins: number }>,
+): { days: number; coins: number; allDays: number } {
+  return {
+    days: quests.length,
+    coins: quests.reduce((n, q) => n + q.coins, 0),
+    allDays: quests.filter((q) => q.keys.includes('all')).length,
+  }
+}

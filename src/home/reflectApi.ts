@@ -15,6 +15,8 @@ export type ReflectData = {
   trend: TrendPoint[]
   /** 休息チケット。読めなかったときは null */
   tickets: { balance: number; usedInPeriod: number } | null
+  /** デイリークエストの達成履歴（日ごと） */
+  quests: { date: string; keys: string[]; coins: number }[]
 }
 
 type TaskRow = { tasks: { subject: string } | { subject: string }[] | null }
@@ -23,7 +25,7 @@ type TaskRow = { tasks: { subject: string } | { subject: string }[] | null }
 export async function loadReflect(period: Period): Promise<ReflectData> {
   const today = jstDate(Date.now())
   const trendFrom = addDays(today, -400)
-  const [streakRes, activityRes, tasksRes, recordsRes, eventRes, usesRes, histActRes, histEvtRes, histUseRes, ticketRes] = await Promise.all([
+  const [streakRes, activityRes, tasksRes, recordsRes, eventRes, usesRes, histActRes, histEvtRes, histUseRes, ticketRes, questRes] = await Promise.all([
     supabase.from('streak_status').select('current_days, longest_days').maybeSingle(),
     supabase.from('daily_activity').select('activity_date, completed_count').gte('activity_date', period.from).lte('activity_date', period.to),
     supabase
@@ -44,6 +46,7 @@ export async function loadReflect(period: Period): Promise<ReflectData> {
     supabase.from('club_events').select('event_date').gte('event_date', trendFrom).lte('event_date', today),
     supabase.from('rest_ticket_uses').select('rest_date').gte('rest_date', trendFrom).lte('rest_date', today),
     supabase.rpc('my_rest_tickets'),
+    supabase.rpc('my_quest_history', { p_from: period.from, p_to: period.to }),
   ])
   if (eventRes.error) throw eventRes.error
   if (streakRes.error) throw streakRes.error
@@ -74,5 +77,10 @@ export async function loadReflect(period: Period): Promise<ReflectData> {
       today,
     ),
     tickets: ticketRes.error || !ticketRes.data ? null : { balance: ((ticketRes.data as Record<string, unknown>).balance as number) ?? 0, usedInPeriod: (usesRes.data ?? []).length },
+    quests: questRes.error ? [] : ((questRes.data as Array<Record<string, unknown>> | null) ?? []).map((q) => ({
+      date: String(q.quest_date),
+      keys: Array.isArray(q.keys) ? q.keys.map((k) => String(k)) : [],
+      coins: Number(q.coins ?? 0),
+    })),
   }
 }

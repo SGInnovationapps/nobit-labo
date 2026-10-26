@@ -246,6 +246,38 @@ export async function createTasks(clubIds: string[], draft: Draft, userId: strin
   if (error) throw error
 }
 
+export type AdminAction = {
+  id: number
+  actorName: string | null
+  action: string
+  detail: Record<string, unknown>
+  note: string
+  createdAt: string
+}
+
+/** 運営が生徒のコインを増減する。理由は必ず残る */
+export async function adjustStudentCoins(studentId: string, amount: number, note: string): Promise<number> {
+  const { data, error } = await supabase.rpc('adjust_student_coins', {
+    p_student_id: studentId, p_amount: amount, p_note: note.trim(),
+  })
+  if (error) throw error
+  return Number((data as Record<string, unknown>)?.balance ?? 0)
+}
+
+/** 1人分の操作履歴（運営だけ） */
+export async function loadStudentAdminActions(studentId: string): Promise<AdminAction[]> {
+  const { data, error } = await supabase.rpc('student_admin_actions', { p_student_id: studentId, p_limit: 20 })
+  if (error) throw error
+  return ((data as Array<Record<string, unknown>> | null) ?? []).map((r) => ({
+    id: Number(r.id),
+    actorName: (r.actor_name as string | null) ?? null,
+    action: String(r.action),
+    detail: (r.detail as Record<string, unknown>) ?? {},
+    note: String(r.note ?? ''),
+    createdAt: String(r.created_at),
+  }))
+}
+
 export type StudentDrill = {
   answered: number
   correct: number

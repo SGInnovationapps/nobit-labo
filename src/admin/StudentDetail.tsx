@@ -4,6 +4,7 @@ import { RecordBand } from '../home/RecordBand'
 import { gradeLabel } from '../lib/steps'
 import { addSupportComment, deleteSupportComment, loadStudentDetail, sendSeen } from './adminApi'
 import { StudentDrill } from './StudentDrill'
+import { CoinAdjust } from './CoinAdjust'
 import type { StudentDetail } from './adminApi'
 import { COMMENT_MAX, coinAmountLabel, coinReasonLabel, commentError, lastStudyLabel, lineStatusText, monthDays, STATE_TEXT, stateOf, subjectBreakdown, SUPPORT_TEMPLATES, weeklyDays } from './studentModel'
 
@@ -20,12 +21,14 @@ type ViewProps = {
   onSend: (body: string) => void
   onSeen?: () => void
   onDelete: (id: string) => void
+  /** コインを調整したあと、生徒の詳細を読み直す（運営だけ） */
+  onReload?: () => void
 }
 
 const RARITY_TEXT = { normal: 'ノーマル', rare: 'レア', super_rare: 'スーパーレア' } as const
 const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
 
-export function StudentDetailView({ detail, today, canComment, isOperator = false, busy, error, onBack, onSend, onSeen, onDelete }: ViewProps) {
+export function StudentDetailView({ detail, today, canComment, isOperator = false, busy, error, onBack, onSend, onSeen, onDelete, onReload }: ViewProps) {
   const { student: s } = detail
   const [body, setBody] = useState('')
   const [shown, setShown] = useState<string | null>(null)
@@ -164,6 +167,7 @@ export function StudentDetailView({ detail, today, canComment, isOperator = fals
               ))}
             </ul>
           )}
+          <CoinAdjust studentId={s.userId} balance={detail.coinBalance ?? 0} onDone={() => onReload?.()} />
         </section>
       )}
 
@@ -314,6 +318,7 @@ export default function StudentDetailPage({ clubId, studentId, myId, canComment,
       onSend={(body) => void run(() => addSupportComment(clubId, studentId, myId, body))}
       onSeen={() => void run(async () => { await sendSeen(studentId) })}
       onDelete={(id) => void run(() => deleteSupportComment(id))}
+      onReload={() => void load()}
     />
   )
 }

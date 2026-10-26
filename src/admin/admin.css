@@ -301,3 +301,10 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .adm-drill-state.lv4 { color: #0b7a5a; }
 .adm-row-stack { padding: 10px 0; border-top: 1px solid var(--adm-line, #e1e5ed); }
 .adm-drill-q { word-break: auto-phrase; }
+
+/* 運営のコイン調整と操作履歴（画面10） */
+.adm-adjust { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--adm-line, #e1e5ed); }
+.adm-adjust-open { min-height: 44px; }
+.adm-adjust-form { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.adm-adjust .adm-h3 { margin: 20px 0 8px; font-size: 15px; font-weight: 700; }
+.adm-notice { margin: 10px 0 0; font-size: 14px; font-weight: 700; color: #0b7a5a; }

@@ -172,6 +172,17 @@ export function coinNote(coins: number): string {
   return coins > 0 ? `＋${coins}コイン` : ''
 }
 
+/** 今回の記録で達成したクエストの一言。なければ空 */
+export function questNote(quests: ReadonlyArray<{ key: string; coins: number }>): string {
+  if (quests.length === 0) return ''
+  const coins = quests.reduce((n, q) => n + q.coins, 0)
+  const names = quests
+    .map((q) => QUEST_NAME[q.key as keyof typeof QUEST_NAME])
+    .filter((n): n is string => Boolean(n))
+  const head = names.length === 1 ? `クエスト達成「${names[0]}」` : `クエストを${quests.length}つ達成`
+  return coins > 0 ? `${head}　＋${coins}コイン` : head
+}
+
 /** タイマー開始前の内容の検証（任意。書くなら 60 文字まで） */
 export function validateContent(raw: string): { ok: true; value: string | null } | { ok: false; message: string } {
   const value = raw.trim()
@@ -253,11 +264,17 @@ export function recordedTime(tags: ReadonlyArray<TagRecord>, subject: string): s
 
 export const QUEST_MINUTES = 15
 export const QUEST_SUBJECTS = 2
+/** ［確定］クエスト1つの報酬 */
+export const QUEST_COINS = 3
+/** ［確定］その日のクエストを全部達成したときのボーナス */
+export const QUEST_ALL_BONUS = 5
 
-export type Quest = { key: 'assigned' | 'minutes' | 'subjects'; label: string; done: boolean; progress: string }
+export type QuestKey = 'assigned' | 'minutes' | 'subjects'
+export type Quest = { key: QuestKey; label: string; done: boolean; progress: string }
 
 /**
- * デイリークエスト［仮］：配信タスク1つ・合計15分・2教科。コインは付けない（表示だけ）。
+ * デイリークエスト：配信タスク1つ・合計15分・2教科。1つ達成で3コイン、
+ * その日の分を全部達成でさらに5コイン（DB の private.evaluate_quests と同じ数え方）。
  * 今日の配信タスクがないときは、その項目を出さない（分母に入れない）。
  */
 export function questsOf(input: {
@@ -287,6 +304,28 @@ export function questsOf(input: {
 
 export function questSummary(quests: ReadonlyArray<Quest>): string {
   return `${quests.filter((q) => q.done).length} / ${quests.length}`
+}
+
+/** 今日のクエストで、まだ取っていないコイン。全部達成のボーナスも入れる */
+export function questCoinsLeft(quests: ReadonlyArray<Quest>): number {
+  if (quests.length === 0) return 0
+  const left = quests.filter((q) => !q.done).length
+  return left * QUEST_COINS + (left > 0 ? QUEST_ALL_BONUS : 0)
+}
+
+/** 今日のクエストで、すでに取ったコイン */
+export function questCoinsEarned(quests: ReadonlyArray<Quest>): number {
+  if (quests.length === 0) return 0
+  const done = quests.filter((q) => q.done).length
+  return done * QUEST_COINS + (done === quests.length ? QUEST_ALL_BONUS : 0)
+}
+
+/** クエストの名前（DB から返る key を、画面の言葉に） */
+export const QUEST_NAME: Record<QuestKey | 'all', string> = {
+  assigned: '配信タスクを1つ完了',
+  minutes: `合計${QUEST_MINUTES}分、学習する`,
+  subjects: `${QUEST_SUBJECTS}教科を記録`,
+  all: 'クエストを全部達成',
 }
 
 export type TicketInfo = {

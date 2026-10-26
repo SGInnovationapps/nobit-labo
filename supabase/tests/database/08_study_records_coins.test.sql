@@ -35,7 +35,7 @@ select is((public.complete_task('33333333-3333-3333-3333-3333333333c1') ->> 'coi
 select is((public.complete_task('33333333-3333-3333-3333-3333333333c1') ->> 'coins_granted')::int, 0, '二重に完了してもコインは増えない');
 select is((select current_days::int from public.streaks), 1, 'タグとタスクが同じ日なら連続記録は 1 日');
 select is((select completed_count::int from public.daily_activity), 3, '記録の帯の数は 3（タグ 2 + タスク 1）');
-select is((select balance from public.coin_balances), 11, 'コイン残高は台帳の合計（1 + 10）');
+select is((select balance from public.coin_balances), 17, 'コイン残高は台帳の合計（学習した日 1 + 配信タスク 10 + クエスト 3×2）');
 
 -- ===== c1：タイマー（内容なし）=====
 select is((public.start_study_timer('国語') ->> 'record_id') is not null, true, 'タイマーを始められる');
@@ -52,7 +52,7 @@ select lives_ok($$select public.start_study_timer('社会', '年表'); select pu
 select lives_ok($$select public.start_study_timer('社会', '地図'); select public.stop_study_timer()$$, '内容つき 3 件目');
 select lives_ok($$select public.start_study_timer('社会', '用語')$$, '内容つき 4 件目を開始');
 select is((public.stop_study_timer() ->> 'coins_granted')::int, 0, '内容つき 4 件目：コインは付かない');
-select is((select balance from public.coin_balances), 11, '残高：学習した日 1 + 配信タスク 10（内容の報酬はなし）');
+select is((select balance from public.coin_balances), 17, '残高：学習した日 1 + 配信タスク 10 + クエスト「配信タスク」「2教科」3×2（内容の報酬はなし）');
 select is((select current_days::int from public.streaks), 1, '何件記録しても連続記録は 1 日');
 
 -- 取り消し

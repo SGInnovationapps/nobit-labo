@@ -26,11 +26,11 @@ do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000
 select lives_ok($$select public.complete_task('33333333-3333-3333-3333-3333333333e1')$$, '配信タスクを完了できる');
 select lives_ok($$select public.record_study_tag('数学')$$, '教科を記録できる');
 select lives_ok($$select public.set_study_content((select id from public.study_records where subject = '数学'), '二次関数')$$, '内容を書ける');
-select is((select balance from public.coin_balances), 11, '台帳の残高は、配信タスク10＋学習した日1');
-select is((select count(*)::int from public.coin_transactions), 2, '台帳は2行（配信タスク・学習した日）');
+select is((select balance from public.coin_balances), 17, '台帳の残高は、配信タスク10＋学習した日1＋デイリークエスト3×2');
+select is((select count(*)::int from public.coin_transactions), 4, '台帳は4行（配信タスク・学習した日・クエスト2つ）');
 -- 二重完了で増えない
 select lives_ok($$select public.complete_task('33333333-3333-3333-3333-3333333333e1')$$, '同じタスクを重ねて完了しても失敗しない');
-select is((select balance from public.coin_balances), 11, '二重に付与されない');
+select is((select balance from public.coin_balances), 17, '二重に付与されない');
 
 -- クラブ管理者：記録の数と完了した配信タスクは見える。教科・内容・コインは見えない
 reset role;
@@ -46,7 +46,7 @@ select is((select count(*)::int from public.coin_balances), 0, 'クラブ管理�
 reset role;
 set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000e3"}', true); end $$;
-select is((select balance from public.coin_balances where student_id = '00000000-0000-0000-0000-0000000000e1'), 11, '運営はコインの残高を読める');
+select is((select balance from public.coin_balances where student_id = '00000000-0000-0000-0000-0000000000e1'), 17, '運営はコインの残高を読める');
 
 -- 他クラブのクラブ管理者は、このクラブの記録の数も読めない
 reset role;
