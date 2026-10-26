@@ -1,0 +1,848 @@
+/* =============================================================================
+   画面全体の見た目。
+   スマホを基本にして、860px以上のときだけPC向けの配置に切り替える。
+   ============================================================================= */
+
+:root {
+  --bg: #f4f5f2;
+  --surface: #ffffff;
+  --line: #dcdfd9;
+  --text: #1b1f24;
+  --text-sub: #575e66;
+  --accent: #1e4e9c;
+  --warn: #8a4209;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'BIZ UDPGothic', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  line-height: 1.6;
+  line-break: strict;   /* 行の頭に「ょ」「。」などが来ないように */
+}
+
+.loading,
+.notice {
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.notice h1 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.notice p {
+  margin: 0 0 8px;
+}
+
+.small {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+/* --- 診断画面（/dev/） ------------------------------------------------------ */
+.check {
+  padding: 24px 16px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.check h1 { font-size: 20px; margin: 0 0 8px; }
+.check h2 { font-size: 16px; margin: 24px 0 8px; }
+
+.check dl {
+  display: grid;
+  grid-template-columns: minmax(8em, max-content) 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.check dt { color: var(--text-sub); }
+.check dd { margin: 0; overflow-wrap: anywhere; }
+
+.check button {
+  font: inherit;
+  padding: 10px 20px;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+}
+
+.ok { color: #1d6b35; font-weight: bold; }
+.ng { color: var(--warn); font-weight: bold; }
+
+/* --- ログイン・招待コード（js/auth-line.js）・ログイン後の仮の画面 ----------------- */
+.notice .auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 320px;
+  margin: 16px auto 8px;
+}
+
+.notice button {
+  font: inherit;
+  padding: 12px 20px;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+}
+
+.notice button.secondary {
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+}
+
+.auth-form label { display: block; margin: 8px 0 6px; }
+
+.auth-form input {
+  display: block;
+  margin: 0 auto;
+  font: inherit;
+  font-size: 22px;
+  letter-spacing: 0.2em;
+  text-align: center;
+  width: 100%;
+  max-width: 320px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* --- 保護者画面（js/parent-home.js、工程4-1〜4-4）-------------------------------
+   押せる所は高さ44px以上。下のタブは画面の下に固定（iPhone の下のバーの分もあける）。 */
+.parent {
+  max-width: 640px;
+  margin: 0 auto;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+.p-header {
+  padding: 16px 16px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.p-club { margin: 0 0 8px; font-size: 18px; font-weight: bold; }
+
+.p-kids { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.p-kid {
+  font: inherit;
+  min-height: 44px;
+  padding: 8px 16px;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 22px;
+}
+
+.p-kid[aria-pressed="true"] { color: #fff; background: var(--accent); }
+
+.p-main { padding: 12px 16px; display: grid; gap: 12px; }
+.p-main > * { min-width: 0; }   /* 長い題名などで、中身が画面の幅より広がらないように */
+
+.p-card {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.p-card h2 { margin: 0 0 8px; font-size: 16px; }
+.p-card p { margin: 0 0 4px; }
+
+.p-next-date { font-size: 22px; font-weight: bold; }
+.p-changed { color: var(--warn); font-weight: bold; }
+
+.p-list { list-style: none; margin: 0; padding: 0; }
+
+.p-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.p-row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-row-sub { flex: none; font-size: 13px; color: var(--text-sub); }
+
+.p-more { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }
+
+.p-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px 16px;
+  font: inherit;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  text-decoration: none;
+  width: 100%;
+}
+
+.p-button.secondary { color: var(--accent); background: var(--surface); border: 1px solid var(--accent); }
+
+.p-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.p-big {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+  padding: 12px;
+  font-size: 17px;
+  font-weight: bold;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-decoration: none;
+  text-align: center;
+}
+
+.p-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.p-tab {
+  position: relative;
+  flex: 1;
+  max-width: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 56px;
+  font-size: 14px;
+  color: var(--text-sub);
+  text-decoration: none;
+}
+
+.p-tab[aria-current="page"] { color: var(--accent); font-weight: bold; box-shadow: inset 0 3px 0 var(--accent); }
+
+.p-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 20px;
+  color: #fff;
+  background: var(--warn);
+  border-radius: 10px;
+}
+
+/* --- 入会申込フォーム（js/apply-form.js、工程4-5・4-6）----------------------------
+   押せる所・入力欄は高さ44px以上。文字は16px以上（iPhone が勝手に拡大しないように）。 */
+.parent.no-tabs { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+
+.af { display: grid; gap: 12px; }
+.af p { text-wrap: pretty; }   /* 最後の行に1文字だけ残らないように（使えない端末では無視される） */
+.af-title { margin: 4px 0 0; font-size: 20px; }
+.af-lead { margin: 0; }
+
+.af-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.af-steps li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 3px solid var(--line);
+  text-align: center;
+}
+
+.af-steps li span { font-weight: bold; }
+.af-steps li.done { border-top-color: #7d9cc9; }
+.af-steps li[aria-current="step"] { color: var(--accent); font-weight: bold; border-top-color: var(--accent); }
+
+.af-card {
+  margin: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.af-card legend { padding: 0 4px; font-weight: bold; }
+.af-card h3 { margin: 0 0 8px; font-size: 16px; }
+.af-card p { margin: 0 0 4px; }
+
+.af-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.af-field { margin-bottom: 12px; min-width: 0; }
+.af-field label,
+.af-label { display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-sub); }
+
+.af-field input,
+.af-field > select,
+.af-birth select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.af-field input[aria-invalid="true"],
+.af-field > select[aria-invalid="true"],
+.af-birth select[aria-invalid="true"] { border: 2px solid var(--warn); }
+
+.af-birth { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.af-birth select:first-child { grid-column: 1 / -1; }   /* 年は1行に。月・日は2行目に並べる */
+
+.af-grade { min-height: 1.6em; margin: 6px 0 0; font-weight: bold; color: var(--accent); }
+.af-err { margin: 4px 0 0; font-size: 14px; font-weight: bold; color: var(--warn); }
+
+.af-notice {
+  margin: 0;
+  padding: 12px;
+  font-weight: bold;
+  color: var(--warn);
+  background: #fbefe3;
+  border-radius: 8px;
+}
+
+.af-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: bold;
+}
+
+.af-check input { width: 22px; height: 22px; flex: none; }
+
+.af-terms {
+  max-height: 45vh;
+  overflow: auto;
+  padding: 12px;
+  font-size: 14px;
+  white-space: pre-wrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.af-summary {
+  display: grid;
+  grid-template-columns: 5em 1fr;
+  gap: 2px 8px;
+  margin: 0 0 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.af-summary dt { color: var(--text-sub); }
+.af-summary dd { margin: 0; overflow-wrap: anywhere; }
+
+.af-actions { display: grid; gap: 0; }
+
+.af-link {
+  min-height: 44px;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+}
+
+.af-done h2 { margin: 0 0 8px; font-size: 18px; color: #1d6b35; }
+
+@media (max-width: 360px) {
+  .af-two { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* --- 予定（js/parent-schedule.js、工程4-7）-------------------------------------
+   見本の画面と同じく、日付・時間と会場・状態の印を1行に並べる。押せる所は高さ44px以上。 */
+.ps h2 { margin-bottom: 12px; }
+
+.ps-months { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+
+.ps-month {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  font: inherit;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid #c9cdc6;
+  border-radius: 10px;
+}
+
+.ps-month[aria-pressed="true"] { color: #fff; background: var(--accent); border-color: var(--accent); }
+
+.ps-mark {
+  padding: 1px 6px;
+  font-size: 11px;
+  color: #3f454c;
+  background: #eceeea;
+  border-radius: 4px;
+}
+
+.ps-banner { margin: 0 0 12px; padding: 10px 12px; font-size: 14px; border-radius: 8px; }
+.ps-banner.is-confirmed { background: #e7eef8; }
+.ps-banner.is-waiting { color: #6e3507; background: #fbefe3; }
+.ps-when { display: inline-block; }   /* 「（○月○日に確定）」は途中で折り返さない */
+
+.ps-list { list-style: none; margin: 0 -16px; padding: 0; }
+
+.ps-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px;
+  border-top: 1px solid #eceeea;
+}
+
+.ps-row.is-today { background: #f7f9fc; }
+
+.ps-date { width: 52px; flex: none; display: flex; flex-direction: column; align-items: center; line-height: 1.3; }
+.ps-date b { font-size: 18px; }
+.ps-date small { font-size: 12px; color: var(--text-sub); }
+.ps-date.is-cancelled b { color: var(--text-sub); text-decoration: line-through; }
+
+.ps-body { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 14px; line-height: 1.4; }
+.ps-body .is-cancelled { color: var(--text-sub); text-decoration: line-through; }
+.ps-sub { color: var(--text-sub); }
+.ps-note { color: var(--warn); font-size: 13px; }
+
+.ps-badge {
+  flex: none;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.ps-badge.b-done  { color: #0f6b63; background: #e3f2f0; }
+.ps-badge.b-muted { color: #3f454c; background: #eceeea; }
+.ps-badge.b-info  { color: var(--accent); background: #e7eef8; }
+.ps-badge.b-warn  { color: #8a4209; background: #fbefe3; }
+.ps-badge.b-today { color: var(--accent); background: var(--surface); border: 1.5px solid var(--accent); }
+.ps-badge.b-plain { font-weight: normal; color: var(--text-sub); }
+
+.ps-empty { margin: 8px 0 0; }
+
+/* --- お知らせ（js/parent-notices.js、工程4-8）------------------------------------
+   未読は ● と太字。本文は改行をそのまま出す。 */
+.pn-list { list-style: none; margin: 0 -16px; padding: 0; }
+
+.pn-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 16px;
+  color: var(--text);
+  text-decoration: none;
+  border-top: 1px solid #eceeea;
+}
+
+.pn-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: #b4410c; }
+.pn-dot[hidden] { display: block; visibility: hidden; }
+.pn-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn-row.unread .pn-title { font-weight: bold; }
+.pn-date { flex: none; font-size: 13px; color: var(--text-sub); }
+
+.pn-article h2 { margin: 4px 0 12px; font-size: 18px; line-height: 1.5; }
+.pn-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pn-body a { color: var(--accent); }
+
+/* --- 登録情報（js/parent-profile.js）・規約の同意（js/parent-consent.js）、工程4-9 ----------
+   入力欄・チェック・規約の本文は、入会申込フォーム（.af-*）と同じ見た目を使う。 */
+.pf { display: grid; gap: 12px; }
+
+.pf-dl {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr);
+  gap: 6px 8px;
+  margin: 0 0 8px;
+}
+
+.pf-dl dt { color: var(--text-sub); }
+.pf-dl dd { margin: 0; overflow-wrap: anywhere; }
+
+.pf-ok {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  font-weight: bold;
+  color: #0f6b63;
+  background: #e3f2f0;
+  border-radius: 8px;
+}
+
+.pf-terms { margin-top: 12px; }
+
+.pc { display: grid; gap: 10px; }
+.pc p { margin: 0; }
+
+
+/* =============================================================================
+   職員の画面（工程5-1・5-2。js/staff-app.js）
+   スマホでは上にメニューを横並び、860px以上では左にメニューを縦に並べる。
+   ============================================================================= */
+.staff { min-height: 100vh; }
+
+.s-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.s-club { margin: 0; font-size: 18px; font-weight: bold; }
+.s-who { margin: 0; font-size: 14px; color: var(--text-sub); }
+.s-logout {
+  margin-left: auto;
+  min-height: 40px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.s-nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.s-nav ul {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 12px;
+  list-style: none;
+  overflow-x: auto;           /* 狭い画面では横にすべらせる */
+  -webkit-overflow-scrolling: touch;
+}
+.s-nav a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  white-space: nowrap;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 8px;
+}
+.s-nav a[aria-current="page"] { color: #fff; background: var(--accent); font-weight: bold; }
+.s-close {
+  display: block;
+  width: calc(100% - 24px);
+  min-height: 44px;
+  margin: 0 12px 8px;
+  font: inherit;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.s-main { padding: 12px 16px 32px; display: grid; gap: 12px; align-content: start; outline: none; }
+.s-main > * { min-width: 0; }
+
+.s-card {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.s-card h2 { margin: 0 0 6px; font-size: 17px; }
+.s-card p { margin: 0 0 6px; }
+
+.s-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  font: inherit;
+  color: #fff;
+  text-decoration: none;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.s-button.secondary { color: var(--accent); background: var(--surface); }
+
+/* やること */
+.s-todo { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.s-todo-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  padding: 12px 14px;
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--line);
+  border-radius: 8px;
+}
+.s-todo-row.is-busy { border-left-color: var(--warn); }
+.s-todo-row:hover, .s-todo-row:focus-visible { background: #f0f4fa; }
+.s-todo-label { font-weight: bold; }
+.s-todo-value { font-size: 18px; font-weight: bold; color: var(--text-sub); }
+.s-todo-row.is-busy .s-todo-value { color: var(--warn); }
+.s-todo-note, .s-todo-list { grid-column: 1 / -1; font-size: 13px; color: var(--text-sub); }
+.s-todo-list { margin: 4px 0 0; padding-left: 1.2em; }
+
+/* 今日の担当クラス */
+.s-list { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.s-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.s-row-time { font-weight: bold; }
+.s-row-sub { display: block; font-size: 13px; color: var(--text-sub); }
+.s-row-note { grid-column: 1 / -1; font-size: 13px; color: var(--warn); }
+.s-row.is-cancelled .s-row-time, .s-row.is-cancelled .s-row-main { text-decoration: line-through; color: var(--text-sub); }
+.s-tag { padding: 0 8px; font-size: 13px; font-weight: bold; border: 1px solid currentColor; border-radius: 999px; }
+.s-tag.is-warn { color: var(--warn); }
+
+/* 入会承認・紙の申込書からの登録（工程5-4・5-5。js/staff-admission.js） */
+.sa { display: grid; gap: 12px; }
+.sa .s-card > .s-button { margin-top: 6px; }
+.sa-family h3 { margin: 0 0 8px; font-size: 16px; }
+.sa-kids { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.sa-kid { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; }
+.sa-kid p { margin: 0 0 4px; }
+.sa-kid-name { font-size: 17px; font-weight: bold; }
+.sa-kid-name .small { font-weight: normal; margin-left: 4px; }
+.sa-warn {
+  padding: 8px 10px;
+  color: var(--warn);
+  background: #fbf1e6;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.sa-approve { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+.sa-class { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.sa-class span { flex: none; white-space: nowrap; }
+.sa-class select {
+  min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 8px;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.sa-class select[aria-invalid="true"] { border-color: var(--warn); }
+.sa-link {
+  min-height: 44px;
+  padding: 0 4px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+a.sa-link { display: inline-flex; align-items: center; }
+.sa-confirm { margin-top: 8px; padding: 10px 12px; background: #fbf1e6; border-radius: 8px; }
+.sa-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.s-button.sa-danger { background: var(--warn); border-color: var(--warn); }
+.s-button:disabled { opacity: .6; cursor: default; }
+
+.sa-number { text-align: center; }
+.sa-no {
+  margin: 8px 0 !important;
+  font-size: 72px;
+  font-weight: bold;
+  line-height: 1.1;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.sa-no-name { font-size: 17px; font-weight: bold; }
+.sa-number .sa-actions { justify-content: center; margin-top: 12px; }
+.sp-form { display: grid; gap: 12px; max-width: 720px; }
+.sp-form .af-card { margin: 0; }
+
+/* 会員名簿（工程5-6。js/staff-roster.js） */
+.sr { display: grid; gap: 12px; }
+.sr-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 8px 0; }
+.sr-filters label { display: grid; gap: 2px; min-width: 0; font-size: 13px; color: var(--text-sub); }
+.sr-filters select, .sr-filters input {
+  min-height: 44px;
+  min-width: 0;
+  width: 100%;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.sr-q { grid-column: 1 / -1; }
+.sr-list-card { padding: 4px 0; }
+.sr-list { margin: 0; padding: 0; list-style: none; }
+.sr-item + .sr-item { border-top: 1px solid var(--line); }
+.sr-empty { padding: 16px; color: var(--text-sub); }
+.sr-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 16px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.sr-row:hover, .sr-row:focus-visible { background: #f0f4fa; }
+.sr-item.is-open .sr-row { background: #f0f4fa; }
+.sr-no { font-variant-numeric: tabular-nums; color: var(--text-sub); }
+.sr-name { font-weight: bold; min-width: 0; }
+.sr-kana { display: block; font-size: 12px; font-weight: normal; color: var(--text-sub); }
+.sr-grade { font-size: 14px; }
+.sr-class { grid-column: 2 / -1; font-size: 14px; color: var(--text-sub); }
+.sr-tags { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.sr-tags:empty { display: none; }
+.sr-detail { padding: 4px 16px 16px; }
+.sr-detail h3 { margin: 12px 0 6px; font-size: 15px; }
+
+/* 設定（工程5-8。js/staff-settings.js） */
+.st { display: grid; gap: 12px; }
+.st .s-card > .s-button { margin: 4px 8px 4px 0; }
+.st-classes { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.st-class {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.st-class.is-off { background: #f6f6f4; }
+.st-class > .st-form { flex: 1 1 100%; margin: 0; }
+.st-class-main { min-width: 0; flex: 1 1 240px; }
+.st-class-main p { margin: 0; }
+.st-class-name { font-weight: bold; }
+.st-class-name .s-tag { margin-left: 8px; font-weight: normal; }
+.st-form { margin: 12px 0 0; }
+.st-form h3 { margin: 0 0 8px; }
+.st-grades { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.st-grade { display: flex; align-items: center; gap: 6px; }
+.st-grade select {
+  min-height: 44px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.st-grade select[aria-invalid="true"] { border: 2px solid var(--warn); }
+.st-terms .af-terms { margin: 8px 0; }
+.st-terms textarea {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  resize: vertical;
+}
+
+/* --- PC向け（860px以上） --------------------------------------------------- */
+@media (min-width: 860px) {
+  .notice {
+    max-width: 640px;
+    margin: 48px auto;
+    padding: 40px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  /* 職員の画面：左にメニュー */
+  .staff {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .s-header { grid-column: 1 / -1; padding: 12px 24px; }
+  .s-nav { border-bottom: 0; border-right: 1px solid var(--line); }
+  .s-nav ul { flex-direction: column; padding: 12px; overflow: visible; }
+  .s-nav a { white-space: normal; }
+  .s-main { padding: 24px 32px 48px; max-width: 960px; }
+  .sr-filters { grid-template-columns: repeat(3, minmax(0, 1fr)) 2fr; }
+  .sr-q { grid-column: auto; }
+  .sr-row { grid-template-columns: 4.5em minmax(0, 1.6fr) 7em minmax(0, 1fr) minmax(0, 1.4fr); align-items: center; }
+  .sr-class, .sr-tags { grid-column: auto; }
+}
