@@ -12,18 +12,22 @@ export type CollectionData = {
   extraDrawnToday: boolean
   /** 条件でもらえるバッジ（獲得日・進み具合つき） */
   badges: BadgeRow[]
+  /** 週の目標のごほうびのガチャ（今週か先週の分）。読めなかったときは null */
+  weeklyReward: { available: boolean; week: string | null; thisWeek: string } | null
 }
 
 export async function loadCollection(): Promise<CollectionData> {
   const today = jstDate(Date.now())
-  const [streakRes, coinRes, itemsRes, ownedRes, activityRes, drawRes, badgeRes] = await Promise.all([
+  const [streakRes, coinRes, itemsRes, ownedRes, activityRes, drawRes, badgeRes, weekRes] = await Promise.all([
     supabase.from('streak_status').select('current_days, longest_days').maybeSingle(),
     supabase.from('coin_balances').select('balance').maybeSingle(),
     supabase.from('items').select('id, name, category, rarity, sort_order').eq('active', true),
     supabase.from('user_items').select('item_id, acquired_at, equipped'),
     supabase.from('daily_activity').select('completed_count').eq('activity_date', today).maybeSingle(),
-    supabase.from('gacha_draws').select('id, is_extra').eq('drawn_on', today),
+    // ごほうびで引いた分は、その日の無料・追加に数えない
+    supabase.from('gacha_draws').select('id, is_extra').eq('drawn_on', today).is('reward_week', null),
     supabase.rpc('my_badges'),
+    supabase.rpc('my_week'),
   ])
   for (const r of [streakRes, coinRes, itemsRes, ownedRes, activityRes, drawRes, badgeRes]) if (r.error) throw r.error
 
@@ -44,16 +48,30 @@ export async function loadCollection(): Promise<CollectionData> {
       code: b.code as string, name: b.name as string, category: b.category as BadgeCategory, rarity: b.rarity as Rarity,
       goal: b.goal as number, condition: b.condition as string, earnedOn: (b.earned_on as string | null) ?? null, progress: b.progress as number,
     })),
+    weeklyReward: weekOf(weekRes.error ? null : weekRes.data),
+  }
+}
+
+function weekOf(d: unknown): CollectionData['weeklyReward'] {
+  if (!d || typeof d !== 'object') return null
+  const r = d as Record<string, unknown>
+  if (typeof r.week_start !== 'string') return null
+  return {
+    available: r.reward_available === true,
+    week: typeof r.reward_week === 'string' ? r.reward_week : null,
+    thisWeek: r.week_start,
   }
 }
 
 export type GachaResult = {
   itemId: string; name: string; category: Category; rarity: Rarity
   duplicate: boolean; coinsGranted: number; drawnAt: string; extra: boolean
+  /** 週の目標のごほうびで引いた */
+  reward: boolean
 }
 
-export type GachaErrorCode = 'no_record_today' | 'already_drawn' | 'free_draw_first' | 'already_drawn_extra' | 'not_enough_coins' | 'other'
-const GACHA_CODES: ReadonlyArray<GachaErrorCode> = ['no_record_today', 'already_drawn_extra', 'already_drawn', 'free_draw_first', 'not_enough_coins']
+export type GachaErrorCode = 'no_record_today' | 'already_drawn' | 'free_draw_first' | 'already_drawn_extra' | 'not_enough_coins' | 'no_weekly_reward' | 'other'
+const GACHA_CODES: ReadonlyArray<GachaErrorCode> = ['no_record_today', 'already_drawn_extra', 'already_drawn', 'free_draw_first', 'not_enough_coins', 'no_weekly_reward']
 
 export class GachaError extends Error {
   code: GachaErrorCode
@@ -63,7 +81,7 @@ export class GachaError extends Error {
   }
 }
 
-async function callGacha(fn: 'draw_gacha' | 'draw_gacha_extra'): Promise<GachaResult> {
+async function callGacha(fn: 'draw_gacha' | 'draw_gacha_extra' | 'draw_gacha_reward'): Promise<GachaResult> {
   const { data, error } = await supabase.rpc(fn)
   if (error) {
     const m = error.message ?? ''
@@ -74,12 +92,15 @@ async function callGacha(fn: 'draw_gacha' | 'draw_gacha_extra'): Promise<GachaRe
     itemId: d.item_id as string, name: d.name as string, category: d.category as Category, rarity: d.rarity as Rarity,
     duplicate: d.duplicate as boolean, coinsGranted: (d.coins_granted as number) ?? 0, drawnAt: d.drawn_at as string,
     extra: (d.extra as boolean | undefined) ?? false,
+    reward: (d.reward as boolean | undefined) ?? false,
   }
 }
 
 export const drawGacha = () => callGacha('draw_gacha')
 /** 無料の1回のあと、コインで追加の1回 */
 export const drawGachaExtra = () => callGacha('draw_gacha_extra')
+/** 週の目標を達成した週の、ごほうびの1回（コインなし・その日の記録がなくても引ける） */
+export const drawGachaReward = () => callGacha('draw_gacha_reward')
 
 /** 設定する／外す。設定中になったら true */
 export async function equipItem(itemId: string): Promise<boolean> {

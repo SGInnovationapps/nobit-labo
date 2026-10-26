@@ -17,11 +17,13 @@ import { TagPanel } from './TagPanel'
 import { TicketPanel } from './TicketPanel'
 import { TimerPanel } from './TimerPanel'
 import { TimerSheet } from './TimerSheet'
+import { WeekGoalPanel } from './WeekGoalPanel'
+import { newWeekNote, targetChangedNote } from './weekModel'
 import {
   cancelStudyTimer, completeTask, markResumeSeen, loadHome, pauseFocusSession, recordStudyTag, resumeFocusSession,
-  setStudyContent, startFocusSession, startStudyTimer, stopStudyTimer, applyRestTicket,
+  setStudyContent, setWeeklyTarget, startFocusSession, startStudyTimer, stopStudyTimer, applyRestTicket,
 } from './homeApi'
-import type { HomeData, StudyResult } from './homeApi'
+import type { CompleteResult, HomeData, StudyResult } from './homeApi'
 import type { HomeTask } from './homeModel'
 import {
   addDays, BAND_NOTE, buildBand, buildWeek, homeStateOf, isNewSupport, nextMilestone, questsOf, RECORD_PREVIEW, recordsOpenFor, shortFirst, stateCheer, ticketErrorMessage,
@@ -33,6 +35,8 @@ type Props = {
   /** 生徒の学年（7 = 中1 … 12 = 高3）。ドリルの出題の範囲の初期値に使う */
   grade?: number | null
   onTab?: (tab: Tab) => void; onGacha?: () => void
+  /** 週の目標のごほうびのガチャ（コレクションで開く） */
+  onRewardGacha?: () => void
 }
 
 /** 全面のシート（02）に出す内容。入口（タスク・教科・タイマー）を問わず同じ */
@@ -53,7 +57,7 @@ export type TagPanelState = { subject: string; recordId: string; recordedAt: str
 const SAVE_FAIL = '保存できませんでした。通信を確認して、もう一度お試しください。'
 
 /** 01 ホーム・今日のクエスト（v1.7：状態ごとの面、その下に「教科を記録する」「タスクを見る」、今日の記録、この7日間。残りは下に） */
-export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: Props) {
+export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onRewardGacha }: Props) {
   const [data, setData] = useState<HomeData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
@@ -72,6 +76,9 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
   const [timerError, setTimerError] = useState<string | null>(null)
   const [ticketBusy, setTicketBusy] = useState(false)
   const [ticketError, setTicketError] = useState<string | null>(null)
+  const [weekBusy, setWeekBusy] = useState(false)
+  const [weekError, setWeekError] = useState<string | null>(null)
+  const [weekNotice, setWeekNotice] = useState<string | null>(null)
   const [drillOpen, setDrillOpen] = useState(false)
   // ドリルのタスクから始めたとき。解き終えると、そのタスクが完了になる
   const [drillTask, setDrillTask] = useState<{ id: string; subject: string } | null>(null)
@@ -124,7 +131,26 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
   }, [data])
 
   const noticeOf = (r: StudyResult) =>
-    [`記録しました`, coinNote(r.coinsGranted), questNote(r.newQuests)].filter((x) => x !== '').join('　')
+    [`記録しました`, coinNote(r.coinsGranted), questNote(r.newQuests), newWeekNote(r.newWeek)].filter((x) => x !== '').join('　')
+  /** クエスト・週の目標の達成だけを伝える一文（なければ空） */
+  const achievedNote = (r: StudyResult | CompleteResult) =>
+    [questNote(r.newQuests), newWeekNote(r.newWeek)].filter((x) => x !== '').join('　')
+
+  async function onSetTarget(days: number) {
+    setWeekBusy(true)
+    setWeekError(null)
+    setWeekNotice(null)
+    try {
+      const r = await setWeeklyTarget(days)
+      setWeekNotice(targetChangedNote(r.targetDays, r.appliesFrom))
+      await load()
+    } catch (e) {
+      console.error(e)
+      setWeekError(SAVE_FAIL)
+    } finally {
+      setWeekBusy(false)
+    }
+  }
 
   async function onComplete(id: string, title: string) {
     setPending(id)
@@ -132,6 +158,7 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
     try {
       const r = await completeTask(id)
       await load()
+      if (!r.alreadyCompleted && achievedNote(r)) setNotice(achievedNote(r))
       if (!r.alreadyCompleted && shouldShowSheet(r)) {
         setDone({ label: sheetLabel(r), title, completedAt: r.completedAt, currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name) })
       }
@@ -156,6 +183,7 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
     try {
       const r = await recordStudyTag(subject)
       await load()
+      if (achievedNote(r)) setNotice(achievedNote(r))
       if (r.recordId && r.recordedAt) setTagPanel({ subject, recordId: r.recordId, recordedAt: r.recordedAt, hasContent: false })
       if (shouldShowSheet(r) && r.recordedAt) {
         setDone({ label: sheetLabel(r), title: `${subject}を記録`, completedAt: r.recordedAt, currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name) })
@@ -256,7 +284,7 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
       else if (shouldShowSheet(r)) {
         setDone({ label: sheetLabel(r), title: `${subject}のタイマー`, completedAt: new Date().toISOString(), currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name) })
       }
-      setNotice([wasFocus ? focusNote(r) : noticeOf(r), wasFocus ? questNote(r.newQuests) : '']
+      setNotice([wasFocus ? focusNote(r) : noticeOf(r), wasFocus ? achievedNote(r) : '']
         .filter((x) => x !== '').join('　'))
     } catch (e) {
       console.error(e)
@@ -333,6 +361,11 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha }: P
       ticketBusy={ticketBusy}
       ticketError={ticketError}
       onUseTicket={(w) => void onUseTicket(w)}
+      weekBusy={weekBusy}
+      weekError={weekError}
+      weekNotice={weekNotice}
+      onSetTarget={(n) => void onSetTarget(n)}
+      onRewardGacha={onRewardGacha ? () => { setDone(null); onRewardGacha() } : undefined}
       grade={grade}
       drillOpen={drillOpen}
       drillTask={drillTask}
@@ -381,6 +414,11 @@ export type HomeViewProps = {
   ticketBusy?: boolean
   ticketError?: string | null
   onUseTicket?: (which: 'today' | 'yesterday') => void
+  weekBusy?: boolean
+  weekError?: string | null
+  weekNotice?: string | null
+  onSetTarget?: (days: number) => void
+  onRewardGacha?: () => void
   /** 生徒の学年（ドリルの出題の範囲の初期値） */
   grade?: number | null
   drillOpen?: boolean
@@ -684,6 +722,17 @@ export function HomeView(p: HomeViewProps) {
         )}
         <QuestPanel quests={questsOf({ tasks, tags: data.tags, timerSeconds: data.timerSeconds, timerSubjects: data.timerSubjects })} />
       </section>
+
+      {data.week && (
+        <WeekGoalPanel
+          info={data.week}
+          busy={p.weekBusy ?? false}
+          error={p.weekError ?? null}
+          notice={p.weekNotice ?? null}
+          onSetTarget={(n) => p.onSetTarget?.(n)}
+          onReward={p.onRewardGacha}
+        />
+      )}
 
       <p className="coin-line"><span className="coin-dot" aria-hidden="true" />コイン <span className="num coin-num">{data.coins}</span></p>
 

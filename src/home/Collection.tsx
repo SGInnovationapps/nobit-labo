@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { gradeLabel } from '../lib/steps'
-import { drawGacha, drawGachaExtra, equipItem, GachaError, loadCollection } from './collectionApi'
+import { drawGacha, drawGachaExtra, drawGachaReward, equipItem, GachaError, loadCollection } from './collectionApi'
 import type { CollectionData, GachaResult } from './collectionApi'
-import { acquiredLabel, badgeProgressLabel, BADGE_CATEGORY_LABEL, earnedOnLabel, equippedTitle, EXTRA_NOTE, extraGachaState, GACHA_NOTE, gachaState, groupCollection, RARITY_LABEL, splitBadges } from './collectionModel'
+import { acquiredLabel, badgeProgressLabel, BADGE_CATEGORY_LABEL, earnedOnLabel, equippedTitle, EXTRA_NOTE, extraGachaState, GACHA_NOTE, gachaState, groupCollection, RARITY_LABEL, rewardGachaNote, splitBadges } from './collectionModel'
+import type { GachaMode } from './collectionModel'
 import { GachaSheet } from './GachaSheet'
 import { ContactSetting } from './ContactSetting'
 import { TabBar } from './TabBar'
@@ -12,18 +13,19 @@ type Props = {
   displayName: string | null
   grade: number | null
   onTab: (tab: Tab) => void
-  /** ホームの完了の瞬間から「今日のガチャを引く」で来たとき、ガチャを開いた状態で始める */
-  autoGacha?: boolean
+  /** ホームから「今日のガチャを引く」（free）・「ごほうびのガチャを引く」（reward）で来たとき、ガチャを開いた状態で始める */
+  autoGacha?: GachaMode | null
   onAutoGacha?: () => void
 }
 
 const FAIL = '通信できませんでした。通信を確認して、もう一度お試しください。'
 
 /** コレクション（04）：読み込みとガチャの操作 */
-export function Collection({ displayName, grade, onTab, autoGacha = false, onAutoGacha }: Props) {
+export function Collection({ displayName, grade, onTab, autoGacha = null, onAutoGacha }: Props) {
   const [data, setData] = useState<CollectionData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [gachaOpen, setGachaOpen] = useState(false)
+  const [mode, setMode] = useState<GachaMode>('free')
   const [result, setResult] = useState<GachaResult | null>(null)
   const [equipped, setEquipped] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -40,15 +42,18 @@ export function Collection({ displayName, grade, onTab, autoGacha = false, onAut
   useEffect(() => { void load() }, [load])
   useEffect(() => {
     if (!autoGacha || !data) return
-    if (gachaState(data.recordsToday, data.drawnToday) === 'ready') { setResult(null); setGachaError(null); setGachaOpen(true) }
+    const ok = autoGacha === 'reward'
+      ? data.weeklyReward?.available === true
+      : gachaState(data.recordsToday, data.drawnToday) === 'ready'
+    if (ok) { setMode(autoGacha); setResult(null); setGachaError(null); setGachaOpen(true) }
     onAutoGacha?.()
   }, [autoGacha, data, onAutoGacha])
 
-  async function onDraw(extra = false) {
+  async function onDraw(kind: 'free' | 'extra' | 'reward') {
     setBusy(true)
     setGachaError(null)
     try {
-      setResult(await (extra ? drawGachaExtra() : drawGacha()))
+      setResult(await (kind === 'extra' ? drawGachaExtra() : kind === 'reward' ? drawGachaReward() : drawGacha()))
       setEquipped(false)
       await load()
     } catch (e) {
@@ -59,6 +64,7 @@ export function Collection({ displayName, grade, onTab, autoGacha = false, onAut
         : code === 'already_drawn' ? '今日はもう引きました。次は、あすの0:00からです。'
         : code === 'already_drawn_extra' ? '今日の追加ガチャは、もう引きました。'
         : code === 'not_enough_coins' ? 'コインが足りません。'
+        : code === 'no_weekly_reward' ? 'ごほうびのガチャは、もう引きました。'
         : code === 'free_draw_first' ? '先に、今日の無料ガチャを引いてください。' : FAIL,
       )
     } finally {
@@ -88,15 +94,17 @@ export function Collection({ displayName, grade, onTab, autoGacha = false, onAut
       data={data}
       error={error}
       gachaOpen={gachaOpen}
+      mode={mode}
       result={result}
       equipped={equipped}
       busy={busy}
       gachaError={gachaError}
-      onOpenGacha={() => { setResult(null); setGachaError(null); setGachaOpen(true) }}
+      onOpenGacha={() => { setMode('free'); setResult(null); setGachaError(null); setGachaOpen(true) }}
+      onOpenReward={() => { setMode('reward'); setResult(null); setGachaError(null); setGachaOpen(true) }}
       onCloseGacha={() => setGachaOpen(false)}
-      onDraw={() => void onDraw(false)}
-      onDrawExtra={() => void onDraw(true)}
-      onOpenExtra={() => { setResult(null); setGachaError(null); setGachaOpen(true); void onDraw(true) }}
+      onDraw={() => void onDraw(mode)}
+      onDrawExtra={() => { setMode('free'); void onDraw('extra') }}
+      onOpenExtra={() => { setMode('free'); setResult(null); setGachaError(null); setGachaOpen(true); void onDraw('extra') }}
       onEquip={() => void onEquip()}
       onEquipOwned={(id) => { void equipItem(id).then(load).catch((e) => { console.error(e); setError(FAIL) }) }}
       onTab={onTab}
@@ -111,11 +119,14 @@ type ViewProps = {
   data: CollectionData | null
   error: string | null
   gachaOpen: boolean
+  /** シートで引くのが、毎日の無料か、週の目標のごほうびか */
+  mode?: GachaMode
   result: GachaResult | null
   equipped: boolean
   busy: boolean
   gachaError: string | null
   onOpenGacha: () => void
+  onOpenReward?: () => void
   onCloseGacha: () => void
   onDraw: () => void
   onDrawExtra: () => void
@@ -164,6 +175,16 @@ export function CollectionView(p: ViewProps) {
               {state === 'drawn' ? '今日は引きました' : 'ガチャを引く'}
             </button>
           </section>
+
+          {data.weeklyReward?.available && (
+            <section className="section" aria-labelledby="reward-h">
+              <h2 id="reward-h">週の目標のごほうび</h2>
+              <p className="muted">{rewardGachaNote(data.weeklyReward.week, data.weeklyReward.thisWeek)}</p>
+              <button type="button" className="btn btn-primary" disabled={p.busy || !p.onOpenReward} onClick={p.onOpenReward}>
+                ごほうびのガチャを引く
+              </button>
+            </section>
+          )}
 
           <section className="section" aria-labelledby="extra-h">
             <h2 id="extra-h">追加ガチャ</h2>
@@ -238,7 +259,7 @@ export function CollectionView(p: ViewProps) {
       )}
 
       {p.gachaOpen && (
-        <GachaSheet result={p.result} equipped={p.equipped} busy={p.busy} error={p.gachaError} onDraw={p.onDraw} extra={extra} onDrawExtra={p.onDrawExtra} onEquip={p.onEquip} onClose={p.onCloseGacha} />
+        <GachaSheet mode={p.mode ?? 'free'} result={p.result} equipped={p.equipped} busy={p.busy} error={p.gachaError} onDraw={p.onDraw} extra={extra} onDrawExtra={p.onDrawExtra} onEquip={p.onEquip} onClose={p.onCloseGacha} />
       )}
       {p.data && p.footer}
       <TabBar current="コレクション" onSelect={p.onTab} />

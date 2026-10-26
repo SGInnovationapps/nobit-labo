@@ -13,6 +13,7 @@ import { Collection } from './home/Collection'
 import { Missions } from './home/Missions'
 import { Reflect } from './home/Reflect'
 import type { Tab } from './home/TabBar'
+import type { GachaMode } from './home/collectionModel'
 import { Shell } from './screens/Shell'
 
 type Phase =
@@ -29,7 +30,7 @@ export default function App() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('ホーム')
   // ホームの「今日のガチャを引く」から来たとき、ガチャを開いた状態でコレクションを出す
-  const [gachaRequest, setGachaRequest] = useState(false)
+  const [gachaRequest, setGachaRequest] = useState<GachaMode | null>(null)
   const started = useRef(false)
 
   useEffect(() => {
@@ -136,7 +137,7 @@ export default function App() {
           </p>
         )}
         {tab === 'コレクション' ? (
-          <Collection displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} autoGacha={gachaRequest} onAutoGacha={() => setGachaRequest(false)} />
+          <Collection displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} autoGacha={gachaRequest} onAutoGacha={() => setGachaRequest(null)} />
         ) : tab === 'ミッション' && pending ? (
           <Notice title="ミッションは承認後に使えます">
             <p>クラブ管理者が承認すると、クラブのミッションに参加できます。それまでも、記録は残ります。</p>
@@ -147,7 +148,7 @@ export default function App() {
         ) : tab === 'ふりかえり' ? (
           <Reflect onTab={setTab} />
         ) : (
-          <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} onGacha={() => { setGachaRequest(true); setTab('コレクション') }} />
+          <Home clubId={snapshot.membership.clubId} clubName={clubName} displayName={snapshot.displayName} grade={snapshot.grade} onTab={setTab} onGacha={() => { setGachaRequest('free'); setTab('コレクション') }} onRewardGacha={() => { setGachaRequest('reward'); setTab('コレクション') }} />
         )}
       </div>
     )

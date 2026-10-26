@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase'
 import type { HomeTask, NewBadge, TagRecord, TicketInfo, TimerRecord } from './homeModel'
 import { addDays, jstDate, needsResume } from './homeModel'
+import { parseNewWeek, parseWeek } from './weekModel'
+import type { NewWeek, WeekInfo } from './weekModel'
 
 export type HomeData = {
   today: string
@@ -35,6 +37,8 @@ export type HomeData = {
   gachaDrawnToday: boolean
   /** 休息チケット（読めなかったときは null） */
   tickets: TicketInfo | null
+  /** 週の学習目標とウィークリークエスト（読めなかったときは null） */
+  week: WeekInfo | null
 }
 
 export type CompleteResult = {
@@ -52,6 +56,8 @@ export type CompleteResult = {
   coinsGranted: number
   /** 今回の記録で新しく達成したデイリークエスト */
   newQuests: NewQuest[]
+  /** 今回の記録で新しく達成した、週の目標・ウィークリークエスト */
+  newWeek: NewWeek
 }
 
 type TaskDetail = {
@@ -82,7 +88,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const monthStart = `${today.slice(0, 7)}-01`
   const activityFrom = monthStart < addDays(today, -29) ? monthStart : addDays(today, -29)
 
-  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes, timerDoneRes, ticketRes, usesRes, daysRes, gachaRes] = await Promise.all([
+  const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes, timerDoneRes, ticketRes, usesRes, daysRes, gachaRes, weekRes] = await Promise.all([
     supabase
       .from('user_tasks')
       .select('id, completed_at, tasks(title, subject, estimated_minutes, kind, drill_subject, drill_category, drill_total)')
@@ -105,7 +111,9 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     supabase.rpc('my_rest_tickets'),
     supabase.from('rest_ticket_uses').select('rest_date').gte('rest_date', activityFrom).lte('rest_date', today),
     supabase.from('daily_activity').select('activity_date', { count: 'exact', head: true }).gt('completed_count', 0),
-    supabase.from('gacha_draws').select('id').eq('drawn_on', today).eq('is_extra', false).limit(1),
+    // 週の目標のごほうびで引いた分は、その日の無料ガチャに数えない
+    supabase.from('gacha_draws').select('id').eq('drawn_on', today).eq('is_extra', false).is('reward_week', null).limit(1),
+    supabase.rpc('my_week'),
   ])
   if (eventRes.error) throw eventRes.error
   if (tasksRes.error) throw tasksRes.error
@@ -164,6 +172,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
     studyDaysTotal: daysRes.count ?? 0,
     gachaDrawnToday: (gachaRes.data ?? []).length > 0,
     tickets: ticketOf(ticketRes.data),
+    week: weekRes.error ? null : parseWeek(weekRes.data),
     support: supportRes.data?.[0]
       ? {
           body: supportRes.data[0].body as string,
@@ -210,6 +219,7 @@ export async function completeTask(userTaskId: string): Promise<CompleteResult> 
     newBadges: toNewBadges(d.new_badges),
     coinsGranted: (d.coins_granted as number | undefined) ?? 0,
     newQuests: toNewQuests(d.new_quests),
+    newWeek: parseNewWeek(d.new_week),
   }
 }
 
@@ -252,6 +262,7 @@ export type StudyResult = {
   firstOfDay: boolean; milestone: boolean; newBadges: NewBadge[]; completedToday: number
   recordId: string | null; alreadyRecorded: boolean; recordedAt: string | null
   newQuests: NewQuest[]
+  newWeek: NewWeek
 }
 
 function toStudyResult(d: Record<string, unknown>): StudyResult {
@@ -269,6 +280,7 @@ function toStudyResult(d: Record<string, unknown>): StudyResult {
     alreadyRecorded: (d.already_recorded as boolean | undefined) ?? false,
     recordedAt: (d.recorded_at as string | undefined) ?? null,
     newQuests: toNewQuests(d.new_quests),
+    newWeek: parseNewWeek(d.new_week),
   }
 }
 
@@ -323,4 +335,12 @@ export async function resumeFocusSession(): Promise<void> {
 export async function markResumeSeen(): Promise<void> {
   const { error } = await supabase.rpc('mark_resume_seen')
   if (error) console.error(error)
+}
+
+/** 週の学習目標（3〜7日）を変える。その週にまだ記録がなければ今週から、あれば来週から */
+export async function setWeeklyTarget(days: number): Promise<{ targetDays: number; appliesFrom: 'this_week' | 'next_week' }> {
+  const { data, error } = await supabase.rpc('set_weekly_target', { p_days: days })
+  if (error) throw error
+  const d = data as Record<string, unknown>
+  return { targetDays: Number(d.target_days), appliesFrom: d.applies_from === 'this_week' ? 'this_week' : 'next_week' }
 }

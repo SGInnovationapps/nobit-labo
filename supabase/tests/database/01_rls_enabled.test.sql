@@ -23,7 +23,8 @@ select is(
     where n.nspname = 'private'
       and p.proname in ('grant_coins', 'complete_task_at', 'record_study_tag_at', 'record_study_activity',
                         'award_study_day', 'record_outcome', 'evaluate_badges', 'evaluate_quests', 'quest_state',
-                        'drill_pool', 'drill_wrong_ids', 'drill_question_json', 'finish_drill', 'answer_drill_at')
+                        'drill_pool', 'drill_wrong_ids', 'drill_question_json', 'finish_drill', 'answer_drill_at',
+                        'draw_gacha_core', 'evaluate_week', 'ensure_week', 'draw_gacha_reward_at')
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
   '', '記録やコインを書く private の関数は、画面から呼べない');
 

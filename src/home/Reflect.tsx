@@ -4,6 +4,7 @@ import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
 import { loadReflect } from './reflectApi'
 import type { ReflectData } from './reflectApi'
+import { weekHistorySummary, weekRangeLabel } from './weekModel'
 import { calendarCells, minutesLabel, periodOf, questSummaryOf, shiftAnchor, summarize, ticketLine } from './reflectModel'
 import { QUEST_NAME } from './homeModel'
 import type { TrendPoint } from './reflectModel'
@@ -144,6 +145,33 @@ export function ReflectView(p: ViewProps) {
                         {q.keys.includes('all') && <span className="quest-hist-all">全部達成</span>}
                       </span>
                       <span className="quest-hist-coins num">{q.coins}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+
+          <section className="section" aria-labelledby="wk-h">
+            <h2 id="wk-h">週の目標</h2>
+            {data.weeks.length === 0 ? (
+              <p className="muted">この{unit}の週の記録は、まだありません。</p>
+            ) : (
+              <>
+                <dl className="sum-list">
+                  <div><dt>目標を達成した週</dt><dd><span className="num">{weekHistorySummary(data.weeks).achieved}</span> / <span className="num">{data.weeks.length}</span>週</dd></div>
+                  <div><dt>同じ教科を週3日</dt><dd><span className="num">{weekHistorySummary(data.weeks).subjectQuests}</span>回</dd></div>
+                </dl>
+                <ul className="quest-hist">
+                  {[...data.weeks].reverse().map((w) => (
+                    <li key={w.weekStart} className="quest-hist-row">
+                      <span className="quest-hist-date week-hist-range num">{weekRangeLabel(w.weekStart)}</span>
+                      <span className="quest-hist-names">
+                        <span className="num">{w.studyDays}</span> / <span className="num">{w.targetDays}</span>日
+                        {w.subjectQuestSubject && <>　{w.subjectQuestSubject}を週3日</>}
+                      </span>
+                      {/* 届かなかった週は空けておく（責めない） */}
+                      <span className="week-hist-state">{w.goalAchieved ? '達成' : ''}</span>
                     </li>
                   ))}
                 </ul>

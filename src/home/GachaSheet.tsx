@@ -2,10 +2,12 @@ import { useEffect, useRef } from 'react'
 import { Nobit } from './Nobit'
 import { gachaMood } from './nobitModel'
 import { acquiredLabel, categoryLabel, duplicateNote, EXTRA_GACHA_COST, RARITY_LABEL, setLabel } from './collectionModel'
-import type { ExtraState } from './collectionModel'
+import type { ExtraState, GachaMode } from './collectionModel'
 import type { GachaResult } from './collectionApi'
 
 type Props = {
+  /** 毎日の無料ガチャか、週の目標のごほうびか（文言だけが変わる） */
+  mode?: GachaMode
   /** null のあいだは、引く前の画面 */
   result: GachaResult | null
   equipped: boolean
@@ -20,7 +22,7 @@ type Props = {
 }
 
 /** 05 無料ガチャ。ホームではなくコレクションの上に重ねるシート。ノビットはここに出る */
-export function GachaSheet({ result, equipped, busy, error, onDraw, extra, onDrawExtra, onEquip, onClose }: Props) {
+export function GachaSheet({ mode = 'free', result, equipped, busy, error, onDraw, extra, onDrawExtra, onEquip, onClose }: Props) {
   const first = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     first.current?.focus()
@@ -37,8 +39,10 @@ export function GachaSheet({ result, equipped, busy, error, onDraw, extra, onDra
         <Nobit mood={gachaMood(result)} className="sheet-nobit" />
         {!result ? (
           <>
-            <h2 id="gacha-title" className="sheet-title">今日の無料ガチャ</h2>
-            <p className="muted">1日1回。称号・背景・装飾・ガチャ限定バッジのどれかが当たります。</p>
+            <h2 id="gacha-title" className="sheet-title">{mode === 'reward' ? '週の目標のごほうび' : '今日の無料ガチャ'}</h2>
+            <p className="muted">
+              {mode === 'reward' ? '目標を達成した週に1回。' : '1日1回。'}称号・背景・装飾・ガチャ限定バッジのどれかが当たります。
+            </p>
             {error && <p className="error" role="alert">{error}</p>}
             <button ref={first} type="button" className="btn btn-primary" disabled={busy} onClick={onDraw}>{busy ? '引いています…' : 'ガチャを引く'}</button>
             <button type="button" className="btn btn-secondary" disabled={busy} onClick={onClose}>やめる</button>
@@ -59,13 +63,16 @@ export function GachaSheet({ result, equipped, busy, error, onDraw, extra, onDra
               </button>
             ) : null}
             {error && <p className="error" role="alert">{error}</p>}
-            {extra === 'ready' && (
+            {extra === 'ready' && !result.reward && (
               <button type="button" className="btn btn-secondary" disabled={busy} onClick={onDrawExtra}>
                 {busy ? '引いています…' : `もう1回引く（${EXTRA_GACHA_COST}コイン）`}
               </button>
             )}
-            {extra === 'poor' && <p className="muted">追加ガチャは{EXTRA_GACHA_COST}コインです。コインを集めると、もう1回引けます。</p>}
-            <p className="muted">{result.extra ? '追加ガチャは1日1回までです。' : '無料ガチャは、あすの0:00にまた引けます。'}</p>
+            {extra === 'poor' && !result.reward && <p className="muted">追加ガチャは{EXTRA_GACHA_COST}コインです。コインを集めると、もう1回引けます。</p>}
+            <p className="muted">
+              {result.reward ? 'ごほうびのガチャは、目標を達成した週に1回です。'
+                : result.extra ? '追加ガチャは1日1回までです。' : '無料ガチャは、あすの0:00にまた引けます。'}
+            </p>
             <button type="button" className="btn btn-primary" onClick={onClose}>閉じる</button>
           </>
         )}

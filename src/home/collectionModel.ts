@@ -62,6 +62,16 @@ export const GACHA_NOTE: Record<GachaState, string> = {
   drawn: '今日の無料ガチャは引きました。次は、あすの0:00からです。',
 }
 
+/** ガチャのシートで引くもの：毎日の無料か、週の目標のごほうびか */
+export type GachaMode = 'free' | 'reward'
+
+/** 週の目標のごほうびの説明。先週の分は、今週の日曜まで */
+export function rewardGachaNote(rewardWeek: string | null, thisWeek: string): string {
+  return rewardWeek !== null && rewardWeek < thisWeek
+    ? '先週の目標を達成した分です。今週の日曜まで、1回無料で引けます。'
+    : '今週の目標を達成しました。1回無料で引けます（コインは使いません）。'
+}
+
 const SET_LABEL: Record<Category, string | null> = {
   title: '称号に設定する', background: '背景に設定する', decoration: '装飾に設定する', badge: null,
 }
