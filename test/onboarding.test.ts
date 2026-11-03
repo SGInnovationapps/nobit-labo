@@ -41,11 +41,21 @@ assert.deepEqual(step({ membership: { ...approved, status: 'rejected' } }), { na
 assert.deepEqual(step({ role: 'club_admin' }), { name: 'not_student' })
 assert.deepEqual(step({ role: 'operator', membership: null }), { name: 'not_student' })
 
+// 公式LINE の友だち追加：登録のとき（学年・表示名の前）だけ求める。確かめられないとき（null）は止めない
+assert.deepEqual(step({ consentedVersions: [1], lineFriend: false }), { name: 'friend' })
+assert.deepEqual(step({ consentedVersions: [1], lineFriend: true }), { name: 'profile' })
+assert.deepEqual(step({ consentedVersions: [1], lineFriend: null }), { name: 'profile' })
+assert.deepEqual(step({ lineFriend: false }), { name: 'consent', reconsent: false })
+// 登録を終えたあとは、ブロックしても使えるまま
+assert.deepEqual(step({ consentedVersions: [1], displayName: 'a', grade: 8, lineFriend: false }), { name: 'waiting' })
+assert.deepEqual(step({ membership: approved, consentedVersions: [1], displayName: 'a', grade: 8, lineFriend: false }), { name: 'approved' })
+
 // 進み具合
 assert.equal(progressOf({ name: 'consent', reconsent: false }), 1)
 assert.equal(progressOf({ name: 'consent', reconsent: true }), null)
-assert.equal(progressOf({ name: 'profile' }), 2)
-assert.equal(progressOf({ name: 'waiting' }), 3)
+assert.equal(progressOf({ name: 'friend' }), 2)
+assert.equal(progressOf({ name: 'profile' }), 3)
+assert.equal(progressOf({ name: 'waiting' }), 4)
 assert.equal(progressOf({ name: 'approved' }), null)
 
 // 表示名（文字数は DB と同じ数え方）

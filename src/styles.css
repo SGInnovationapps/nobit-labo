@@ -42,7 +42,7 @@ button, input { font: inherit; color: inherit; }
 }
 .brand { font-family: var(--font-num); font-weight: 700; font-size: 22px; letter-spacing: 0.02em; line-height: 1.2; }
 .progress { margin-top: 20px; }
-.progress-bars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.progress-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .progress-bars span { height: 4px; border-radius: 2px; background: var(--line); }
 .progress-bars span.on { background: var(--mint); }
 .progress-label { margin: 8px 0 0; font-size: 14px; color: var(--ink-soft); line-height: 1.5; }

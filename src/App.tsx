@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { forgetInvite, readInvite, rememberInvite } from './lib/invite'
-import { signInWithLine } from './lib/lineLogin'
+import { checkLineFriend, openFriendAdd, signInWithLine } from './lib/lineLogin'
 import { InviteError, joinClub, loadSnapshot, recordConsent, saveProfile } from './lib/onboardingApi'
 import { suggestedDisplayName } from './lib/steps'
 import { deriveStep, progressOf } from './lib/steps'
 import type { Snapshot } from './lib/steps'
 import { ConsentStep } from './screens/ConsentStep'
+import { FriendStep } from './screens/FriendStep'
 import { Notice } from './screens/Notice'
 import { ProfileStep } from './screens/ProfileStep'
 import { Home } from './home/Home'
@@ -24,6 +25,15 @@ type Phase =
 
 const SAVE_ERROR = '保存できませんでした。通信を確認して、もう一度お試しください。'
 
+/** 状態を読む。登録の途中（学年・表示名がまだ）なら、公式LINE の友だちかも確かめる */
+async function loadState(): Promise<Snapshot> {
+  const s = await loadSnapshot()
+  if (s.role === 'student' && (!s.displayName || s.grade === null)) {
+    return { ...s, lineFriend: await checkLineFriend() }
+  }
+  return s
+}
+
 export default function App() {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
   const [busy, setBusy] = useState(false)
@@ -31,6 +41,8 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('ホーム')
   // ホームの「今日のガチャを引く」から来たとき、ガチャを開いた状態でコレクションを出す
   const [gachaRequest, setGachaRequest] = useState<GachaMode | null>(null)
+  // 友だち追加の画面で「追加したので次へ」を押したが、まだ友だちになっていなかった
+  const [friendNotYet, setFriendNotYet] = useState(false)
   const started = useRef(false)
 
   useEffect(() => {
@@ -49,14 +61,14 @@ export default function App() {
           return
         }
 
-        let snapshot = await loadSnapshot()
+        let snapshot = await loadState()
         let inviteInvalid = false
         const code = invite ?? readInvite()
         const needsJoin = !snapshot.membership || snapshot.membership.status === 'left'
         if (snapshot.role === 'student' && needsJoin && code) {
           try {
             await joinClub(code)
-            snapshot = await loadSnapshot()
+            snapshot = await loadState()
             forgetInvite()
           } catch (e) {
             if (!(e instanceof InviteError)) throw e
@@ -73,7 +85,7 @@ export default function App() {
   }, [])
 
   const refresh = useCallback(async () => {
-    const snapshot = await loadSnapshot()
+    const snapshot = await loadState()
     setPhase((p) => (p.kind === 'ready' ? { ...p, snapshot } : p))
   }, [])
 
@@ -190,6 +202,20 @@ export default function App() {
             void run(() =>
               recordConsent(snapshot.userId, snapshot.membership!.clubId, snapshot.latestScope!.version),
             )
+          }
+        />
+      )}
+
+      {step.name === 'friend' && (
+        <FriendStep
+          busy={busy}
+          notYet={friendNotYet}
+          onAdd={() => { setFriendNotYet(false); openFriendAdd() }}
+          onNext={() =>
+            void run(async () => {
+              // 次の画面へ進むかは、読み直した状態で決まる。友だちでなければ、ここに残る
+              setFriendNotYet((await checkLineFriend()) === false)
+            })
           }
         />
       )}

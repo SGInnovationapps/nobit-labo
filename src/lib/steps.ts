@@ -21,6 +21,11 @@ export type Snapshot = {
   consentedVersions: number[]
   /** LINE の表示名（取れているときだけ）。表示名の初期値に使う */
   lineName?: string | null
+  /**
+   * NOBIT! 公式LINE の友だちか（LIFF の getFriendship で確かめる）。
+   * 確かめられないとき（設定がない・通信の失敗）は null で、導入は止めない
+   */
+  lineFriend?: boolean | null
 }
 
 export type Step =
@@ -28,6 +33,7 @@ export type Step =
   | { name: 'need_invite' }
   | { name: 'rejected' }
   | { name: 'consent'; reconsent: boolean }
+  | { name: 'friend' }
   | { name: 'profile' }
   | { name: 'waiting' }
   | { name: 'approved' }
@@ -42,15 +48,21 @@ export function deriveStep(s: Snapshot): Step {
   if (s.latestScope && !s.consentedVersions.includes(s.latestScope.version)) {
     return { name: 'consent', reconsent: m.status === 'approved' }
   }
-  if (!s.displayName || s.grade === null) return { name: 'profile' }
+  if (!s.displayName || s.grade === null) {
+    // 公式LINE の友だち追加は、登録のときだけ求める（2回目以降の入口になるため）。
+    // 登録を終えたあとにブロックしても、アプリは使えるままにする
+    if (s.lineFriend === false) return { name: 'friend' }
+    return { name: 'profile' }
+  }
   return m.status === 'approved' ? { name: 'approved' } : { name: 'waiting' }
 }
 
 /** 進み具合の表示用。取り直しの同意と、承認後は出さない */
 export function progressOf(step: Step): number | null {
   if (step.name === 'consent') return step.reconsent ? null : 1
-  if (step.name === 'profile') return 2
-  if (step.name === 'waiting') return 3
+  if (step.name === 'friend') return 2
+  if (step.name === 'profile') return 3
+  if (step.name === 'waiting') return 4
   return null
 }
 
