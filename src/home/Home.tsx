@@ -2,10 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CompletionSheet } from './CompletionSheet'
 import { Drill } from './Drill'
 import type { DrillRecorded } from './drillApi'
-import { HomeActions } from './HomeActions'
-import { IconChevron, IconNext, IconSprout, IconStar, IconTimer } from './HomeIcons'
-import { SubjectSheet } from './SubjectSheet'
-import { TaskSheet } from './TaskSheet'
+import { IconChevron, IconNext, IconStar, IconTimer } from './HomeIcons'
+import { SubjectGrid } from './SubjectGrid'
 import { WeekChart } from './WeekChart'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
@@ -26,7 +24,7 @@ import {
 import type { CompleteResult, HomeData, StudyResult } from './homeApi'
 import type { HomeTask } from './homeModel'
 import {
-  addDays, BAND_NOTE, buildBand, buildWeek, homeStateOf, isNewSupport, nextMilestone, questsOf, RECORD_PREVIEW, recordsOpenFor, shortFirst, stateCheer, ticketErrorMessage,
+  addDays, BAND_NOTE, buildBand, buildWeek, homeStateOf, isNewSupport, nextMilestone, questsOf, RECORD_PREVIEW, recordsOpenFor, shortFirst, stateCheer, subjectGridCopy, tasksLeftLabel, ticketErrorMessage,
   todayRecords, coinNote, dateLabel, focusNote, questNote, shouldShowSheet, sheetLabel, sortTasks, timeLabel, visibleRecords,
 } from './homeModel'
 
@@ -483,8 +481,6 @@ export function HomeView(p: HomeViewProps) {
   const supportText = data.support ? (data.support.kind === 'seen' ? '見たよ' : data.support.body) : ''
   const supportFrom = data.support ? `${data.support.authorName ?? 'クラブの管理者'}さんから` : ''
 
-  const [pickOpen, setPickOpen] = useState(false)
-  const [tasksOpen, setTasksOpen] = useState(false)
   const [timerPick, setTimerPick] = useState(false)
   const [recordsOpen, setRecordsOpen] = useState(() => readRecordsOpen(data.today))
   const shownRecords = visibleRecords(records, recordsOpen)
@@ -544,15 +540,20 @@ export function HomeView(p: HomeViewProps) {
     </ul>
   )
 
-  const todayTasks = (title: string, list: ReadonlyArray<HomeTask>, emptyText: string, side?: string) => (
+  // 教室からの課題：ホームにそのまま並べる（シートに隠さない）。並べるのは、まだ完了していないものだけ。
+  // 完了したものは「今日の記録」に時刻で残る。残りがない日は出さない
+  const left = tasksLeftLabel(tasks)
+  const openTasks = tasks.filter((t) => !t.completedAt)
+  const taskSection = (title: string, list: ReadonlyArray<HomeTask>, side?: string) => list.length > 0 && (
     <section className="section" aria-labelledby="today-h">
       <div className="today-head">
         <h2 id="today-h">{title}</h2>
-        <span className="rec-count">{side ?? <><span className="num">{list.length}</span> 件</>}</span>
+        <span className="rec-count">{side ?? (left && <>残り <span className="num">{left.left}</span> 件</>)}</span>
       </div>
-      {list.length === 0 ? <p className="muted">{emptyText}</p> : taskRows(list)}
+      {taskRows(list)}
     </section>
   )
+  const grid = subjectGridCopy(state)
 
   const recordList = (
     <section className="section" aria-labelledby="rec-h">
@@ -590,6 +591,9 @@ export function HomeView(p: HomeViewProps) {
     <div className="home">
       <header className="home-head">
         <p className="muted home-sub">{dateLabel(data.today)}　{clubName ?? ''}{displayName ? `　${displayName}` : ''}</p>
+        {(state === 'notyet' || state === 'recording') && (
+          <p className="home-streak">連続 <span className="num">{data.streak.current}</span> 日</p>
+        )}
       </header>
 
       {state === 'resume' ? (
@@ -612,26 +616,7 @@ export function HomeView(p: HomeViewProps) {
           <Nobit mood="joy" className="face-nobit" />
         </section>
       ) : (
-        <section className="face" aria-label={state === 'first' ? 'はじめての記録' : '連続記録'}>
-          <div className="face-top">
-            <p className="face-label">{state === 'first' ? 'はじめての記録' : '連続日数'}</p>
-            <span className="face-mark"><IconSprout /></span>
-          </div>
-          {state === 'first' ? (
-            <h1 className="face-first">今日を <span className="num">1</span>日目に<br />しよう。</h1>
-          ) : (
-            <p className="streak-main"><span className="num streak-num">{data.streak.current}</span><span className="streak-unit">日</span></p>
-          )}
-          {cheerLine}
-          {state !== 'first' && milestone && (
-            <div className="face-next">
-              <span>連続{milestone.target}日まで あと<span className="num">{milestone.remaining}</span>日</span>
-              <div className="next-bar" role="progressbar" aria-valuemin={0} aria-valuemax={milestone.target} aria-valuenow={data.streak.current} aria-label="次の節目までの進み">
-                <i style={{ width: `${Math.round(milestone.ratio * 100)}%` }} />
-              </div>
-            </div>
-          )}
-        </section>
+        cheerLine
       )}
 
       {newSupport && state !== 'resume' && (
@@ -656,6 +641,35 @@ export function HomeView(p: HomeViewProps) {
         p.timerError && <p className="error" role="alert">{p.timerError}</p>
       )}
 
+
+      <SubjectGrid
+        title={grid.title}
+        sub={grid.sub}
+        tags={data.tags}
+        pending={p.tagPending}
+        timerDisabled={timerRunning || p.timerBusy || !p.onStartTimer}
+        onPick={p.onTag}
+        onTimer={() => setTimerPick(true)}
+      />
+
+      {p.tagPanel && (
+        <TagPanel
+          subject={p.tagPanel.subject}
+          recordedAt={p.tagPanel.recordedAt}
+          hasContent={p.tagPanel.hasContent}
+          busy={p.panelBusy || p.timerBusy || timerRunning}
+          error={p.panelError}
+          onSaveContent={p.onSaveContent}
+          onTimer={() => p.onTagTimer(p.tagPanel!.subject)}
+          onClose={p.onCloseTagPanel}
+        />
+      )}
+      {p.notice && <p className="record-notice" role="status">{p.notice}</p>}
+
+      {state === 'resume'
+        ? taskSection('まずは短いものから', shortFirst(openTasks, 1), '見込み時間の短い順')
+        : taskSection('教室からの課題', openTasks)}
+
       {state === 'resume' && (
         <>
           <dl className="resume-stats">
@@ -674,31 +688,6 @@ export function HomeView(p: HomeViewProps) {
         </>
       )}
 
-      <HomeActions
-        tasks={tasks}
-        quiet={state === 'done'}
-        disabled={p.tagPending !== null}
-        onSubjects={() => setPickOpen(true)}
-        onTasks={() => setTasksOpen(true)}
-      />
-
-      {p.tagPanel && (
-        <TagPanel
-          subject={p.tagPanel.subject}
-          recordedAt={p.tagPanel.recordedAt}
-          hasContent={p.tagPanel.hasContent}
-          busy={p.panelBusy || p.timerBusy || timerRunning}
-          error={p.panelError}
-          onSaveContent={p.onSaveContent}
-          onTimer={() => p.onTagTimer(p.tagPanel!.subject)}
-          onClose={p.onCloseTagPanel}
-        />
-      )}
-      {p.notice && <p className="record-notice" role="status">{p.notice}</p>}
-
-      {(state === 'first' || state === 'notyet') && todayTasks('今日やること', tasks, '配信されたタスクは、まだありません。教科の記録からも始められます。')}
-      {state === 'resume' && todayTasks('まずは短いものから', shortFirst(tasks, 1), '今日のタスクはまだありません。教科の記録やタイマーからも始められます。', '見込み時間の短い順')}
-
       {(state === 'recording' || state === 'done') && recordList}
       {gachaLine}
 
@@ -708,7 +697,7 @@ export function HomeView(p: HomeViewProps) {
       />
 
       <section className="section below" aria-label="続けるために">
-        {(state === 'first' || state === 'done' || state === 'resume') && milestone && (
+        {milestone && (
           <div className="next-goal">
             <span className="next-goal-mark"><IconStar /></span>
             <div className="next-goal-main">
@@ -763,21 +752,6 @@ export function HomeView(p: HomeViewProps) {
 
       <TabBar current="ホーム" onSelect={p.onTab} />
 
-      {pickOpen && (
-        <SubjectSheet
-          tags={data.tags}
-          pending={p.tagPending}
-          timerDisabled={timerRunning || p.timerBusy || !p.onStartTimer}
-          onPick={(s) => { setPickOpen(false); p.onTag(s) }}
-          onTimer={() => { setPickOpen(false); setTimerPick(true) }}
-          onClose={() => setPickOpen(false)}
-        />
-      )}
-      {tasksOpen && (
-        <TaskSheet count={tasks.length} onClose={() => setTasksOpen(false)}>
-          {tasks.length === 0 ? <p className="muted">配信されたタスクは、まだありません。</p> : taskRows(tasks)}
-        </TaskSheet>
-      )}
       {timerPick && !data.timer && p.onStartTimer && (
         <TimerSheet busy={p.timerBusy} error={p.timerError} onStart={(s, c) => { setTimerPick(false); p.onStartTimer?.(s, c) }} onClose={() => setTimerPick(false)} />
       )}

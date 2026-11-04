@@ -381,6 +381,27 @@ export function homeStateOf(input: {
   return 'recording'
 }
 
+/**
+ * ホームの教科ボタンの見出しと説明（2026-11 の見直し：教科をホームに直接並べる）。
+ * まだ記録していない日は「何を押すか」を、記録したあとは「ほかにも押せる」ことを伝える
+ */
+export function subjectGridCopy(state: HomeState): { title: string; sub: string } {
+  if (state === 'recording' || state === 'done') {
+    return { title: 'ほかにも勉強したら、タップ', sub: '同じ教科は1日1回。記録した教科を押すと、内容を足せます。' }
+  }
+  if (state === 'first') {
+    return { title: '勉強した教科を、タップ', sub: '1タップで、今日が1日目になります。何をしたかは、あとから書けます。' }
+  }
+  return { title: '勉強した教科を、タップ', sub: '1タップで、今日の記録になります。何をしたかは、あとから書けます。' }
+}
+
+/** 教室からの課題の見出しの右に出す、残りの数（なければ null）。状態は文字でも示す */
+export function tasksLeftLabel(tasks: ReadonlyArray<HomeTask>): { left: number; allDone: boolean } | null {
+  if (tasks.length === 0) return null
+  const left = tasks.filter((t) => !t.completedAt).length
+  return { left, allDone: left === 0 }
+}
+
 /** ノビットの一文（画像なし）。再開の状態は画像で出すので一文は置かない */
 export function stateCheer(state: HomeState, todayCount: number): string | null {
   switch (state) {
