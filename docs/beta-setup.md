@@ -11,10 +11,11 @@
 - [ ] 本番に使うミニアプリのチャネル（Published）の LIFF ID を控える。エンドポイント URL は Cloudflare の公開先（`https://nobit-labo.gymspiral.workers.dev/`）
 - [ ] Scope は `openid` と `profile`（表示名の初期値に LINE の名前を使う）
 - [ ] ミニアプリのチャネルと公式LINE（Messaging API）のチャネルが、同じプロバイダーにあること（ユーザー ID がそろう前提）
-- [ ] ミニアプリのチャネルに、NOBIT! 公式LINE をつなぐ（チャネル設定の「リンクされたLINE公式アカウント」）。つながっていないと、導入で友だちかどうかを確かめられない。「友だち追加オプション」があればオンにする（初回ログインの同意画面に友だち追加が出る）
+- [ ] ミニアプリのチャネルに、NOBIT! 公式LINE をつなぐ：［チャネル基本設定］タブの「デフォルトのLINE公式アカウント」で［編集］→ NOBIT! 公式LINE を選んで［更新］。つながっていないと、友だちかどうかを確かめられず、友だち追加の画面が出ない（そのときは管理画面の「画面のエラー」に理由が残る）
+- [ ] ［ウェブアプリ設定］タブの「友だち追加オプション」を On (normal) にする（初回ログインの同意画面に友だち追加が出る）
 
 ### Cloudflare（Workers のビルド）
-- [ ] ビルドの変数に `VITE_SUPABASE_URL`、`VITE_SUPABASE_PUBLISHABLE_KEY`、`VITE_LIFF_ID`（本番の LIFF ID）、`VITE_LINE_OA_ID`（公式LINE のベーシックID。`@` から始まる）を入れる。ブラウザに渡してよい値だけを置く
+- [ ] ビルドの変数に `VITE_SUPABASE_URL`、`VITE_SUPABASE_PUBLISHABLE_KEY`、`VITE_LIFF_ID`（本番の LIFF ID）、`VITE_LINE_OA_ID`（公式LINE のベーシックID。`@` から始まる。予備なので、なくても動く）を入れる。ブラウザに渡してよい値だけを置く
 - [ ] main への push で公開され、`/` と `/admin` の両方が開くこと
 
 ### Supabase

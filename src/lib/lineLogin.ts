@@ -32,7 +32,10 @@ export async function signInWithLine(): Promise<LineLoginResult> {
   return 'signed_in'
 }
 
-/** NOBIT! 公式LINE の友だち追加の URL。VITE_LINE_OA_ID（@ から始まるベーシックID）がなければ null */
+/**
+ * NOBIT! 公式LINE の友だち追加の URL（予備）。VITE_LINE_OA_ID（@ から始まるベーシックID）がなければ null。
+ * ふだんは liff.requestFriendship() を使うので、この値はなくても動く
+ */
 export function friendAddUrl(): string | null {
   const id = (import.meta.env.VITE_LINE_OA_ID ?? '').trim()
   if (!/^@[0-9a-z._-]{2,40}$/i.test(id)) return null
@@ -40,23 +43,32 @@ export function friendAddUrl(): string | null {
 }
 
 /**
- * 公式LINE の友だちか。ミニアプリのチャネルに公式LINE がつながっていて、
- * 友だち追加の URL も作れるときだけ確かめる。確かめられなければ null（導入は止めない）
+ * 公式LINE の友だちか。ミニアプリのチャネルの「デフォルトのLINE公式アカウント」に
+ * NOBIT! 公式LINE が設定されていれば確かめられる。確かめられなければ null（止めない）。
+ * そのときは、理由を「画面のエラー」に残す（設定の漏れに気づけるように）
  */
 export async function checkLineFriend(): Promise<boolean | null> {
-  if (!friendAddUrl()) return null
   try {
     const { friendFlag } = await liff.getFriendship()
     return friendFlag
   } catch (e) {
-    console.error(e)
+    const reason = e instanceof Error ? e.message : String(e)
+    console.error(new Error(`公式LINE の友だちを確かめられません（ミニアプリのチャネルの「デフォルトのLINE公式アカウント」を確認）: ${reason}`))
     return null
   }
 }
 
-/** 友だち追加の画面を開く（LINE の中で開く。ミニアプリは閉じない） */
-export function openFriendAdd(): void {
+/**
+ * 友だち追加（ブロックしている人にはブロック解除）を促す、LINE の小さな画面を出す。
+ * 使えないときは、友だち追加の URL を開く（VITE_LINE_OA_ID があるときだけ）
+ */
+export async function openFriendAdd(): Promise<void> {
+  try {
+    await liff.requestFriendship()
+    return
+  } catch (e) {
+    console.error(e)
+  }
   const url = friendAddUrl()
-  if (!url) return
-  liff.openWindow({ url, external: false })
+  if (url) liff.openWindow({ url, external: false })
 }

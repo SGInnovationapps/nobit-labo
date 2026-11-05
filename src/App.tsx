@@ -209,7 +209,13 @@ export default function App() {
           registering={step.registering}
           busy={busy}
           notYet={friendNotYet}
-          onAdd={() => { setFriendNotYet(false); openFriendAdd() }}
+          onAdd={() =>
+            void run(async () => {
+              // 友だち追加の小さな画面を閉じたら、すぐに確かめ直す（追加していれば、そのまま先へ進む）
+              setFriendNotYet(false)
+              await openFriendAdd()
+            })
+          }
           onNext={() =>
             void run(async () => {
               // 次の画面へ進むかは、読み直した状態で決まる。友だちでなければ、ここに残る

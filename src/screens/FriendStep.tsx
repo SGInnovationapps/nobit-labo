@@ -22,7 +22,7 @@ export function FriendStep({ registering, busy, notYet, onAdd, onNext }: Props) 
         </p>
       ) : (
         <p className="lead">
-          NOBIT! は、公式LINE のトークのメニューから開きます。続けて使うには、友だち追加が必要です。ブロックしている場合は、開いた画面でブロックを解除してください。
+          NOBIT! は、公式LINE のトークのメニューから開きます。続けて使うには、友だち追加が必要です。ブロックしている場合は、出てきた画面でブロックを解除してください。
         </p>
       )}
       <p className="muted">
@@ -30,7 +30,7 @@ export function FriendStep({ registering, busy, notYet, onAdd, onNext }: Props) 
       </p>
 
       <button type="button" className="btn btn-primary" disabled={busy} onClick={onAdd}>
-        友だち追加の画面を開く
+        {busy ? '確認中…' : '友だち追加する'}
       </button>
 
       {notYet && (

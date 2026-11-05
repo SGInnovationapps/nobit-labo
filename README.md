@@ -29,7 +29,7 @@ npm run dev        # http://localhost:5173（生徒） / http://localhost:5173/a
 | `VITE_SUPABASE_URL` | Supabase の URL |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase の publishable key |
 | `VITE_LIFF_ID` | ミニアプリの LIFF ID（開発用・審査用・本番用で異なる） |
-| `VITE_LINE_OA_ID` | NOBIT! 公式LINE のベーシックID（`@` から始まる）。導入で友だち追加を求めるのに使う。空なら友だち追加の画面を出さない |
+| `VITE_LINE_OA_ID` | NOBIT! 公式LINE のベーシックID（`@` から始まる）。友だち追加の予備（LINE の友だち追加の小さな画面が使えないときに開く URL）。なくても動く |
 
 Edge Function のシークレット（LINE のチャネルシークレットなど）は Supabase 側にだけ置き、リポジトリにもフロントにも置かない。一覧は `docs/beta-setup.md`。
 
