@@ -25,12 +25,10 @@ type Phase =
 
 const SAVE_ERROR = '保存できませんでした。通信を確認して、もう一度お試しください。'
 
-/** 状態を読む。登録の途中（学年・表示名がまだ）なら、公式LINE の友だちかも確かめる */
+/** 状態を読む。生徒なら、開くたびに公式LINE の友だちかも確かめる（友だちでなければ、追加の画面を出す） */
 async function loadState(): Promise<Snapshot> {
   const s = await loadSnapshot()
-  if (s.role === 'student' && (!s.displayName || s.grade === null)) {
-    return { ...s, lineFriend: await checkLineFriend() }
-  }
+  if (s.role === 'student') return { ...s, lineFriend: await checkLineFriend() }
   return s
 }
 
@@ -208,6 +206,7 @@ export default function App() {
 
       {step.name === 'friend' && (
         <FriendStep
+          registering={step.registering}
           busy={busy}
           notYet={friendNotYet}
           onAdd={() => { setFriendNotYet(false); openFriendAdd() }}

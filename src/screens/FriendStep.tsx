@@ -1,4 +1,6 @@
 type Props = {
+  /** 登録の途中か（登録を終えた生徒が、友だちでなくなっていたときは false） */
+  registering: boolean
   busy: boolean
   /** 「追加したので次へ」を押したのに、まだ友だちになっていなかった */
   notYet: boolean
@@ -7,16 +9,22 @@ type Props = {
 }
 
 /**
- * 導入：NOBIT! 公式LINE の友だち追加。登録のときだけ求める。
- * 2回目からは公式LINE のトークのメニューから開くため。連絡を受け取るかは、あとから選べる
+ * NOBIT! 公式LINE の友だち追加（必須）。登録の途中でも、登録を終えたあとでも、友だちでなければ開くたびに出す。
+ * NOBIT! は公式LINE のトークのメニューから開くため。連絡を受け取るかは、あとから選べる
  */
-export function FriendStep({ busy, notYet, onAdd, onNext }: Props) {
+export function FriendStep({ registering, busy, notYet, onAdd, onNext }: Props) {
   return (
     <>
       <h1>NOBIT! 公式LINE を友だち追加してください</h1>
-      <p className="lead">
-        2回目からは、公式LINE のトークのメニューから NOBIT! を開きます。そのために、友だち追加が必要です。
-      </p>
+      {registering ? (
+        <p className="lead">
+          2回目からは、公式LINE のトークのメニューから NOBIT! を開きます。そのために、友だち追加が必要です。
+        </p>
+      ) : (
+        <p className="lead">
+          NOBIT! は、公式LINE のトークのメニューから開きます。続けて使うには、友だち追加が必要です。ブロックしている場合は、開いた画面でブロックを解除してください。
+        </p>
+      )}
       <p className="muted">
         公式LINE からの連絡を受け取るかは、あとからコレクションの画面で選べます。受け取らない設定にしても、NOBIT! はそのまま使えます。
       </p>
