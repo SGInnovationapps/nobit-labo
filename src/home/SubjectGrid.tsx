@@ -3,7 +3,8 @@ import type { TagRecord } from './homeModel'
 
 type Props = {
   title: string
-  sub: string
+  /** ノビットの吹き出しがあるときは出さない */
+  sub?: string
   tags: ReadonlyArray<TagRecord>
   /** 記録している最中の教科 */
   pending: string | null
@@ -22,7 +23,7 @@ export function SubjectGrid({ title, sub, tags, pending, timerDisabled, onPick, 
   return (
     <section className="subj" aria-labelledby="subj-h">
       <h2 id="subj-h" className="subj-title">{title}</h2>
-      <p className="subj-sub">{sub}</p>
+      {sub && <p className="subj-sub">{sub}</p>}
       <div className="subj-grid">
         {SUBJECTS.map((s) => {
           const time = recordedTime(tags, s)

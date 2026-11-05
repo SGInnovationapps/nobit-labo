@@ -61,9 +61,9 @@ test('resultCheer: できなかった日を責めない', () => {
 })
 
 test('recordedNote: 教科の記録・タスクの完了・途中でやめた', () => {
-  assert.equal(recordedNote(true, 'tag', '理科', 1), '理科を記録しました　コイン +1')
+  assert.equal(recordedNote(true, 'tag', '理科', 1), '理科を記録しました　🪙+1')
   assert.equal(recordedNote(true, 'tag', '理科', 0), '理科を記録しました')
-  assert.equal(recordedNote(true, 'task', '社会', 10), 'タスクを完了しました　コイン +10')
+  assert.equal(recordedNote(true, 'task', '社会', 10), 'タスクを完了しました　🪙+10')
   assert.equal(recordedNote(false, null, '英語', 0), '途中でやめたので、記録にはしていません。')
 })
 

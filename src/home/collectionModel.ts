@@ -12,6 +12,16 @@ export const CATEGORIES: ReadonlyArray<{ key: Category; label: string }> = [
 
 export const RARITY_LABEL: Record<Rarity, string> = { normal: 'ノーマル', rare: 'レア', super_rare: 'スーパーレア' }
 
+/** ガチャの出る確率の表示（仕様書 5-6：ノーマル70%・レア25%・スーパーレア5%） */
+export const GACHA_ODDS = '出る確率　ノーマル70%・レア25%・スーパーレア5%'
+
+/** ガチャの演出で、カプセルと光の色をレアリティで変える（ノーマル＝ミント、レア＝紫、スーパーレア＝金の光） */
+export function capsuleColor(rarity: Rarity): { top: string; glow: string } {
+  if (rarity === 'super_rare') return { top: '#ffd45e', glow: 'rgba(255, 212, 94, 0.85)' }
+  if (rarity === 'rare') return { top: '#9b8afb', glow: 'rgba(155, 138, 251, 0.7)' }
+  return { top: '#38cda1', glow: 'rgba(56, 205, 161, 0.55)' }
+}
+
 export type ItemDef = { id: string; name: string; category: Category; rarity: Rarity; sortOrder: number }
 export type OwnedItem = { itemId: string; acquiredAt: string; equipped: boolean }
 
@@ -93,7 +103,7 @@ export function acquiredLabel(iso: string): string {
 
 /** 重複したときの案内 */
 export function duplicateNote(coins: number): string {
-  return `もっているので、＋${coins}コインにかえました`
+  return `もう持っていたので、🪙+${coins} にかえました`
 }
 
 /** ［仮］v1.7：無料の1回のあと、コインで追加の1回（1日1回まで、学習記録がある日だけ） */
@@ -107,9 +117,9 @@ export function extraGachaState(freeDrawn: boolean, extraDrawn: boolean, coins: 
 }
 
 export const EXTRA_NOTE: Record<ExtraState, string> = {
-  locked: `無料ガチャを引くと、${EXTRA_GACHA_COST}コインで、もう1回引けます（1日1回まで）。`,
-  ready: `${EXTRA_GACHA_COST}コインで、もう1回引けます（1日1回まで）。`,
-  poor: `追加ガチャは${EXTRA_GACHA_COST}コインです。コインを集めると引けます。`,
+  locked: `無料ガチャを引くと、🪙${EXTRA_GACHA_COST} でもう1回引けます（1日1回まで）。`,
+  ready: `🪙${EXTRA_GACHA_COST} で、もう1回引けます（1日1回まで）。`,
+  poor: `追加ガチャは🪙${EXTRA_GACHA_COST} です。コインを集めると引けます。`,
   drawn: '今日の追加ガチャは引きました。',
 }
 

@@ -65,6 +65,7 @@ type TaskDetail = {
   subject: string
   estimated_minutes: number | null
   kind: string
+  reward_coins: number | null
   drill_subject: string | null
   drill_category: string | null
   drill_total: number | null
@@ -91,7 +92,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
   const [tasksRes, streakRes, activityRes, clubRes, supportRes, coinRes, timerRes, eventRes, badgeRes, tagRes, timerDoneRes, ticketRes, usesRes, daysRes, gachaRes, weekRes] = await Promise.all([
     supabase
       .from('user_tasks')
-      .select('id, completed_at, tasks(title, subject, estimated_minutes, kind, drill_subject, drill_category, drill_total)')
+      .select('id, completed_at, tasks(title, subject, estimated_minutes, kind, reward_coins, drill_subject, drill_category, drill_total)')
       .eq('task_date', today)
       .order('created_at', { ascending: true }),
     supabase.from('streak_status').select('current_days, longest_days, last_achieved_date, resume_seen_for').maybeSingle(),
@@ -133,6 +134,7 @@ export async function loadHome(clubId: string): Promise<HomeData> {
       estimatedMinutes: t.estimated_minutes,
       isFree: t.kind === 'free',
       completedAt: r.completed_at,
+      rewardCoins: t.kind === 'free' ? 0 : (t.reward_coins ?? 0),
       drill: t.drill_subject
         ? { subject: t.drill_subject, category: t.drill_category, total: t.drill_total ?? 10 }
         : null,

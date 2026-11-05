@@ -83,7 +83,7 @@ export function resultCheer(correct: number, total: number): string {
 export function recordedNote(recorded: boolean, via: 'tag' | 'task' | null, subject: string, coins: number): string {
   if (!recorded) return '途中でやめたので、記録にはしていません。'
   const head = via === 'task' ? 'タスクを完了しました' : `${subject}を記録しました`
-  return coins > 0 ? `${head}　コイン +${coins}` : head
+  return coins > 0 ? `${head}　🪙+${coins}` : head
 }
 
 /** 問題文の一部分。underline が true のところが下線部（ラボドリの <u> … </u>） */

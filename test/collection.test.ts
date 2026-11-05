@@ -45,7 +45,7 @@ test('setLabel: バッジは設定できない', () => {
 
 test('acquiredLabel（JST）と duplicateNote', () => {
   assert.equal(acquiredLabel('2026-10-09T16:00:00Z'), '10月10日')
-  assert.equal(duplicateNote(15), 'もっているので、＋15コインにかえました')
+  assert.equal(duplicateNote(15), 'もう持っていたので、🪙+15 にかえました')
 })
 
 import { badgeProgressLabel, earnedOnLabel, splitBadges } from '../src/home/collectionModel.ts'

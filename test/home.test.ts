@@ -96,7 +96,7 @@ test('内容は任意。書くなら 60 文字まで', () => {
 
 test('コインの一言：付かなかったときは出さない', () => {
   assert.equal(coinNote(0), '')
-  assert.equal(coinNote(3), '＋3コイン')
+  assert.equal(coinNote(3), '🪙+3')
 })
 
 const base = { startedAt: '2026-10-10T10:00:00Z', pausedAt: null, pausedSeconds: 0, targetSeconds: 900 }
@@ -132,7 +132,7 @@ test('focusProgress: 一時停止中は止めた時点で固定し、停止分�
 })
 
 test('focusNote: 達成と途中終了で文面を分ける', () => {
-  assert.equal(focusNote({ focusAchieved: true, focusBonus: 5, coinsGranted: 1, durationSeconds: 900 }), '15分集中を達成しました　＋6コイン')
+  assert.equal(focusNote({ focusAchieved: true, focusBonus: 5, coinsGranted: 1, durationSeconds: 900 }), '15分集中を達成しました　🪙+6')
   assert.equal(focusNote({ focusAchieved: false, focusBonus: 0, coinsGranted: 0, durationSeconds: 420 }), '7分の集中を記録しました')
 })
 

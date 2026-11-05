@@ -1,3 +1,4 @@
+import { Coin } from './Coin'
 import { QUEST_ALL_BONUS, QUEST_COINS, questCoinsEarned, questCoinsLeft, questSummary } from './homeModel'
 import type { Quest } from './homeModel'
 
@@ -17,9 +18,7 @@ export function QuestPanel({ quests }: { quests: ReadonlyArray<Quest> }) {
           <li key={q.key} className={q.done ? 'quest is-done' : 'quest'}>
             <span className="quest-label">{q.label}</span>
             <span className="quest-progress num">{q.progress}</span>
-            <span className="quest-coins">
-              <span className="num">{QUEST_COINS}</span>コイン
-            </span>
+            <span className="quest-coins"><Coin amount={QUEST_COINS} look="text" /></span>
             <span className="quest-state">{q.done ? '達成' : '未達成'}</span>
           </li>
         ))}
@@ -27,15 +26,15 @@ export function QuestPanel({ quests }: { quests: ReadonlyArray<Quest> }) {
           <li className={allDone ? 'quest quest-bonus is-done' : 'quest quest-bonus'}>
             <span className="quest-label">全部達成のボーナス</span>
             <span className="quest-progress num">{quests.filter((q) => q.done).length} / {quests.length}</span>
-            <span className="quest-coins"><span className="num">{QUEST_ALL_BONUS}</span>コイン</span>
+            <span className="quest-coins"><Coin amount={QUEST_ALL_BONUS} plus look="text" /></span>
             <span className="quest-state">{allDone ? '達成' : '未達成'}</span>
           </li>
         )}
       </ul>
       <p className="quest-foot">
         {allDone
-          ? <>今日のクエストは全部達成。<span className="num">{earned}</span>コイン受け取りました。</>
-          : <>あと<span className="num">{left}</span>コイン分、残っています。</>}
+          ? <>今日のクエストは全部達成。<Coin amount={earned} plus look="text" /> 受け取りました。</>
+          : <>あと <Coin amount={left} look="text" /> 分、残っています。</>}
       </p>
     </section>
   )

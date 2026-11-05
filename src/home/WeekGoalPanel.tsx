@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Coin } from './Coin'
 import { IconNext } from './HomeIcons'
 import {
   previousRewardNote, subjectQuestProgress, WEEK_TARGET_OPTIONS, WEEKLY_QUEST_COINS, WEEKLY_QUEST_DAYS, weekGoalNote,
@@ -57,7 +58,7 @@ export function WeekGoalPanel({ info, busy, error, notice, onSetTarget, onReward
             {quest.label && <span className="week-quest-subject">{quest.label}</span>}
           </span>
           <span className="quest-progress num">{quest.days} / {WEEKLY_QUEST_DAYS}</span>
-          <span className="quest-coins"><span className="num">{WEEKLY_QUEST_COINS}</span>コイン</span>
+          <span className="quest-coins"><Coin amount={WEEKLY_QUEST_COINS} look="text" /></span>
           <span className="quest-state">{quest.done ? '達成' : '未達成'}</span>
         </li>
       </ul>

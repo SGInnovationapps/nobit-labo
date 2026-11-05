@@ -5,6 +5,7 @@ import type { CollectionData, GachaResult } from './collectionApi'
 import { acquiredLabel, badgeProgressLabel, BADGE_CATEGORY_LABEL, earnedOnLabel, equippedTitle, EXTRA_NOTE, extraGachaState, GACHA_NOTE, gachaState, groupCollection, RARITY_LABEL, rewardGachaNote, splitBadges } from './collectionModel'
 import type { GachaMode } from './collectionModel'
 import { GachaSheet } from './GachaSheet'
+import { Coin } from './Coin'
 import { ContactSetting } from './ContactSetting'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
@@ -26,6 +27,8 @@ export function Collection({ displayName, grade, onTab, autoGacha = null, onAuto
   const [error, setError] = useState<string | null>(null)
   const [gachaOpen, setGachaOpen] = useState(false)
   const [mode, setMode] = useState<GachaMode>('free')
+  // コレクションの「追加で引く」から開いたときは、シートを開いてすぐ追加ガチャの演出を始める
+  const [startExtra, setStartExtra] = useState(false)
   const [result, setResult] = useState<GachaResult | null>(null)
   const [equipped, setEquipped] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -101,10 +104,11 @@ export function Collection({ displayName, grade, onTab, autoGacha = null, onAuto
       gachaError={gachaError}
       onOpenGacha={() => { setMode('free'); setResult(null); setGachaError(null); setGachaOpen(true) }}
       onOpenReward={() => { setMode('reward'); setResult(null); setGachaError(null); setGachaOpen(true) }}
-      onCloseGacha={() => setGachaOpen(false)}
+      onCloseGacha={() => { setGachaOpen(false); setStartExtra(false) }}
       onDraw={() => void onDraw(mode)}
       onDrawExtra={() => { setMode('free'); void onDraw('extra') }}
-      onOpenExtra={() => { setMode('free'); setResult(null); setGachaError(null); setGachaOpen(true); void onDraw('extra') }}
+      onOpenExtra={() => { setMode('free'); setResult(null); setGachaError(null); setStartExtra(true); setGachaOpen(true) }}
+      startExtra={startExtra}
       onEquip={() => void onEquip()}
       onEquipOwned={(id) => { void equipItem(id).then(load).catch((e) => { console.error(e); setError(FAIL) }) }}
       onTab={onTab}
@@ -131,6 +135,8 @@ type ViewProps = {
   onDraw: () => void
   onDrawExtra: () => void
   onOpenExtra: () => void
+  /** シートを開いてすぐ、追加ガチャを引く */
+  startExtra?: boolean
   onEquip: () => void
   onEquipOwned: (itemId: string) => void
   onTab: (tab: Tab) => void
@@ -164,7 +170,7 @@ export function CollectionView(p: ViewProps) {
         <>
           <section className="streak" aria-label="記録">
             <p className="streak-sub">
-              連続 <span className="num">{data.streak.current}</span> 日　最長 <span className="num">{data.streak.longest}</span> 日　コイン <span className="num coin-num">{data.coins}</span>
+              連続 <span className="num">{data.streak.current}</span> 日　最長 <span className="num">{data.streak.longest}</span> 日　<Coin amount={data.coins} />
             </p>
           </section>
 
@@ -259,7 +265,7 @@ export function CollectionView(p: ViewProps) {
       )}
 
       {p.gachaOpen && (
-        <GachaSheet mode={p.mode ?? 'free'} result={p.result} equipped={p.equipped} busy={p.busy} error={p.gachaError} onDraw={p.onDraw} extra={extra} onDrawExtra={p.onDrawExtra} onEquip={p.onEquip} onClose={p.onCloseGacha} />
+        <GachaSheet mode={p.mode ?? 'free'} startExtra={p.startExtra ?? false} result={p.result} equipped={p.equipped} busy={p.busy} error={p.gachaError} onDraw={p.onDraw} extra={extra} onDrawExtra={p.onDrawExtra} onEquip={p.onEquip} onClose={p.onCloseGacha} />
       )}
       {p.data && p.footer}
       <TabBar current="コレクション" onSelect={p.onTab} />

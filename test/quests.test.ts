@@ -61,8 +61,8 @@ test('questSummary: 達成数は分数で', () => {
 
 test('questNote: 記録したときの一言', () => {
   assert.equal(questNote([]), '')
-  assert.equal(questNote([{ key: 'subjects', coins: 3 }]), `クエスト達成「${QUEST_NAME.subjects}」　＋3コイン`)
-  assert.equal(questNote([{ key: 'minutes', coins: 3 }, { key: 'all', coins: 5 }]), 'クエストを2つ達成　＋8コイン')
+  assert.equal(questNote([{ key: 'subjects', coins: 3 }]), `クエスト達成「${QUEST_NAME.subjects}」　🪙+3`)
+  assert.equal(questNote([{ key: 'minutes', coins: 3 }, { key: 'all', coins: 5 }]), 'クエストを2つ達成　🪙+8')
   // 知らない key でも落とさない
   assert.equal(questNote([{ key: 'なぞ', coins: 0 }]), 'クエストを1つ達成')
 })

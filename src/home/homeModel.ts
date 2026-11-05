@@ -7,6 +7,8 @@ export type HomeTask = {
   estimatedMinutes: number | null
   isFree: boolean
   completedAt: string | null
+  /** 完了でもらえるコイン（配信された課題だけ。なければ 0） */
+  rewardCoins?: number
   /** ドリルのタスクのときだけ入る。完了は、問題を解き終えたときだけ */
   drill?: { subject: string; category: string | null; total: number } | null
 }
@@ -167,9 +169,18 @@ export function validateMinutes(raw: string, max: number): { ok: true; value: nu
   return { ok: true, value }
 }
 
+/** コインの絵（2026-11-05 から、生徒の画面ではコインを🪙で表す。数字の前に置き、増えるときは＋） */
+export const COIN = '🪙'
+
 /** 記録したときの一言。コインが付かなかったときは出さない */
 export function coinNote(coins: number): string {
-  return coins > 0 ? `＋${coins}コイン` : ''
+  return coins > 0 ? `${COIN}+${coins}` : ''
+}
+
+/** 1回の記録でもらったコインの合計（学習した日・課題・クエスト・ウィークリー） */
+export function gainedCoins(r: { coinsGranted: number; newQuests?: ReadonlyArray<{ coins: number }>; newWeek?: { subjectQuest: { coins: number } | null } }): number {
+  const quests = (r.newQuests ?? []).reduce((n, q) => n + q.coins, 0)
+  return r.coinsGranted + quests + (r.newWeek?.subjectQuest?.coins ?? 0)
 }
 
 /** 今回の記録で達成したクエストの一言。なければ空 */
@@ -180,7 +191,7 @@ export function questNote(quests: ReadonlyArray<{ key: string; coins: number }>)
     .map((q) => QUEST_NAME[q.key as keyof typeof QUEST_NAME])
     .filter((n): n is string => Boolean(n))
   const head = names.length === 1 ? `クエスト達成「${names[0]}」` : `クエストを${quests.length}つ達成`
-  return coins > 0 ? `${head}　＋${coins}コイン` : head
+  return coins > 0 ? `${head}　${COIN}+${coins}` : head
 }
 
 /** タイマー開始前の内容の検証（任意。書くなら 60 文字まで） */
@@ -400,6 +411,22 @@ export function tasksLeftLabel(tasks: ReadonlyArray<HomeTask>): { left: number; 
   if (tasks.length === 0) return null
   const left = tasks.filter((t) => !t.completedAt).length
   return { left, allDone: left === 0 }
+}
+
+/**
+ * ホームのノビット（画像と吹き出し。2026-11-05）。はじめて・今日まだは手をふり、記録中はよろこぶ。
+ * タスク完了・再開はノビットの面を出すので、ここでは出さない（null）。
+ * justRecorded：いま記録したもの（教科名や課題の名前）。あれば、それを伝える
+ */
+export function homeNobit(state: HomeState, todayCount: number, justRecorded: string | null): { mood: 'wave' | 'happy'; lines: string[] } | null {
+  if (state === 'first') return { mood: 'wave', lines: ['はじめまして、ノビットだよ。', '勉強したら、教科をタップしてね。'] }
+  if (state === 'notyet') return { mood: 'wave', lines: ['今日のページは、まだこれから。', '勉強したら、教科をタップしてね。'] }
+  if (state === 'recording') {
+    return justRecorded
+      ? { mood: 'happy', lines: [`${justRecorded}、記録したよ！`, `今日の記録は ${todayCount}件。`] }
+      : { mood: 'happy', lines: [`今日の自分、${todayCount}件すすんだ。`, 'ほかにも勉強したら、タップしてね。'] }
+  }
+  return null
 }
 
 /** ノビットの一文（画像なし）。再開の状態は画像で出すので一文は置かない */

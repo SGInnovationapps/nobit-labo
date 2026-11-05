@@ -57,8 +57,8 @@ export function timeNote(m: Pick<Mission, 'status' | 'startsOn' | 'endsOn'>, tod
 
 export function rewardLines(m: Pick<Mission, 'rewardPersonalCoins' | 'rewardClubCoins'>): string[] {
   const lines: string[] = []
-  if (m.rewardPersonalCoins > 0) lines.push(`自分の目標を達成：${m.rewardPersonalCoins}コイン`)
-  if (m.rewardClubCoins > 0) lines.push(`クラブの目標を達成（参加して1回以上記録した人）：${m.rewardClubCoins}コイン`)
+  if (m.rewardPersonalCoins > 0) lines.push(`自分の目標を達成：🪙${m.rewardPersonalCoins}`)
+  if (m.rewardClubCoins > 0) lines.push(`クラブの目標を達成（参加して1回以上記録した人）：🪙${m.rewardClubCoins}`)
   return lines
 }
 

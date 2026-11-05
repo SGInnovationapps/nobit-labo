@@ -4,6 +4,8 @@ import { Drill } from './Drill'
 import type { DrillRecorded } from './drillApi'
 import { IconChevron, IconNext, IconStar, IconTimer } from './HomeIcons'
 import { SubjectGrid } from './SubjectGrid'
+import { Coin } from './Coin'
+import { NobitSay } from './NobitSay'
 import { WeekChart } from './WeekChart'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
@@ -24,8 +26,8 @@ import {
 import type { CompleteResult, HomeData, StudyResult } from './homeApi'
 import type { HomeTask } from './homeModel'
 import {
-  addDays, BAND_NOTE, buildBand, buildWeek, homeStateOf, isNewSupport, nextMilestone, questsOf, RECORD_PREVIEW, recordsOpenFor, shortFirst, stateCheer, subjectGridCopy, tasksLeftLabel, ticketErrorMessage,
-  todayRecords, coinNote, dateLabel, focusNote, questNote, shouldShowSheet, sheetLabel, sortTasks, timeLabel, visibleRecords,
+  addDays, BAND_NOTE, buildWeek, homeStateOf, isNewSupport, nextMilestone, questsOf, RECORD_PREVIEW, recordsOpenFor, shortFirst, stateCheer, homeNobit, subjectGridCopy, tasksLeftLabel, ticketErrorMessage,
+  todayRecords, coinNote, gainedCoins, dateLabel, focusNote, questNote, shouldShowSheet, sheetLabel, sortTasks, timeLabel, visibleRecords,
 } from './homeModel'
 
 type Props = {
@@ -47,6 +49,8 @@ export type SheetInfo = {
   firstOfDay: boolean
   /** 今回の記録で新しく得たバッジの名前 */
   badges: string[]
+  /** 今回の記録でもらったコイン（学習した日・課題・クエストなどの合計） */
+  coins?: number
 }
 
 /** 教科ボタンを押したあとの任意の操作（内容を足す・この教科でタイマー） */
@@ -65,6 +69,8 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
   const [panelError, setPanelError] = useState<string | null>(null)
   const [tagPending, setTagPending] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  /** いま記録したもの（教科名・課題の名前・タイマーの教科）。ノビットの吹き出しで伝える */
+  const [justRecorded, setJustRecorded] = useState<string | null>(null)
   const [focusOpen, setFocusOpen] = useState(false)
   const [focusDone, setFocusDone] = useState<{ subject: string; coins: number; currentDays: number; badges: string[] } | null>(null)
   // 再開の状態：途切れたあとの最初の起動で出し、見たことを記録する。記録するまでは画面を保つ（閉じる操作はない）
@@ -156,9 +162,10 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
     try {
       const r = await completeTask(id)
       await load()
+      if (!r.alreadyCompleted) setJustRecorded(title)
       if (!r.alreadyCompleted && achievedNote(r)) setNotice(achievedNote(r))
       if (!r.alreadyCompleted && shouldShowSheet(r)) {
-        setDone({ label: sheetLabel(r), title, completedAt: r.completedAt, currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name) })
+        setDone({ label: sheetLabel(r), title, completedAt: r.completedAt, currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name), coins: gainedCoins(r) })
       }
     } catch (e) {
       console.error(e)
@@ -181,10 +188,11 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
     try {
       const r = await recordStudyTag(subject)
       await load()
+      if (!r.alreadyRecorded) setJustRecorded(subject)
       if (achievedNote(r)) setNotice(achievedNote(r))
       if (r.recordId && r.recordedAt) setTagPanel({ subject, recordId: r.recordId, recordedAt: r.recordedAt, hasContent: false })
       if (shouldShowSheet(r) && r.recordedAt) {
-        setDone({ label: sheetLabel(r), title: `${subject}を記録`, completedAt: r.recordedAt, currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name) })
+        setDone({ label: sheetLabel(r), title: `${subject}を記録`, completedAt: r.recordedAt, currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name), coins: gainedCoins(r) })
       }
     } catch (e) {
       console.error(e)
@@ -278,9 +286,10 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
       const wasFocus = data?.timer?.focusTargetSeconds != null
       const r = await stopStudyTimer(minutes)
       await load()
+      if (subject) setJustRecorded(subject)
       if (r.focusAchieved) setFocusDone({ subject, coins: r.coinsGranted + r.focusBonus, currentDays: r.currentDays, badges: r.newBadges.map((b) => b.name) })
       else if (shouldShowSheet(r)) {
-        setDone({ label: sheetLabel(r), title: `${subject}のタイマー`, completedAt: new Date().toISOString(), currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name) })
+        setDone({ label: sheetLabel(r), title: `${subject}のタイマー`, completedAt: new Date().toISOString(), currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name), coins: gainedCoins(r) })
       }
       setNotice([wasFocus ? focusNote(r) : noticeOf(r), wasFocus ? achievedNote(r) : '']
         .filter((x) => x !== '').join('　'))
@@ -350,6 +359,7 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
       panelBusy={panelBusy}
       panelError={panelError}
       notice={notice}
+      justRecorded={justRecorded}
       onTab={onTab}
       focusDone={focusDone}
       onCloseFocusDone={() => setFocusDone(null)}
@@ -403,6 +413,8 @@ export type HomeViewProps = {
   panelBusy: boolean
   panelError: string | null
   notice: string | null
+  /** いま記録したもの（ノビットの吹き出しに出す） */
+  justRecorded?: string | null
   onTab?: (tab: Tab) => void
   focusDone: { subject: string; coins: number; currentDays: number; badges: string[] } | null
   onCloseFocusDone: () => void
@@ -469,7 +481,6 @@ function writeRecordsOpen(today: string, open: boolean) {
 export function HomeView(p: HomeViewProps) {
   const { data, clubName, displayName, error, pending, done } = p
   const tasks = sortTasks(data.tasks)
-  const cells = buildBand(data.activity, data.today, 14, data.restDates)
   const week = buildWeek(data.activity, data.today, data.restDates)
   const timerRunning = data.timer !== null
   const todayCount = data.activity.find((a) => a.date === data.today)?.count ?? 0
@@ -482,6 +493,17 @@ export function HomeView(p: HomeViewProps) {
   const supportFrom = data.support ? `${data.support.authorName ?? 'クラブの管理者'}さんから` : ''
 
   const [timerPick, setTimerPick] = useState(false)
+  // コインが増えたら、右上で「🪙+N」がふわっと上がって消える（どの記録で増えても同じ）
+  const [coinPop, setCoinPop] = useState<{ amount: number; key: number } | null>(null)
+  const prevCoins = useRef<number | null>(null)
+  useEffect(() => {
+    const prev = prevCoins.current
+    prevCoins.current = data.coins
+    if (prev === null || data.coins <= prev) return
+    setCoinPop({ amount: data.coins - prev, key: Date.now() })
+    const t = setTimeout(() => setCoinPop(null), 2200)
+    return () => clearTimeout(t)
+  }, [data.coins])
   const [recordsOpen, setRecordsOpen] = useState(() => readRecordsOpen(data.today))
   const shownRecords = visibleRecords(records, recordsOpen)
   const toggleRecords = () => {
@@ -502,6 +524,7 @@ export function HomeView(p: HomeViewProps) {
   }
 
   const cheerLine = cheer && <p className="cheer"><span className="cheer-name">ノビット</span>{cheer}</p>
+  const nobit = homeNobit(state, todayCount, p.justRecorded ?? null)
 
   const taskRows = (list: ReadonlyArray<HomeTask>) => (
     <ul className="tasks">
@@ -512,6 +535,7 @@ export function HomeView(p: HomeViewProps) {
               {t.subject}
               {t.drill && <>　ドリル{t.drill.category ? `　${t.drill.category}` : ''}</>}
               {t.estimatedMinutes != null && <>　見込み<span className="num">{t.estimatedMinutes}</span>分</>}
+              {!t.isFree && (t.rewardCoins ?? 0) > 0 && <Coin amount={t.rewardCoins ?? 0} className="task-coin" />}
             </span>
             <span className="task-title">{t.title}</span>
           </div>
@@ -591,9 +615,15 @@ export function HomeView(p: HomeViewProps) {
     <div className="home">
       <header className="home-head">
         <p className="muted home-sub">{dateLabel(data.today)}　{clubName ?? ''}{displayName ? `　${displayName}` : ''}</p>
-        {(state === 'notyet' || state === 'recording') && (
-          <p className="home-streak">連続 <span className="num">{data.streak.current}</span> 日</p>
-        )}
+        <div className="home-head-side">
+          {(state === 'notyet' || state === 'recording') && (
+            <p className="home-streak">連続 <span className="num">{data.streak.current}</span> 日</p>
+          )}
+          <p className="home-wallet">
+            <Coin amount={data.coins} />
+            {coinPop && <span key={coinPop.key} className="coin-pop" aria-hidden="true"><Coin amount={coinPop.amount} plus look="text" /></span>}
+          </p>
+        </div>
       </header>
 
       {state === 'resume' ? (
@@ -613,8 +643,10 @@ export function HomeView(p: HomeViewProps) {
             {cheerLine}
             <p className="face-streak">連続 <span className="num">{data.streak.current}</span><span className="face-streak-unit">日</span></p>
           </div>
-          <Nobit mood="joy" className="face-nobit" />
+          <Nobit mood="celebrate" className="face-nobit" />
         </section>
+      ) : nobit ? (
+        <NobitSay mood={nobit.mood} lines={nobit.lines} hop={nobit.mood === 'happy' && p.justRecorded != null} />
       ) : (
         cheerLine
       )}
@@ -644,7 +676,7 @@ export function HomeView(p: HomeViewProps) {
 
       <SubjectGrid
         title={grid.title}
-        sub={grid.sub}
+        sub={nobit ? undefined : grid.sub}
         tags={data.tags}
         pending={p.tagPending}
         timerDisabled={timerRunning || p.timerBusy || !p.onStartTimer}
@@ -723,7 +755,6 @@ export function HomeView(p: HomeViewProps) {
         />
       )}
 
-      <p className="coin-line"><span className="coin-dot" aria-hidden="true" />コイン <span className="num coin-num">{data.coins}</span></p>
 
       {data.tickets && state !== 'resume' && (
         <TicketPanel info={data.tickets} busy={p.ticketBusy ?? false} error={p.ticketError ?? null} onUse={(w) => p.onUseTicket?.(w)} />
@@ -740,7 +771,7 @@ export function HomeView(p: HomeViewProps) {
         <button type="button" className="focus-entry" onClick={p.onOpenFocus}>
           <IconTimer />
           <span className="focus-entry-label">15分集中モード</span>
-          <span className="focus-entry-note">達成で5コイン</span>
+          <span className="focus-entry-note">達成で <Coin amount={5} look="text" /></span>
         </button>
       )}
 
@@ -761,8 +792,8 @@ export function HomeView(p: HomeViewProps) {
           label={done.label}
           title={done.title}
           completedAt={done.completedAt}
-          cells={cells}
           currentDays={done.currentDays}
+          coins={done.coins}
           completedToday={done.completedToday}
           badges={done.badges}
           onGacha={done.firstOfDay ? p.onGacha : undefined}

@@ -69,7 +69,7 @@ test('parseNewWeek / newWeekNote: 今回あらたに達成したもの', () => {
   assert.equal(newWeekNote(parseNewWeek({})), '')
   assert.equal(newWeekNote(parseNewWeek(undefined)), '')
   assert.equal(newWeekNote(parseNewWeek({ goal: { target_days: 5, days: 5 } })), '週の目標を達成　ごほうびのガチャ1回')
-  assert.equal(newWeekNote(parseNewWeek({ subject_quest: { subject: '理科', coins: 10 } })), 'ウィークリー達成「理科を週3日」　＋10コイン')
+  assert.equal(newWeekNote(parseNewWeek({ subject_quest: { subject: '理科', coins: 10 } })), 'ウィークリー達成「理科を週3日」　🪙+10')
 })
 
 test('targetChangedNote: 今週からか来週からか', () => {

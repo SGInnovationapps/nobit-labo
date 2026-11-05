@@ -134,7 +134,7 @@ export function ReflectView(p: ViewProps) {
                 <dl className="sum-list">
                   <div><dt>達成した日</dt><dd><span className="num">{questSummaryOf(data.quests).days}</span>日</dd></div>
                   <div><dt>全部達成した日</dt><dd><span className="num">{questSummaryOf(data.quests).allDays}</span>日</dd></div>
-                  <div><dt>もらったコイン</dt><dd><span className="num">{questSummaryOf(data.quests).coins}</span></dd></div>
+                  <div><dt>もらったコイン</dt><dd><span aria-hidden="true">🪙</span><span className="num">{questSummaryOf(data.quests).coins}</span></dd></div>
                 </dl>
                 <ul className="quest-hist">
                   {[...data.quests].reverse().map((q) => (
@@ -144,7 +144,7 @@ export function ReflectView(p: ViewProps) {
                         {q.keys.filter((k) => k !== 'all').map((k) => QUEST_NAME[k as keyof typeof QUEST_NAME] ?? k).join('、')}
                         {q.keys.includes('all') && <span className="quest-hist-all">全部達成</span>}
                       </span>
-                      <span className="quest-hist-coins num">{q.coins}</span>
+                      <span className="quest-hist-coins"><span aria-hidden="true">🪙</span><span className="num">+{q.coins}</span></span>
                     </li>
                   ))}
                 </ul>

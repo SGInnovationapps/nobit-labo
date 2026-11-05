@@ -128,7 +128,7 @@ export function newWeekNote(w: NewWeek): string {
   const parts: string[] = []
   if (w.goal) parts.push('週の目標を達成　ごほうびのガチャ1回')
   if (w.subjectQuest) {
-    parts.push(`ウィークリー達成「${w.subjectQuest.subject}を週${WEEKLY_QUEST_DAYS}日」${w.subjectQuest.coins > 0 ? `　＋${w.subjectQuest.coins}コイン` : ''}`)
+    parts.push(`ウィークリー達成「${w.subjectQuest.subject}を週${WEEKLY_QUEST_DAYS}日」${w.subjectQuest.coins > 0 ? `　🪙+${w.subjectQuest.coins}` : ''}`)
   }
   return parts.join('　')
 }
