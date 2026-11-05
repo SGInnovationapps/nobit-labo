@@ -195,7 +195,8 @@ export async function loadTaskBoard(clubId: string, today: string): Promise<Task
       .eq('kind', 'assigned')
       .order('created_at', { ascending: false }),
     supabase.from('user_tasks').select('task_id').eq('club_id', clubId).eq('is_free', false).eq('task_date', today).not('completed_at', 'is', null),
-    supabase.from('club_members').select('user_id, users(grade)').eq('club_id', clubId).eq('member_role', 'student').eq('status', 'approved'),
+    // club_members から users へは user_id と reviewed_by の2本があるので、どちらを辿るかを名前で指定する
+    supabase.from('club_members').select('user_id, users!club_members_user_id_fkey(grade)').eq('club_id', clubId).eq('member_role', 'student').eq('status', 'approved'),
   ])
   if (taskRes.error) throw taskRes.error
   if (doneRes.error) throw doneRes.error
