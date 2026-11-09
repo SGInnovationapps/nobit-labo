@@ -317,9 +317,9 @@ export async function cancelStudyTimer(): Promise<void> {
   if (error) throw error
 }
 
-/** 15分集中モードを始める */
-export async function startFocusSession(subject: string, content: string | null): Promise<void> {
-  const { error } = await supabase.rpc('start_focus_session', { p_subject: subject, p_content: content })
+/** 集中モードを始める（15・25・50 分） */
+export async function startFocusSession(subject: string, content: string | null, minutes: number): Promise<void> {
+  const { error } = await supabase.rpc('start_focus_session', { p_subject: subject, p_content: content, p_minutes: minutes })
   if (error) throw error
 }
 

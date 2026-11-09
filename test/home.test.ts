@@ -120,6 +120,7 @@ test('focusProgress: 15 分で 0:00・15 目盛り・達成。超えても 0:00'
   const p = focusProgress(base, at(1500))
   assert.equal(p.label, '0:00')
   assert.equal(p.ticks, 15)
+  assert.equal(p.totalTicks, 15)
 })
 
 test('focusProgress: 一時停止中は止めた時点で固定し、停止分は引く', () => {
@@ -134,6 +135,37 @@ test('focusProgress: 一時停止中は止めた時点で固定し、停止分�
 test('focusNote: 達成と途中終了で文面を分ける', () => {
   assert.equal(focusNote({ focusAchieved: true, focusBonus: 5, coinsGranted: 1, durationSeconds: 900 }), '15分集中を達成しました　🪙+6')
   assert.equal(focusNote({ focusAchieved: false, focusBonus: 0, coinsGranted: 0, durationSeconds: 420 }), '7分の集中を記録しました')
+})
+
+import { FOCUS_OPTIONS, focusBonusOf, focusTickColumns } from '../src/home/homeModel.ts'
+
+test('集中モードの長さ：15・25・50 分。ボーナスは 5・8・15（［仮］）', () => {
+  assert.deepEqual(FOCUS_OPTIONS.map((o) => o.minutes), [15, 25, 50])
+  assert.equal(focusBonusOf(15), 5)
+  assert.equal(focusBonusOf(25), 8)
+  assert.equal(focusBonusOf(50), 15)
+  assert.equal(focusBonusOf(30), 5)
+})
+
+test('focusProgress: 25 分・50 分も 1 分 = 1 目盛り', () => {
+  const p25 = focusProgress({ ...base, targetSeconds: 1500 }, at(600))
+  assert.equal(p25.label, '15:00')
+  assert.equal(p25.ticks, 10)
+  assert.equal(p25.totalTicks, 25)
+  const p50 = focusProgress({ ...base, targetSeconds: 3000 }, at(4000))
+  assert.equal(p50.label, '0:00')
+  assert.equal(p50.ticks, 50)
+  assert.equal(p50.reached, true)
+})
+
+test('focusTickColumns: 50 分は 25 個ずつ 2 行', () => {
+  assert.equal(focusTickColumns(15), 15)
+  assert.equal(focusTickColumns(25), 25)
+  assert.equal(focusTickColumns(50), 25)
+})
+
+test('focusNote: 達成した長さを出す', () => {
+  assert.equal(focusNote({ focusAchieved: true, focusBonus: 15, coinsGranted: 1, durationSeconds: 3000 }), '50分集中を達成しました　🪙+16')
 })
 
 import { recordedTime, shouldShowSheet, sheetLabel } from '../src/home/homeModel.ts'

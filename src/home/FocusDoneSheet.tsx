@@ -4,6 +4,8 @@ import { coinNote } from './homeModel'
 
 type Props = {
   subject: string
+  /** 達成した長さ（分） */
+  minutes: number
   coins: number
   currentDays: number
   /** 新しく得たバッジの名前（あるときだけ） */
@@ -11,8 +13,8 @@ type Props = {
   onClose: () => void
 }
 
-/** 15分集中を達成した瞬間。ノビットはここにも出る（途中で終えたときは出さない） */
-export function FocusDoneSheet({ subject, coins, currentDays, badges, onClose }: Props) {
+/** 集中モードを達成した瞬間。ノビットはここにも出る（途中で終えたときは出さない） */
+export function FocusDoneSheet({ subject, minutes, coins, currentDays, badges, onClose }: Props) {
   const close = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     close.current?.focus()
@@ -25,9 +27,9 @@ export function FocusDoneSheet({ subject, coins, currentDays, badges, onClose }:
     <div className="sheet-backdrop">
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="focus-done-title">
         <Nobit mood="cheer" className="sheet-nobit" />
-        <p className="sheet-label">15分集中を達成しました</p>
+        <p className="sheet-label">{minutes}分集中を達成しました</p>
         <h2 id="focus-done-title" className="sheet-title">{subject}</h2>
-        <p className="sheet-time num">15:00</p>
+        <p className="sheet-time num">{minutes}:00</p>
         {badges && badges.length > 0 && (
           <ul className="sheet-badges" aria-label="新しいバッジ">
             {badges.map((b) => <li key={b}>バッジ「{b}」を獲得</li>)}

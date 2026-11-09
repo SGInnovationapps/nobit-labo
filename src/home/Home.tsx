@@ -72,7 +72,7 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
   /** いま記録したもの（教科名・課題の名前・タイマーの教科）。ノビットの吹き出しで伝える */
   const [justRecorded, setJustRecorded] = useState<string | null>(null)
   const [focusOpen, setFocusOpen] = useState(false)
-  const [focusDone, setFocusDone] = useState<{ subject: string; coins: number; currentDays: number; badges: string[] } | null>(null)
+  const [focusDone, setFocusDone] = useState<{ subject: string; minutes: number; coins: number; currentDays: number; badges: string[] } | null>(null)
   // 再開の状態：途切れたあとの最初の起動で出し、見たことを記録する。記録するまでは画面を保つ（閉じる操作はない）
   const [resumeActive, setResumeActive] = useState(false)
   const resumeMarked = useRef(false)
@@ -260,12 +260,12 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
     }
   }
 
-  /** 15分集中モードを始める（教科と内容を選ぶ） */
-  async function onStartFocus(subject: string, content: string | null) {
+  /** 集中モードを始める（教科・内容・長さを選ぶ） */
+  async function onStartFocus(subject: string, content: string | null, minutes: number) {
     setTimerBusy(true)
     setTimerError(null)
     try {
-      await startFocusSession(subject, content)
+      await startFocusSession(subject, content, minutes)
       await load()
       setFocusOpen(false)
     } catch (e) {
@@ -284,10 +284,11 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
     try {
       const subject = data?.timer?.subject ?? ''
       const wasFocus = data?.timer?.focusTargetSeconds != null
+      const focusMinutes = Math.round((data?.timer?.focusTargetSeconds ?? 900) / 60)
       const r = await stopStudyTimer(minutes)
       await load()
       if (subject) setJustRecorded(subject)
-      if (r.focusAchieved) setFocusDone({ subject, coins: r.coinsGranted + r.focusBonus, currentDays: r.currentDays, badges: r.newBadges.map((b) => b.name) })
+      if (r.focusAchieved) setFocusDone({ subject, minutes: focusMinutes, coins: r.coinsGranted + r.focusBonus, currentDays: r.currentDays, badges: r.newBadges.map((b) => b.name) })
       else if (shouldShowSheet(r)) {
         setDone({ label: sheetLabel(r), title: `${subject}のタイマー`, completedAt: new Date().toISOString(), currentDays: r.currentDays, completedToday: r.completedToday, firstOfDay: r.firstOfDay, badges: r.newBadges.map((b) => b.name), coins: gainedCoins(r) })
       }
@@ -394,7 +395,7 @@ export function Home({ clubId, clubName, displayName, grade, onTab, onGacha, onR
       onPauseFocus={() => void onPauseResume(true)}
       onResumeFocus={() => void onPauseResume(false)}
       onCloseFocus={() => setFocusOpen(false)}
-      onStartFocus={(sub, c) => void onStartFocus(sub, c)}
+      onStartFocus={(sub, c, m) => void onStartFocus(sub, c, m)}
       onStopTimer={(m) => void onStopTimer(m)}
       onCancelTimer={() => void onCancelTimer()}
     />
@@ -416,7 +417,7 @@ export type HomeViewProps = {
   /** いま記録したもの（ノビットの吹き出しに出す） */
   justRecorded?: string | null
   onTab?: (tab: Tab) => void
-  focusDone: { subject: string; coins: number; currentDays: number; badges: string[] } | null
+  focusDone: { subject: string; minutes: number; coins: number; currentDays: number; badges: string[] } | null
   onCloseFocusDone: () => void
   focusOpen: boolean
   timerBusy: boolean
@@ -454,7 +455,7 @@ export type HomeViewProps = {
   onPauseFocus: () => void
   onResumeFocus: () => void
   onCloseFocus: () => void
-  onStartFocus: (subject: string, content: string | null) => void
+  onStartFocus: (subject: string, content: string | null, minutes: number) => void
   onStopTimer: (minutes: number | null) => void
   onCancelTimer: () => void
 }
@@ -770,8 +771,8 @@ export function HomeView(p: HomeViewProps) {
       {!timerRunning && (
         <button type="button" className="focus-entry" onClick={p.onOpenFocus}>
           <IconTimer />
-          <span className="focus-entry-label">15分集中モード</span>
-          <span className="focus-entry-note">達成で <Coin amount={5} look="text" /></span>
+          <span className="focus-entry-label">集中モード</span>
+          <span className="focus-entry-note"><span className="num">15</span>・<span className="num">25</span>・<span className="num">50</span>分</span>
         </button>
       )}
 
@@ -801,9 +802,9 @@ export function HomeView(p: HomeViewProps) {
         />
       )}
       {p.focusDone && (
-        <FocusDoneSheet subject={p.focusDone.subject} coins={p.focusDone.coins} currentDays={p.focusDone.currentDays} badges={p.focusDone.badges} onClose={p.onCloseFocusDone} />
+        <FocusDoneSheet subject={p.focusDone.subject} minutes={p.focusDone.minutes} coins={p.focusDone.coins} currentDays={p.focusDone.currentDays} badges={p.focusDone.badges} onClose={p.onCloseFocusDone} />
       )}
-      {p.focusOpen && !data.timer && <TimerSheet focus busy={p.timerBusy} error={p.timerError} onStart={p.onStartFocus} onClose={p.onCloseFocus} />}
+      {p.focusOpen && !data.timer && <TimerSheet focus busy={p.timerBusy} error={p.timerError} onStart={(s, c, m) => p.onStartFocus(s, c, m ?? 15)} onClose={p.onCloseFocus} />}
     </div>
   )
 }

@@ -198,7 +198,7 @@ export function subjectBreakdown(subjects: ReadonlyArray<string>): SubjectCount[
 export const COIN_REASON_LABEL: Record<string, string> = {
   task_complete: '配信タスク',
   study_day: '学習した日',
-  focus_complete: '15分集中',
+  focus_complete: '集中モードの達成',
   study_plain: '教科の記録',
   study_content: '教科の記録（内容つき）',
   gacha_duplicate: 'ガチャ（重複）',

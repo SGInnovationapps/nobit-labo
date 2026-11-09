@@ -3,7 +3,7 @@ export type NobitMood =
   | 'front'      // 既定
   | 'happy'      // ホーム：教科を記録した直後／ガチャ：ノーマル
   | 'celebrate'  // 記録の瞬間（02）
-  | 'cheer'      // 15分集中の達成（03）
+  | 'cheer'      // 集中モードの達成（03）
   | 'excited'    // ガチャを引く前（05）
   | 'surprised'  // ガチャの演出中
   | 'joy'        // ガチャ：レア

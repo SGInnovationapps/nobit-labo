@@ -191,9 +191,11 @@ p { margin: 0; }
 .timer-panel .timer-time { margin: 8px 0 0; font-size: 48px; font-weight: 700; line-height: 1.1; }
 .timer-panel .actions { margin-top: 14px; }
 
-/* 15分集中モード（画面03） */
+/* 集中モード（画面03）。目盛りの列数は画面で指定（15・25、50 は 25 個ずつ 2 行） */
+.choices-3 { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.choices-3 .choice-face { min-height: 48px; font-size: 16px; }
 .focus-state { margin: 4px 0 0; font-weight: 700; }
-.focus-ticks { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px; list-style: none; margin: 12px 0 0; padding: 0; }
+.focus-ticks { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px 3px; list-style: none; margin: 12px 0 0; padding: 0; }
 .focus-ticks li { height: 18px; border-radius: 3px; background: #e6ece9; }
 .focus-ticks li.on { background: var(--mint, #38cda1); }
 

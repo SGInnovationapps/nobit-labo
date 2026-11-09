@@ -202,8 +202,24 @@ export function validateContent(raw: string): { ok: true; value: string | null }
   return { ok: true, value }
 }
 
-/** 集中モードの目標（15 分）。1 分 = 1 目盛りの 15 目盛り */
-export const FOCUS_SECONDS = 15 * 60
+/** 集中モードの長さ（分）。［仮］達成ボーナスは 15 分 5・25 分 8・50 分 15 コイン、1 日 1 回 */
+export const FOCUS_OPTIONS = [
+  { minutes: 15, bonus: 5 },
+  { minutes: 25, bonus: 8 },
+  { minutes: 50, bonus: 15 },
+] as const
+export type FocusMinutes = (typeof FOCUS_OPTIONS)[number]['minutes']
+export const FOCUS_DEFAULT_MINUTES: FocusMinutes = 15
+
+/** その長さの達成ボーナス（知らない長さは 15 分の扱い） */
+export function focusBonusOf(minutes: number): number {
+  return FOCUS_OPTIONS.find((o) => o.minutes === minutes)?.bonus ?? FOCUS_OPTIONS[0].bonus
+}
+
+/** 目盛りを何列に並べるか（1 分 = 1 目盛り。15 分は 1 行、25 分は 1 行、50 分は 25 個ずつ 2 行） */
+export function focusTickColumns(minutes: number): number {
+  return Math.min(Math.max(1, minutes), 25)
+}
 
 export type FocusProgress = {
   /** 一時停止を除いた、集中した秒数（目標まで） */
@@ -211,8 +227,10 @@ export type FocusProgress = {
   remainingSeconds: number
   /** 残り時間の表示（例：12:05） */
   label: string
-  /** 経過した目盛りの数（0〜15） */
+  /** 経過した目盛りの数（1 分 = 1 目盛り。0〜目標の分数） */
   ticks: number
+  /** 目標の分数（目盛りの数） */
+  totalTicks: number
   reached: boolean
   paused: boolean
 }
@@ -232,7 +250,8 @@ export function focusProgress(
     activeSeconds,
     remainingSeconds,
     label: `${m}:${String(sec).padStart(2, '0')}`,
-    ticks: Math.min(15, Math.floor(activeSeconds / 60)),
+    ticks: Math.min(Math.floor(f.targetSeconds / 60), Math.floor(activeSeconds / 60)),
+    totalTicks: Math.floor(f.targetSeconds / 60),
     reached: remainingSeconds === 0,
     paused: f.pausedAt !== null,
   }
@@ -242,7 +261,8 @@ export function focusProgress(
 export function focusNote(r: { focusAchieved: boolean; focusBonus: number; coinsGranted: number; durationSeconds: number | null }): string {
   if (r.focusAchieved) {
     const coins = r.focusBonus + r.coinsGranted
-    return `15分集中を達成しました　${coinNote(coins)}`.trim()
+    const target = Math.floor((r.durationSeconds ?? 900) / 60)
+    return `${target}分集中を達成しました　${coinNote(coins)}`.trim()
   }
   const min = Math.floor((r.durationSeconds ?? 0) / 60)
   return `${min}分の集中を記録しました　${coinNote(r.coinsGranted)}`.trim()
