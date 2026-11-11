@@ -11,7 +11,7 @@
 | 生徒のミニアプリ | `src/`（`/`） | React + TypeScript + Vite。LIFF で LINE ログイン |
 | 管理画面 | `src/admin/`（`/admin`） | 運営とクラブ管理者。メールリンクでログイン。生徒のミニアプリには読み込まない |
 | DB | `supabase/migrations/` | Supabase（PostgreSQL）。RLS でクラブごとに分け、報酬はサーバー側の関数で処理する |
-| Edge Function | `supabase/functions/` | `line-login`（LINE の ID トークン → セッション）、`line-webhook`（公式LINE の友だち状態）、`club-admin`（クラブ管理者の追加・解除）、`weekly-digest`（管理者への週1メール） |
+| Edge Function | `supabase/functions/` | `line-login`（LINE の ID トークン → セッション）、`line-webhook`（公式LINE の友だち状態）、`club-admin`（クラブ管理者の追加・解除）、`weekly-digest`（管理者への週1メール）、`line-push`（公式LINE から再開の声かけを送る） |
 | 公開 | `wrangler.toml` | Cloudflare Workers の静的アセット。main への push でビルドして公開。`public/_headers` でキャッシュ |
 | 画面の確認用 | `harness/` | 画面の部品をダミーのデータで出す（`npx vite` → `/harness/admin.html#alertlist` など） |
 

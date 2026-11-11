@@ -308,3 +308,10 @@ select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .adm-adjust-form { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
 .adm-adjust .adm-h3 { margin: 20px 0 8px; font-size: 15px; font-weight: 700; }
 .adm-notice { margin: 10px 0 0; font-size: 14px; font-weight: 700; color: #0b7a5a; }
+
+/* 公式LINE からの送信（再開の声かけ） */
+.alert-confirm { margin-top: 10px; padding: 12px 14px; border: 2px solid var(--ink); border-radius: 12px; display: grid; gap: 10px; }
+.alert-confirm-text { margin: 0; font-weight: 700; line-height: 1.7; }
+.alert-push-note { margin: 6px 0 0; font-size: 14px; }
+.alert-bulk { margin: 12px 0 4px; }
+.adm-notice-warn { background: #fdecee; color: var(--error-ink); }

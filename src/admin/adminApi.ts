@@ -4,7 +4,7 @@ import type { ClubAdmin } from './clubAdminsModel'
 import { generateInviteCode } from './applicants'
 import type { Applicant } from './applicants'
 import { addDays, jstDate } from '../home/homeModel'
-import type { AlertItem } from './alertListModel'
+import type { AlertItem, LineQuota, PushSendResult } from './alertListModel'
 import type { AdminMission, ParsedDraft } from './missionAdminModel'
 import type { AlertKind, AlertRule, SendMethod } from './alertsModel'
 import type { ClubEvent, EventKind } from './eventsModel'
@@ -649,6 +649,8 @@ type AlertRow = {
   resumed_after_contact: boolean | null; template: string | null; completed_after_contact: number | null
   line_display_name?: string | null
   friend_status?: 'unknown' | 'friend' | 'blocked' | null
+  send_method?: AlertItem['sendMethod']
+  contact_allowed?: boolean | null
 }
 
 /** 定時生成の最後の実行（運営のみ）。読めなくても画面は止めない */
@@ -682,7 +684,7 @@ export async function loadAlerts(clubId: string, now = Date.now()): Promise<Aler
   const since = new Date(now - 7 * 86_400_000).toISOString()
   const { data, error } = await supabase
     .from('alert_list')
-    .select('id, student_id, display_name, grade, kind, detail, occurred_on, status, contacted_at, resolved_at, resumed_after_contact, template, completed_after_contact, line_display_name, friend_status')
+    .select('id, student_id, display_name, grade, kind, detail, occurred_on, status, contacted_at, resolved_at, resumed_after_contact, template, completed_after_contact, line_display_name, friend_status, send_method, contact_allowed')
     .eq('club_id', clubId)
     .or(`status.in.(open,contacted),and(status.eq.resolved,resolved_at.gte.${since})`)
   if (error) throw error
@@ -692,7 +694,24 @@ export async function loadAlerts(clubId: string, now = Date.now()): Promise<Aler
     resumedAfterContact: r.resumed_after_contact, template: r.template, completedAfterContact: r.completed_after_contact,
     lineName: r.line_display_name ?? null,
     friendStatus: r.friend_status ?? null,
+    sendMethod: r.send_method ?? null,
+    contactAllowed: r.contact_allowed ?? null,
   }))
+}
+
+/** 公式LINE からの送信（運営だけ。Edge Function line-push を通す） */
+async function linePushCall<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('line-push', { body })
+  if (error) {
+    const res = (error as { context?: Response }).context
+    const reason = res && typeof res.json === 'function' ? ((await res.json().catch(() => null)) as { error?: string } | null)?.error : null
+    throw new Error(reason ?? 'line_push_failed')
+  }
+  return data as T
+}
+export const loadLineQuota = () => linePushCall<LineQuota>({ action: 'quota' })
+export async function sendLinePush(items: { alertIds: string[]; text: string }[]): Promise<PushSendResult[]> {
+  return (await linePushCall<{ results: PushSendResult[] }>({ action: 'send', items })).results
 }
 
 export async function markAlertsContacted(ids: string[]): Promise<void> {

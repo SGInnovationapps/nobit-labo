@@ -22,8 +22,12 @@ export type AlertItem = {
   completedAfterContact: number | null
   /** 生徒の LINE の表示名（取れているときだけ） */
   lineName?: string | null
-  /** 公式LINE の友だち状態（運営だけ） */
+  /** 公式LINE の友だち状態（運営だけ）。LINE の記録がない生徒は null */
   friendStatus?: 'unknown' | 'friend' | 'blocked' | null
+  /** 連絡の送り方（manual：手で送った、line_api：管理画面から LINE で送った） */
+  sendMethod?: 'manual' | 'auto' | 'line_api' | null
+  /** 本人が連絡を受け取るか（運営だけ） */
+  contactAllowed?: boolean | null
 }
 
 /** 終了前日用の既定文面 [仮] */
@@ -92,6 +96,8 @@ export function alertErrorMessage(e: unknown): string {
   if (text.includes('clipboard')) return '文面をコピーできませんでした。表示している文面を選んで、コピーしてください。連絡済みにはしていません。'
   if (text.includes('not_open')) return 'このアラートは、すでに対応済みです。一覧を更新しました。'
   if (text.includes('forbidden')) return 'アラートを扱えるのは運営だけです。'
+  if (text.includes('quota')) return 'LINE で送れる今月の残りが足りません。1通も送っていません。文面をコピーして、公式LINE のチャットから送ってください（チャットは通数に数えません）。'
+  if (text.includes('line_unavailable')) return 'LINE の残り通数を確かめられなかったので、送っていません。少し待って、もう一度お試しください。'
   return '処理できませんでした。通信を確認して、もう一度お試しください。'
 }
 
@@ -179,6 +185,67 @@ export type StudentAlertRow = {
   since: string
   /** 連絡済みのとき、いちばん新しい連絡の時刻 */
   contactedAt: string | null
+  /** 管理画面から LINE で送れるか。送れないときは理由 */
+  push: PushState
+  /** LINE で送って連絡済みにした（取り消しはできない） */
+  sentByLine: boolean
+}
+
+// ---- 公式LINE からの送信（再開の声かけ） ----
+
+/** 管理画面から LINE で送れる種類（再開の声かけ）。DB の private.line_push_kinds と同じ */
+export const PUSH_KINDS: ReadonlyArray<AlertKind> = ['gap', 'streak_broken']
+
+export type PushState = 'ok' | 'not_kind' | 'no_line' | 'blocked' | 'contact_off'
+
+/** 生徒の1行を LINE で送れるか（文面の元になる、いちばん優先のアラートで決める） */
+export function pushStateOf(items: ReadonlyArray<AlertItem>): PushState {
+  const top = items[0]
+  if (!top || !PUSH_KINDS.includes(top.kind)) return 'not_kind'
+  if (top.friendStatus === null || top.friendStatus === undefined) return 'no_line'
+  if (items.some((x) => x.friendStatus === 'blocked')) return 'blocked'
+  if (items.some((x) => x.contactAllowed === false)) return 'contact_off'
+  return 'ok'
+}
+
+/** 送れない理由（画面の一文）。DB と Edge Function の理由も同じ言葉にする */
+export function pushReasonText(reason: string): string {
+  switch (reason) {
+    case 'not_kind': case 'not_push_kind': return 'LINE で送れるのは再開の声かけだけです。コピーして送ってください。'
+    case 'no_line': return 'LINE の記録がないため送れません。'
+    case 'blocked': return '公式LINE がブロックされているため送れません。'
+    case 'contact_off': return '本人が連絡を止めているため送りません。'
+    case 'not_open': return 'すでに対応済みでした。'
+    case 'sending': return 'いま送っているところです。少し待って一覧を確かめてください。'
+    case 'quota': return '今月の残りが足りず、送れませんでした。'
+    case 'line_error': return 'LINE に受け付けられませんでした（友だちでない可能性があります）。'
+    default: return '送れませんでした。'
+  }
+}
+
+export type LineQuota = { limit: number | null; used: number; remaining: number | null; sentByNobit: number }
+
+/** 今月の残り通数の一文。残りが少ないときは注意として返す */
+export function quotaNote(q: LineQuota | null | undefined): { text: string; warn: boolean } {
+  if (!q) return { text: 'LINE の残り通数を確かめられませんでした。送るときに、もう一度確かめます。', warn: true }
+  const mine = `NOBIT! から ${q.sentByNobit}通`
+  if (q.limit === null || q.remaining === null) return { text: `LINE で送った今月の通数 ${q.used}通（上限なし・${mine}）`, warn: false }
+  return {
+    text: `LINE で送れる今月の残り ${q.remaining}通（上限 ${q.limit}通・${mine}）`,
+    warn: q.remaining < Math.max(10, Math.ceil(q.limit * 0.1)),
+  }
+}
+
+export type PushSendResult = { alertIds: string[]; ok: boolean; reason?: string }
+
+/** 送ったあとの一文 */
+export function pushResultNotice(results: ReadonlyArray<PushSendResult>): { text: string; failed: boolean } {
+  const ok = results.filter((r) => r.ok).length
+  const ng = results.filter((r) => !r.ok)
+  if (ng.length === 0) return { text: `${ok}人に LINE で送り、連絡済みにしました。`, failed: false }
+  const reasons = [...new Set(ng.map((r) => pushReasonText(r.reason ?? '')))].join(' ')
+  const head = ok > 0 ? `${ok}人に送りました。${ng.length}人には送れませんでした。` : `送れませんでした。`
+  return { text: `${head}${reasons}`, failed: true }
 }
 
 /** 同じ状態のアラートを、生徒ごと1行にまとめる。古い順（連絡済みは連絡の新しい順）に並べる */
@@ -199,6 +266,8 @@ export function rowsByStudent(items: ReadonlyArray<AlertItem>): StudentAlertRow[
       ids: sorted.map((x) => x.id),
       since: sorted.reduce((m, x) => (x.occurredOn < m ? x.occurredOn : m), sorted[0].occurredOn),
       contactedAt: sorted.reduce<string | null>((m, x) => (x.contactedAt && (!m || x.contactedAt > m) ? x.contactedAt : m), null),
+      push: pushStateOf(sorted),
+      sentByLine: sorted.some((x) => x.contactedAt !== null && x.sendMethod === 'line_api'),
     }
   })
   return rows.sort((a, b) => a.since.localeCompare(b.since) || (a.displayName ?? '').localeCompare(b.displayName ?? '', 'ja'))

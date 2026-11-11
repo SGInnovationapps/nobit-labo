@@ -20,17 +20,20 @@
 
 ### Supabase
 - [ ] マイグレーションの反映：`supabase db push --include-all`（push 用のスクリプトが行う）
-- [ ] Edge Function の反映（4つ）
+- [ ] Edge Function の反映（5つ）
   - `supabase functions deploy line-login`
   - `supabase functions deploy club-admin --no-verify-jwt`
   - `supabase functions deploy line-webhook --no-verify-jwt`
   - `supabase functions deploy weekly-digest --no-verify-jwt`（週1メールを使うとき）
+  - `supabase functions deploy line-push --no-verify-jwt`（公式LINE から再開の声かけを送る）
 - [ ] シークレット（`supabase secrets set 名前=値`）
   | 名前 | 使う関数 | 値 |
   |---|---|---|
   | `LINE_CHANNEL_IDS` | line-login | ミニアプリのチャネル ID。Developing・Review・Published を使うならカンマ区切りで全部 |
-  | `ALLOWED_ORIGINS` | line-login、club-admin | `https://nobit-labo.gymspiral.workers.dev`（手元で試すなら `,http://localhost:5173` を足す） |
+  | `ALLOWED_ORIGINS` | line-login、club-admin、line-push | `https://nobit-labo.gymspiral.workers.dev`（手元で試すなら `,http://localhost:5173` を足す） |
   | `LINE_MESSAGING_CHANNEL_SECRET` | line-webhook | 公式LINE（Messaging API）のチャネルシークレット |
+  | `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` | line-push | 公式LINE（Messaging API）のチャネルアクセストークン（長期）。LINE Developers の Messaging API 設定の一番下で発行 |
+  | `NOBIT_APP_URL` | line-push | ミニアプリの URL（`https://miniapp.line.me/＜LIFF ID＞`）。送るメッセージに「NOBIT! をひらく」ボタンを付ける。なければ本文だけ |
   | `RESEND_API_KEY`、`MAIL_FROM`、`ADMIN_URL`、`DIGEST_SECRET` | weekly-digest | 週1メール用（β後に回してよい） |
 - [ ] 以前の `auth-line` 関数がダッシュボードに残っていたら削除する（push 用のスクリプトが削除を試みる。いまの画面は line-login だけを使う）
 - [ ] 運営のアカウント（済んでいなければ）：管理画面でログインリンクを送って一度ログインし、SQL Editor で次を実行する
