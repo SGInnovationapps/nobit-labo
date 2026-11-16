@@ -57,6 +57,9 @@ assert.deepEqual(await r.json(), { limit: 200, used: 10, remaining: 190, sentByN
 r = await handle(post({ action: "quota" }), base({ quota: async () => ({ limit: null, used: 10 }) }));
 assert.equal((await r.json()).remaining, null);
 assert.deepEqual(await st(await handle(post({ action: "quota" }), base({ quota: async () => { throw new Error("x"); } }))), [502, "line_unavailable"]);
+// トークン未設定は、待っても直らないので別の理由で返す
+const noToken = { quota: async () => { throw new Error("not_configured: LINE_MESSAGING_CHANNEL_ACCESS_TOKEN がありません"); } };
+assert.deepEqual(await st(await handle(post({ action: "quota" }), base(noToken))), [503, "line_not_configured"]);
 
 // 送る：送れるものだけ送り、結果を記録する
 calls = [];
@@ -74,6 +77,7 @@ assert.equal(r.status, 409);
 assert.deepEqual(await r.json(), { error: "quota", remaining: 1 });
 assert.deepEqual(calls, []);
 assert.deepEqual(await st(await send([{ alertIds: [A1], text: "a" }], { quota: async () => { throw new Error("x"); } })), [502, "line_unavailable"]);
+assert.deepEqual(await st(await send([{ alertIds: [A1], text: "a" }], noToken)), [503, "line_not_configured"]);
 
 // 409（同じ再送キーで受け付け済み）は届いた扱い。429 のあとは送らない。それ以外のエラーは失敗として記録
 calls = [];

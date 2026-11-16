@@ -40,7 +40,7 @@ const deps: Deps = {
   },
 
   async quota() {
-    if (!token) throw new Error("missing LINE_MESSAGING_CHANNEL_ACCESS_TOKEN");
+    if (!token) throw new Error("not_configured: LINE_MESSAGING_CHANNEL_ACCESS_TOKEN がありません");
     const [q, c] = await Promise.all([lineGet("quota"), lineGet("quota/consumption")]);
     return { limit: q.type === "limited" ? Number(q.value) : null, used: Number(c.totalUsage ?? 0) };
   },

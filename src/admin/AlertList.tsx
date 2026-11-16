@@ -115,6 +115,8 @@ type ViewProps = {
   now?: number
   /** LINE の残り通数。読み込み中は undefined、確かめられなければ null */
   quota?: LineQuota | null
+  /** 残り通数を取れなかった理由（line_not_configured など） */
+  quotaReason?: string | null
   /** LINE で送る。渡されなければ、送るボタンを出さない */
   onPush?: (rows: StudentAlertRow[]) => void
   /** 送ったあとに失敗が含まれていたら、注意の色で出す */
@@ -122,7 +124,7 @@ type ViewProps = {
 }
 
 export function AlertListView({
-  items, busy, error, notice, undoRow, onContacted, onDismiss, onUndo, lastRun, clientErrors, now, quota, onPush, noticeWarn,
+  items, busy, error, notice, undoRow, onContacted, onDismiss, onUndo, lastRun, clientErrors, now, quota, quotaReason, onPush, noticeWarn,
 }: ViewProps) {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [bulkConfirm, setBulkConfirm] = useState(false)
@@ -140,7 +142,7 @@ export function AlertListView({
   }
   const none = s.open.length === 0 && s.contacted.length === 0 && s.extra.length === 0
   const pushable = s.open.filter((r) => r.push === 'ok')
-  const qn = quota === undefined ? null : quotaNote(quota)
+  const qn = quota === undefined ? null : quotaNote(quota, quotaReason)
   const short = quota?.remaining !== null && quota?.remaining !== undefined && quota.remaining < pushable.length
   return (
     <section className="adm-section alert-list" aria-labelledby="alerts-h">
@@ -261,14 +263,20 @@ export default function AlertList({ clubId }: { clubId: string }) {
   const [lastRun, setLastRun] = useState<LastRun | undefined>(undefined)
   const [clientErrors, setClientErrors] = useState<ClientErrorItem[] | undefined>(undefined)
   const [quota, setQuota] = useState<LineQuota | null | undefined>(undefined)
+  const [quotaReason, setQuotaReason] = useState<string | null>(null)
   const [noticeWarn, setNoticeWarn] = useState(false)
 
   const loadQuota = useCallback(async () => {
     try {
       setQuota(await loadLineQuota())
+      setQuotaReason(null)
     } catch (e) {
-      console.error(e)
+      // トークン未設定や LINE 側の一時的な不調は、画面に案内を出すだけにする。
+      // ここで console.error に出すと、管理画面を開くたびに「画面のエラー」へ同じ物がたまる
+      const reason = e instanceof Error ? e.message : ''
+      if (!['line_not_configured', 'line_unavailable', 'line_push_failed'].includes(reason)) console.error(e)
       setQuota(null)
+      setQuotaReason(reason || null)
     }
   }, [])
 
@@ -357,6 +365,7 @@ export default function AlertList({ clubId }: { clubId: string }) {
       lastRun={lastRun}
       clientErrors={clientErrors}
       quota={quota}
+      quotaReason={quotaReason}
       onPush={(rows) => void pushRows(rows)}
       noticeWarn={noticeWarn}
     />

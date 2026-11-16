@@ -96,6 +96,7 @@ export function alertErrorMessage(e: unknown): string {
   if (text.includes('clipboard')) return '文面をコピーできませんでした。表示している文面を選んで、コピーしてください。連絡済みにはしていません。'
   if (text.includes('not_open')) return 'このアラートは、すでに対応済みです。一覧を更新しました。'
   if (text.includes('forbidden')) return 'アラートを扱えるのは運営だけです。'
+  if (text.includes('line_not_configured')) return '公式LINE の送信トークンが未設定のため、LINE では送れません。文面をコピーして、公式LINE のチャットから送ってください。'
   if (text.includes('quota')) return 'LINE で送れる今月の残りが足りません。1通も送っていません。文面をコピーして、公式LINE のチャットから送ってください（チャットは通数に数えません）。'
   if (text.includes('line_unavailable')) return 'LINE の残り通数を確かめられなかったので、送っていません。少し待って、もう一度お試しください。'
   return '処理できませんでした。通信を確認して、もう一度お試しください。'
@@ -226,8 +227,13 @@ export function pushReasonText(reason: string): string {
 export type LineQuota = { limit: number | null; used: number; remaining: number | null; sentByNobit: number }
 
 /** 今月の残り通数の一文。残りが少ないときは注意として返す */
-export function quotaNote(q: LineQuota | null | undefined): { text: string; warn: boolean } {
-  if (!q) return { text: 'LINE の残り通数を確かめられませんでした。送るときに、もう一度確かめます。', warn: true }
+export function quotaNote(q: LineQuota | null | undefined, reason?: string | null): { text: string; warn: boolean } {
+  if (!q) {
+    if (reason === 'line_not_configured') {
+      return { text: '公式LINE の送信トークンが未設定のため、LINE では送れません（設定すると送れるようになります）。', warn: true }
+    }
+    return { text: 'LINE の残り通数を確かめられませんでした。送るときに、もう一度確かめます。', warn: true }
+  }
   const mine = `NOBIT! から ${q.sentByNobit}通`
   if (q.limit === null || q.remaining === null) return { text: `LINE で送った今月の通数 ${q.used}通（上限なし・${mine}）`, warn: false }
   return {

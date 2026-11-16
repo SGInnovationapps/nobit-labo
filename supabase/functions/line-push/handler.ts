@@ -75,6 +75,17 @@ function cors(origin: string | null, allowed: string[]): Record<string, string> 
   return h;
 }
 
+/**
+ * 残り通数を取れなかった理由を分ける。
+ * ・トークン未設定（設定すれば直る）→ line_not_configured
+ * ・LINE 側の不調や通信の失敗（待てば直る）→ line_unavailable
+ */
+export function quotaFailure(e: unknown): { reason: string; status: number } {
+  return String(e).includes("not_configured")
+    ? { reason: "line_not_configured", status: 503 }
+    : { reason: "line_unavailable", status: 502 };
+}
+
 export type SendResult = { alertIds: string[]; ok: boolean; reason?: string };
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -101,7 +112,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json({ limit: q.limit, used: q.used, remaining: q.limit === null ? null : Math.max(0, q.limit - q.used), sentByNobit: sent }, 200);
     } catch (e) {
       deps.log("quota failed", String(e));
-      return json({ error: "line_unavailable" }, 502);
+      const f = quotaFailure(e);
+      return json({ error: f.reason }, f.status);
     }
   }
 
@@ -113,7 +125,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let q: Quota;
   try { q = await deps.quota(); } catch (e) {
     deps.log("quota failed", String(e));
-    return json({ error: "line_unavailable" }, 502);
+    const f = quotaFailure(e);
+    return json({ error: f.reason }, f.status);
   }
   if (q.limit !== null && q.used + items.length > q.limit) {
     return json({ error: "quota", remaining: Math.max(0, q.limit - q.used) }, 409);

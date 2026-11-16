@@ -37,6 +37,9 @@ test('quotaNote: 残り通数。少なくなったら注意', () => {
   assert.equal(quotaNote({ limit: 200, used: 195, remaining: 5, sentByNobit: 30 }).warn, true)
   assert.equal(quotaNote({ limit: null, used: 900, remaining: null, sentByNobit: 30 }).warn, false)
   assert.equal(quotaNote(null).warn, true)
+  // トークン未設定のときは、待っても直らないので案内を変える
+  assert.match(quotaNote(null, 'line_not_configured').text, /送信トークンが未設定/)
+  assert.match(quotaNote(null, 'line_unavailable').text, /確かめられませんでした/)
 })
 
 test('pushResultNotice: 送れた人数と、送れなかった理由', () => {
@@ -52,4 +55,5 @@ test('pushResultNotice: 送れた人数と、送れなかった理由', () => {
 test('alertErrorMessage: 残り不足・LINE に届かないとき', () => {
   assert.match(alertErrorMessage(new Error('quota')), /1通も送っていません/)
   assert.match(alertErrorMessage(new Error('line_unavailable')), /送っていません/)
+  assert.match(alertErrorMessage(new Error('line_not_configured')), /送信トークンが未設定/)
 })
